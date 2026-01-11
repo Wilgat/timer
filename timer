@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Version number
-VERSION="1.2.0"
+VERSION="1.2.1"
 
 # Default install location
 INSTALL_PATH="/usr/local/bin/timer"
@@ -172,8 +172,8 @@ case "$COMMAND" in
 
     kill)
         FORCE=true
-        # fall through to stop
-        ;&
+        # fall through to stop handling
+        ;;
 
     status)
         if [ ! -f "$TIMER_FILE" ]; then
