@@ -1,103 +1,81 @@
-# timer - Simple Per-User CLI Timer for Linux/Unix
+# timer - Beautiful & Flexible Per-User Timer
 
-A lightweight, per-user command-line timer written in pure POSIX shell (dash/sh compatible).  
-Perfect for quickly measuring how long tasks, breaks, meetings, or any activity takes — without any dependencies.
+Lightweight, named, multi-timer CLI tool written in pure POSIX shell.
 
-Each user gets their own independent timer, stored safely in fast in-memory filesystem (`/dev/shm`).
+Now with colors, persistent mode, `list`, and force discard!
 
 ## Features
 
-- **Per-user isolation** — multiple users/sessions can run timers simultaneously
-- Uses `/dev/shm` (RAM-based, auto-cleaned on reboot)
-- Simple commands: `start`, `stop`, `version`, `help`
-- One-file script — easy to install globally
-- Fully POSIX-compliant (works with `dash`, `bash`, etc.)
-- Installation suggestion via curl | sh for convenience
+- Multiple independent named timers per user  
+- `timer list` — see everything that's running  
+- `--persist` — survive reboots (stored in `~/.cache/timer/`)  
+- Color output when terminal supports it  
+- `timer kill <name>` / `stop --force` — discard forgotten timers  
+- Zero dependencies, works with dash/sh
 
 ## Installation
 
-### Recommended (global install - recommended)
-
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/refs/heads/main/timer | sudo sh
-```
+# Recommended (global install)
+curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/refs/heads/main/timer | sh
 
-This installs the script to `/usr/local/bin/timer` (requires sudo if needed).
-
-After installation you can simply run:
-
-```bash
-timer start
-timer stop
-```
-
-### Manual (local use)
-
-```bash
-# Download the script
-curl -fsSL -o timer https://raw.githubusercontent.com/Wilgat/timer/refs/heads/main/timer
-
-# Make it executable
-chmod +x timer
-
-# Run it (from current directory)
-./timer start
+# With sudo if needed:
+sudo curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/refs/heads/main/timer | sudo sh
 ```
 
 ## Usage
 
 ```bash
-timer <command>
+timer <command> [--persist] [--force] [name]
 ```
 
-| Command   | Description                                      |
-|-----------|--------------------------------------------------|
-| `start`   | Start a new timer for the current user           |
-| `stop`    | Stop timer and display elapsed time (min + sec)  |
-| `version` | Show current version                             |
-| `help`    | Show this help message                           |
+| Command           | Description                                    | Example                        |
+|-------------------|------------------------------------------------|--------------------------------|
+| `start [name]`    | Start new timer                                | `timer start work --persist`   |
+| `stop [name]`     | Stop & show elapsed time                       | `timer stop work`              |
+| `stop --force`    | Discard timer without showing time             | `timer stop old --force`       |
+| `kill [name]`     | Alias for `stop --force`                       | `timer kill forgotten`         |
+| `status [name]`   | Show current elapsed time (no stop)            | `timer status coffee`          |
+| `list`            | Show all running timers                        | `timer list --persist`         |
+| `version`         | Show version                                   | `timer version`                |
+| `help`            | This help                                      | `timer help`                   |
 
-### Example
+**Default timer name** is `default` when no name is given.
+
+### Examples
 
 ```bash
-$ timer start
-Timer started for user 'alice' at 2026-01-11 14:30:45
+# Normal workflow
+timer start coding
+# ... later ...
+timer status coding
+timer stop coding
 
-# ... do some work ...
+# Multiple + list
+timer start meeting --persist
+timer start break
+timer list
 
-$ timer stop
-Time elapsed for user 'alice': 7 minutes and 42 seconds
+# Cleanup forgotten timer
+timer kill oldtask
 ```
-
-## How It Works
-
-- `start` → saves current Unix timestamp to `/dev/shm/timer_timestamp_$USER`
-- `stop` → reads it, calculates difference, removes file, shows result
-- File is automatically cleaned up on `stop` or system reboot
 
 ## Requirements
 
-- POSIX-compliant shell (`/bin/sh` — dash is fine)
-- `date`, `id`, `rm`, `cat` (standard on any Linux/Unix)
-- Write access to `/dev/shm` (default on most modern systems)
+- POSIX shell (`/bin/sh`, dash, etc.)
+- Standard utilities: `date`, `id`, `mkdir`, `rm`
 
 ## Contributing
 
-Feel free to open issues or pull requests!
+Ideas welcome:
 
-Ideas for future versions:
-- Named timers (`timer work start`, `timer coffee start`)
-- `status` command
-- Sub-second precision (using `time` or `date +%s.%N`)
-- Pause/resume functionality
+- Pause/resume  
+- Lap/split times  
+- Export/import timers  
+- Notification when timer reaches certain time
 
 ## License
 
-MIT License
+MIT
 
-See [LICENSE](LICENSE) for details.
-
----
-
-**Happy timing!** ⏱️
-
+Enjoy your timers! ⏱️✨

@@ -1,159 +1,200 @@
 #!/bin/sh
 
 # Version number
-VERSION="1.0.1"
+VERSION="1.2.0"
 
 # Default install location
 INSTALL_PATH="/usr/local/bin/timer"
 
-# Get current username for per-user timer file
+# Get current username
 USERNAME=$(id -un 2>/dev/null || echo "unknown")
-TEMPFILE="/dev/shm/timer_timestamp_$USERNAME"
 
-# Check if we're already the installed version
+# Color support (basic)
+if [ -t 1 ]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    NC='\033[0m' # No Color
+else
+    RED='' GREEN='' YELLOW='' NC=''
+fi
+
+# Directories
+VOLATILE_DIR="/dev/shm"
+PERSISTENT_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/timer"
+
+# Get timer file path
+get_timer_file() {
+    local name="$1"
+    local mode="$2"  # "volatile" or "persistent"
+    local base_dir
+    if [ "$mode" = "persistent" ]; then
+        base_dir="$PERSISTENT_DIR"
+        mkdir -p "$base_dir" 2>/dev/null
+    else
+        base_dir="$VOLATILE_DIR"
+    fi
+    echo "${base_dir}/timer_${USERNAME}_${name}"
+}
+
+# List all running timers for current user
+list_timers() {
+    local mode="$1"
+    local base_dir
+    if [ "$mode" = "persistent" ]; then
+        base_dir="$PERSISTENT_DIR"
+    else
+        base_dir="$VOLATILE_DIR"
+    fi
+
+    if [ ! -d "$base_dir" ]; then
+        echo "No running timers found."
+        return
+    fi
+
+    found=0
+    for file in "${base_dir}"/timer_"${USERNAME}"_* 2>/dev/null; do
+        [ -f "$file" ] || continue
+        found=1
+        name="${file##*timer_${USERNAME}_}"
+        start_time=$(cat "$file" 2>/dev/null) || continue
+        current_time=$(date +%s) || continue
+        elapsed=$((current_time - start_time))
+        minutes=$((elapsed / 60))
+        seconds=$((elapsed % 60))
+        printf "${GREEN}%-12s${NC} running for %2d min %2d sec\n" "$name" "$minutes" "$seconds"
+    done
+
+    [ "$found" -eq 0 ] && echo "No running timers found."
+}
+
+# Check if we're installed globally
 is_installed() {
     [ -f "$INSTALL_PATH" ] && [ -x "$INSTALL_PATH" ]
 }
 
-# Check if we have permission to write to /usr/local/bin
-can_install() {
-    [ -w "/usr/local/bin" ] || [ -w "$(dirname "$INSTALL_PATH")" ]
-}
-
-install_self() {
-    echo "Installing timer to $INSTALL_PATH..."
-
-    TMP_SCRIPT="/tmp/timer.install.$$"
-
-    # Download fresh copy from main branch
-    if ! curl -fsSL "https://raw.githubusercontent.com/Wilgat/timer/refs/heads/main/timer" -o "$TMP_SCRIPT"; then
-        echo "Error: Failed to download the script from GitHub." >&2
-        return 1
-    fi
-
-    chmod +x "$TMP_SCRIPT" || {
-        echo "Error: Failed to make temporary script executable." >&2
-        rm -f "$TMP_SCRIPT"
-        return 1
-    }
-
-    # Try to install (needs root/sudo)
-    if cp "$TMP_SCRIPT" "$INSTALL_PATH" 2>/dev/null; then
-        echo "Installation successful!"
-        echo "You can now use 'timer' from anywhere."
-        rm -f "$TMP_SCRIPT"
-        return 0
-    else
-        echo "Error: Failed to copy to $INSTALL_PATH (permission denied?)" >&2
-        echo ""
-        echo "Try running the installation with sudo:"
-        echo "  sudo curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/refs/heads/main/timer | sudo sh"
-        echo ""
-        rm -f "$TMP_SCRIPT"
-        return 1
-    fi
-}
-
 show_install_suggestion() {
-    if is_installed; then
-        return  # Already installed → no need to suggest
-    fi
-
+    if is_installed; then return; fi
     echo ""
-    echo "⚠️  Note: This script is not installed globally at $INSTALL_PATH"
-    echo "     For better usability, install it system-wide:"
+    echo "${YELLOW}⚠️  timer is not installed globally at $INSTALL_PATH${NC}"
+    echo "Recommended: curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/refs/heads/main/timer | sh"
     echo ""
-    echo "     curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/refs/heads/main/timer | sh"
-    echo ""
-
-    if can_install; then
-        printf "     Would you like to install it now? (y/N): "
-        read -r answer </dev/tty
-        case "$answer" in
-            [Yy]*)
-                echo "Installing..."
-                if install_self; then
-                    echo "Please run your command again using just: timer $1"
-                    exit 0
-                else
-                    echo "Installation failed. Continuing in local mode..."
-                fi
-                ;;
-            *)
-                echo "Continuing without installation..."
-                ;;
-        esac
-    else
-        echo "You don't have permission to write to /usr/local/bin."
-        echo "Use sudo for global installation:"
-        echo "  sudo curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/refs/heads/main/timer | sudo sh"
-    fi
 }
 
 show_help() {
     cat << 'EOF'
-timer - Simple per-user elapsed time tracker
+timer - Simple per-user named timer (v1.2.0)
 
-Usage: timer <command>
+Usage:
+  timer start [--persist] [name]      Start a timer (default or named)
+  timer stop [--force] [name]         Stop & show elapsed time
+  timer kill [name]                   Alias for stop --force
+  timer status [name]                 Show current elapsed time (no stop)
+  timer list [--persist]              List all running timers
+  timer version                       Show version
+  timer help                          This help
 
-Commands:
-  start     Start a new timer for the current user
-  stop      Stop timer and show elapsed time (minutes + seconds)
-  version   Show current version
-  help      Show this help message
+Options:
+  --persist        Use persistent storage (~/.cache/timer/) instead of RAM (/dev/shm)
 
-Features:
-  • Each user has their own independent timer
-  • Uses fast in-memory storage (/dev/shm)
-  • Timer auto-cleans on 'stop' or system reboot
-
-Recommended global installation:
-  curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/refs/heads/main/timer | sh
-
-(If permission denied → use sudo)
-
-Version: $VERSION
+Examples:
+  timer start work --persist
+  timer list
+  timer status coffee
+  timer stop work
+  timer kill oldtask --force
 EOF
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
 
-if [ "$#" -ne 1 ]; then
-    show_install_suggestion ""
-    echo "Usage: timer start|stop|version|help" >&2
-    exit 1
-fi
+PERSIST=false
+FORCE=false
+NAME="default"
 
-case "$1" in
+# Parse arguments
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --persist) PERSIST=true; shift ;;
+        --force)   FORCE=true; shift ;;
+        start|stop|status|list|kill|version|help) COMMAND="$1"; shift ;;
+        *) NAME="$1"; shift ;;
+    esac
+done
+
+[ -z "$COMMAND" ] && {
+    show_install_suggestion
+    echo "Usage: timer start|stop|status|list|kill|version|help [--persist] [--force] [name]" >&2
+    exit 1
+}
+
+STORAGE_MODE=$([ "$PERSIST" = true ] && echo "persistent" || echo "volatile")
+TIMER_FILE=$(get_timer_file "$NAME" "$STORAGE_MODE")
+
+case "$COMMAND" in
     start)
-        show_install_suggestion "start"
-        date +%s > "$TEMPFILE" 2>/dev/null || {
-            echo "Error: Cannot write to $TEMPFILE" >&2
+        show_install_suggestion
+        if [ -f "$TIMER_FILE" ]; then
+            echo "${YELLOW}Timer '${NAME}' is already running.${NC}" >&2
+            echo "  Use ${GREEN}timer status ${NAME}${NC} to check current time"
+            echo "  Use ${GREEN}timer stop ${NAME}${NC} to finish normally"
+            echo "  Use ${YELLOW}timer kill ${NAME} --force${NC} to discard it"
+            exit 1
+        fi
+        date +%s > "$TIMER_FILE" || {
+            echo "${RED}Error: Cannot create timer file.${NC}" >&2
             exit 1
         }
-        echo "Timer started for user '$USERNAME' at $(date '+%Y-%m-%d %H:%M:%S')"
+        echo "${GREEN}Timer '${NAME}' started at $(date '+%Y-%m-%d %H:%M:%S')${NC}"
+        [ "$PERSIST" = true ] && echo "  (persistent mode)"
         ;;
 
     stop)
-        show_install_suggestion "stop"
-        if [ ! -f "$TEMPFILE" ]; then
-            echo "Error: No timer is running for user '$USERNAME'." >&2
+        if [ ! -f "$TIMER_FILE" ]; then
+            echo "${YELLOW}No timer '${NAME}' is running.${NC}" >&2
             exit 1
         fi
 
-        start_time=$(cat "$TEMPFILE")
-        rm -f "$TEMPFILE"
+        start_time=$(cat "$TIMER_FILE")
+        rm -f "$TIMER_FILE"
 
-        current_time=$(date +%s) || {
-            echo "Error: Cannot get current time" >&2
-            exit 1
-        }
-
+        current_time=$(date +%s) || exit 1
         elapsed=$((current_time - start_time))
         minutes=$((elapsed / 60))
         seconds=$((elapsed % 60))
 
-        printf "Time elapsed for user '%s': %d minutes and %d seconds\n" "$USERNAME" "$minutes" "$seconds"
+        if [ "$FORCE" = true ]; then
+            echo "${YELLOW}Timer '${NAME}' discarded (forced).${NC}"
+        else
+            printf "${GREEN}Timer '%s' finished:${NC} %d min %d sec\n" "$NAME" "$minutes" "$seconds"
+        fi
+        ;;
+
+    kill)
+        FORCE=true
+        # fall through to stop
+        ;&
+
+    status)
+        if [ ! -f "$TIMER_FILE" ]; then
+            echo "${YELLOW}No timer '${NAME}' is running.${NC}" >&2
+            exit 1
+        fi
+
+        start_time=$(cat "$TIMER_FILE")
+        current_time=$(date +%s) || exit 1
+        elapsed=$((current_time - start_time))
+        minutes=$((elapsed / 60))
+        seconds=$((elapsed % 60))
+
+        printf "${GREEN}Timer '%s' running for:${NC} %d min %d sec\n" "$NAME" "$minutes" "$seconds"
+        [ "$PERSIST" = true ] && echo "  (persistent mode)"
+        ;;
+
+    list)
+        show_install_suggestion
+        echo "Running timers (${STORAGE_MODE}):"
+        list_timers "$STORAGE_MODE"
         ;;
 
     version)
@@ -165,9 +206,8 @@ case "$1" in
         ;;
 
     *)
-        show_install_suggestion "$1"
-        echo "Invalid command: $1" >&2
-        echo "Use: timer start|stop|version|help" >&2
+        echo "${RED}Unknown command: $COMMAND${NC}" >&2
+        echo "Use: timer help" >&2
         exit 1
         ;;
 esac
