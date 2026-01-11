@@ -1,0 +1,126 @@
+#!/bin/sh
+
+# Version number
+VERSION="1.0.0"
+
+# Default install location we recommend
+INSTALL_PATH="/usr/local/bin/timer"
+
+# Get current username for per-user timer file
+USERNAME=$(id -un 2>/dev/null || echo "unknown")
+TEMPFILE="/dev/shm/timer_timestamp_$USERNAME"
+
+# Check if we're running from the recommended install location
+is_installed() {
+    [ -f "$INSTALL_PATH" ] && [ -x "$INSTALL_PATH" ]
+}
+
+show_install_suggestion() {
+    if ! is_installed; then
+        echo ""
+        echo "⚠️  Note: This script is not installed in $INSTALL_PATH"
+        echo "     For better usability, you can install it globally:"
+        echo ""
+        echo "     curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/refs/heads/master/timer | sh"
+        echo ""
+        printf "     Would you like to install it now? (y/N): "
+        read -r answer </dev/tty
+        case "$answer" in
+            [Yy]*)
+                echo "Installing..."
+                curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/refs/heads/master/timer | sh
+                if [ $? -eq 0 ] && [ -f "$INSTALL_PATH" ]; then
+                    echo "Installation successful! You can now use 'timer' from anywhere."
+                    echo "Please run your command again using just: timer $1"
+                else
+                    echo "Installation failed."
+                fi
+                exit 0
+                ;;
+            *)
+                echo "Continuing without installation..."
+                ;;
+        esac
+    fi
+}
+
+# Show help/usage
+show_help() {
+    cat << 'EOF'
+timer - Simple per-user elapsed time tracker
+
+Usage: timer [command]
+
+Commands:
+  start     Start a new timer for the current user
+  stop      Stop timer and show elapsed time (minutes + seconds)
+  version   Show current version
+  help      Show this help message
+
+Features:
+  • Each user has their own independent timer
+  • Uses fast in-memory storage (/dev/shm)
+  • Timer persists only until 'stop' is called or system reboot
+
+Recommended installation (global access):
+  curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/refs/heads/master/timer | sh
+
+Version: $VERSION
+EOF
+}
+
+# Main logic
+if [ "$#" -ne 1 ]; then
+    show_install_suggestion "$*"
+    echo "Usage: timer start|stop|version|help" >&2
+    exit 1
+fi
+
+case "$1" in
+    start)
+        show_install_suggestion "start"
+        date +%s > "$TEMPFILE" 2>/dev/null || {
+            echo "Error: Cannot write to $TEMPFILE" >&2
+            exit 1
+        }
+        echo "Timer started for user '$USERNAME' at $(date '+%Y-%m-%d %H:%M:%S')"
+        ;;
+
+    stop)
+        show_install_suggestion "stop"
+        if [ ! -f "$TEMPFILE" ]; then
+            echo "Error: No timer is running for user '$USERNAME'." >&2
+            exit 1
+        fi
+
+        start_time=$(cat "$TEMPFILE")
+        rm -f "$TEMPFILE"
+
+        current_time=$(date +%s) || {
+            echo "Error: Cannot get current time" >&2
+            exit 1
+        }
+
+        elapsed=$((current_time - start_time))
+        minutes=$((elapsed / 60))
+        seconds=$((elapsed % 60))
+
+        printf "Time elapsed for user '%s': %d minutes and %d seconds\n" "$USERNAME" "$minutes" "$seconds"
+        ;;
+
+    version)
+        echo "timer version $VERSION"
+        ;;
+
+    help)
+        show_help
+        ;;
+
+    *)
+        show_install_suggestion "$1"
+        echo "Invalid command: $1" >&2
+        echo "Use: timer start|stop|version|help" >&2
+        exit 1
+        ;;
+esac
+
