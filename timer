@@ -1,55 +1,100 @@
 #!/bin/sh
 
 # Version number
-VERSION="1.0.0"
+VERSION="1.0.1"
 
-# Default install location we recommend
+# Default install location
 INSTALL_PATH="/usr/local/bin/timer"
 
 # Get current username for per-user timer file
 USERNAME=$(id -un 2>/dev/null || echo "unknown")
 TEMPFILE="/dev/shm/timer_timestamp_$USERNAME"
 
-# Check if we're running from the recommended install location
+# Check if we're already the installed version
 is_installed() {
     [ -f "$INSTALL_PATH" ] && [ -x "$INSTALL_PATH" ]
 }
 
+# Check if we have permission to write to /usr/local/bin
+can_install() {
+    [ -w "/usr/local/bin" ] || [ -w "$(dirname "$INSTALL_PATH")" ]
+}
+
+install_self() {
+    echo "Installing timer to $INSTALL_PATH..."
+
+    TMP_SCRIPT="/tmp/timer.install.$$"
+
+    # Download fresh copy from main branch
+    if ! curl -fsSL "https://raw.githubusercontent.com/Wilgat/timer/refs/heads/main/timer" -o "$TMP_SCRIPT"; then
+        echo "Error: Failed to download the script from GitHub." >&2
+        return 1
+    fi
+
+    chmod +x "$TMP_SCRIPT" || {
+        echo "Error: Failed to make temporary script executable." >&2
+        rm -f "$TMP_SCRIPT"
+        return 1
+    }
+
+    # Try to install (needs root/sudo)
+    if cp "$TMP_SCRIPT" "$INSTALL_PATH" 2>/dev/null; then
+        echo "Installation successful!"
+        echo "You can now use 'timer' from anywhere."
+        rm -f "$TMP_SCRIPT"
+        return 0
+    else
+        echo "Error: Failed to copy to $INSTALL_PATH (permission denied?)" >&2
+        echo ""
+        echo "Try running the installation with sudo:"
+        echo "  sudo curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/refs/heads/main/timer | sudo sh"
+        echo ""
+        rm -f "$TMP_SCRIPT"
+        return 1
+    fi
+}
+
 show_install_suggestion() {
-    if ! is_installed; then
-        echo ""
-        echo "⚠️  Note: This script is not installed in $INSTALL_PATH"
-        echo "     For better usability, you can install it globally:"
-        echo ""
-        echo "     curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/refs/heads/master/timer | sh"
-        echo ""
+    if is_installed; then
+        return  # Already installed → no need to suggest
+    fi
+
+    echo ""
+    echo "⚠️  Note: This script is not installed globally at $INSTALL_PATH"
+    echo "     For better usability, install it system-wide:"
+    echo ""
+    echo "     curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/refs/heads/main/timer | sh"
+    echo ""
+
+    if can_install; then
         printf "     Would you like to install it now? (y/N): "
         read -r answer </dev/tty
         case "$answer" in
             [Yy]*)
                 echo "Installing..."
-                curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/refs/heads/master/timer | sh
-                if [ $? -eq 0 ] && [ -f "$INSTALL_PATH" ]; then
-                    echo "Installation successful! You can now use 'timer' from anywhere."
+                if install_self; then
                     echo "Please run your command again using just: timer $1"
+                    exit 0
                 else
-                    echo "Installation failed."
+                    echo "Installation failed. Continuing in local mode..."
                 fi
-                exit 0
                 ;;
             *)
                 echo "Continuing without installation..."
                 ;;
         esac
+    else
+        echo "You don't have permission to write to /usr/local/bin."
+        echo "Use sudo for global installation:"
+        echo "  sudo curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/refs/heads/main/timer | sudo sh"
     fi
 }
 
-# Show help/usage
 show_help() {
     cat << 'EOF'
 timer - Simple per-user elapsed time tracker
 
-Usage: timer [command]
+Usage: timer <command>
 
 Commands:
   start     Start a new timer for the current user
@@ -60,18 +105,21 @@ Commands:
 Features:
   • Each user has their own independent timer
   • Uses fast in-memory storage (/dev/shm)
-  • Timer persists only until 'stop' is called or system reboot
+  • Timer auto-cleans on 'stop' or system reboot
 
-Recommended installation (global access):
-  curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/refs/heads/master/timer | sh
+Recommended global installation:
+  curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/refs/heads/main/timer | sh
+
+(If permission denied → use sudo)
 
 Version: $VERSION
 EOF
 }
 
-# Main logic
+# ──────────────────────────────────────────────────────────────────────────────
+
 if [ "$#" -ne 1 ]; then
-    show_install_suggestion "$*"
+    show_install_suggestion ""
     echo "Usage: timer start|stop|version|help" >&2
     exit 1
 fi
@@ -123,4 +171,3 @@ case "$1" in
         exit 1
         ;;
 esac
-

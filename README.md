@@ -19,7 +19,7 @@ Each user gets their own independent timer, stored safely in fast in-memory file
 ### Recommended (global install - recommended)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/master/timer | sh
+curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/refs/heads/main/timer | sudo sh
 ```
 
 This installs the script to `/usr/local/bin/timer` (requires sudo if needed).
@@ -35,7 +35,7 @@ timer stop
 
 ```bash
 # Download the script
-curl -fsSL -o timer https://raw.githubusercontent.com/Wilgat/timer/master/timer
+curl -fsSL -o timer https://raw.githubusercontent.com/Wilgat/timer/refs/heads/main/timer
 
 # Make it executable
 chmod +x timer
