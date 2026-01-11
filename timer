@@ -1,7 +1,7 @@
 #!/bin/sh
 
 # Version number
-VERSION="1.2.5"
+VERSION="1.2.6"
 
 # Default install location
 INSTALL_PATH="/usr/local/bin/timer"
@@ -207,6 +207,11 @@ case "$COMMAND" in
         [ "$PERSIST" = true ] && echo "  (persistent mode)"
         ;;
 
+    kill)
+        FORCE=true
+        # fall through to stop
+        ;;
+
     stop)
         if [ ! -f "$TIMER_FILE" ]; then
             echo "${YELLOW}No timer '${NAME}' is running.${NC}" >&2
@@ -226,11 +231,6 @@ case "$COMMAND" in
         else
             printf "${GREEN}Timer '%s' finished:${NC} %d min %d sec\n" "$NAME" "$minutes" "$seconds"
         fi
-        ;;
-
-    kill)
-        FORCE=true
-        # fall through to stop
         ;;
 
     status)
