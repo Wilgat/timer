@@ -1,6 +1,6 @@
 #!/bin/sh
 # =============================================================================
-# timer – version 2.1.1
+# timer – version 2.1.2
 # =============================================================================
 #
 # Lightweight per-user named timers (volatile in RAM or persistent).
@@ -84,7 +84,7 @@
 
 # ----------------------------- Project Constants -----------------------------
 APP_NAME="timer"           # ← HARDCODED - Required for curl | sh install
-VERSION="2.1.1"
+VERSION="2.1.2"
 DESCRIPTION="Lightweight per-user named timers (volatile or persistent)"
 
 # Repository source (used for self-update / installation)
@@ -262,9 +262,211 @@ self_update() {
     echo "Self-update: implement your original logic"
 }
 
-# Placeholder for remaining ciao-style functions
-# in_path, add_to_shell_path, perform_self_install, maybe_install, show_install_suggestion
-# Add them here as needed from your ciao project.
+# =============================================================================
+# in_path() - Check if a directory is in $PATH
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Returns 0 if the given directory (default: INSTALL_DIR) is already in $PATH.
+# POSIX-compatible using case statement (works in sh/dash/bash/zsh).
+#
+# !!! DO NOT MODIFY OR SIMPLIFY !!!
+# =============================================================================
+
+in_path() {
+    case ":${PATH}:" in
+        *:"${1:-$USER_BIN}":*) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# =============================================================================
+# add_to_shell_path() - Multi-shell PATH support (bash + zsh + fish)
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Adds ~/.local/bin to the user's shell configuration for bash, zsh, and fish.
+# Works even if the user is currently using a different shell.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY !!!
+# =============================================================================
+
+add_to_shell_path() {
+    local added=0
+
+    # Bash
+    local bashrc="${HOME}/.bashrc"
+    if [ -f "$bashrc" ]; then
+        if ! grep -qF 'export PATH="$HOME/.local/bin:$PATH"' "$bashrc" 2>/dev/null; then
+            printf "\n# Added by %s installer (%s)\n" "$APP_NAME" "$VERSION" >> "$bashrc"
+            printf 'export PATH="$HOME/.local/bin:$PATH"\n' >> "$bashrc"
+            added=1
+        fi
+    fi
+
+    # Zsh
+    local zshrc="${HOME}/.zshrc"
+    if [ -f "$zshrc" ]; then
+        if ! grep -qF 'export PATH="$HOME/.local/bin:$PATH"' "$zshrc" 2>/dev/null; then
+            printf "\n# Added by %s installer (%s)\n" "$APP_NAME" "$VERSION" >> "$zshrc"
+            printf 'export PATH="$HOME/.local/bin:$PATH"\n' >> "$zshrc"
+            added=1
+        fi
+    fi
+
+    # Fish
+    local fish_config="${HOME}/.config/fish/config.fish"
+    if [ -d "${HOME}/.config/fish" ] || mkdir -p "${HOME}/.config/fish" 2>/dev/null; then
+        if [ -f "$fish_config" ] && grep -qF 'set -gx PATH $HOME/.local/bin $PATH' "$fish_config" 2>/dev/null; then
+            : # already present
+        else
+            printf "\n# Added by %s installer (%s)\n" "$APP_NAME" "$VERSION" >> "$fish_config"
+            printf 'set -gx PATH $HOME/.local/bin $PATH\n' >> "$fish_config"
+            added=1
+        fi
+    fi
+
+    if [ "$added" -eq 1 ]; then
+        printf "${YELLOW}→ Added ~/.local/bin to PATH for bash/zsh/fish${NC}\n"
+        printf "${YELLOW}→ Restart your terminal or run: source <your config file>${NC}\n"
+    fi
+}
+
+# =============================================================================
+# perform_self_install() - Main self-installation logic
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Downloads and installs ciao to the correct location (global or user-local).
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# =============================================================================
+
+perform_self_install() {
+    info "Starting installation of ${APP_NAME} ${VERSION}..."
+
+    if is_installed && [ "${FORCE_REINSTALL}" -eq 0 ]; then
+        success "${APP_NAME} is already installed. Use --force or --reinstall to override."
+        return 0
+    fi
+
+    # Determine install location
+    if [ "$IS_ROOT" -eq 1 ]; then
+        INSTALL_DIR="${GLOBAL_BIN}"
+        INSTALL_PATH="${GLOBAL_BIN}/${APP_NAME}"
+    else
+        INSTALL_DIR="${USER_BIN}"
+        INSTALL_PATH="${USER_BIN}/${APP_NAME}"
+    fi
+
+    # Create directory
+    if ! mkdir -p "${INSTALL_DIR}" 2>/dev/null; then
+        error "Failed to create ${INSTALL_DIR}"
+        error "Try running with sudo or --user flag"
+        return 1
+    fi
+
+    # Download to temporary file (secure mktemp)
+    local tmp_file
+    tmp_file=$(mktemp -t "${APP_NAME}.XXXXXX") || {
+        error "Failed to create temporary file"
+        return 1
+    }
+
+    info "Downloading ${APP_NAME} from GitHub..."
+
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL "${SCRIPT_URL}" -o "${tmp_file}" || {
+            error "Download failed (curl)"
+            rm -f "${tmp_file}"
+            return 1
+        }
+    elif command -v wget >/dev/null 2>&1; then
+        wget -qO "${tmp_file}" "${SCRIPT_URL}" || {
+            error "Download failed (wget)"
+            rm -f "${tmp_file}"
+            return 1
+        }
+    else
+        error "Neither curl nor wget found"
+        rm -f "${tmp_file}"
+        return 1
+    fi
+
+    # chmod +x is unreliable on Git Bash (Windows), but shebang usually suffices
+    chmod +x "${tmp_file}" 2>/dev/null || warn "chmod +x failed (common on Git Bash / Windows - shebang should still allow execution)"
+
+    rm -f "${INSTALL_PATH}" 2>/dev/null
+    if ! mv "${tmp_file}" "${INSTALL_PATH}" 2>/dev/null; then
+        error "Failed to move to ${INSTALL_PATH}"
+        rm -f "${tmp_file}"
+        return 1
+    fi
+
+    success "${APP_NAME} ${VERSION} successfully installed to ${INSTALL_PATH}"
+
+    # PATH guidance for normal users
+    if [ "$IS_ROOT" -eq 0 ]; then
+        if ! in_path; then
+            add_to_shell_path
+        else
+            success "${APP_NAME} is now available in your PATH"
+        fi
+    else
+        success "You can now run: ${APP_NAME}"
+    fi
+
+    return 0
+}
+
+# =============================================================================
+# maybe_install() - Friendly installation prompt
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Called when ciao is not installed. Shows helpful message and asks for confirmation.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY !!!
+# =============================================================================
+
+maybe_install() {
+    if is_installed && [ "${FORCE_REINSTALL}" -eq 0 ]; then
+        return 0
+    fi
+
+    printf "\n"
+    printf "${YELLOW}Note: '%s' is not installed yet.${NC}\n" "$APP_NAME"
+    printf "     Version: ${VERSION}\n\n"
+    printf "Recommended installation command:\n\n"
+
+    if [ "$IS_ROOT" -eq 1 ]; then
+        printf "     ${GREEN}sudo curl -fsSL %s | sudo sh${NC}\n" "$SCRIPT_URL"
+    else
+        printf "     ${GREEN}curl -fsSL %s | sh${NC}\n" "$SCRIPT_URL"
+    fi
+    printf "\n"
+
+    local should_install=false
+
+    if [ -t 0 ] && [ -t 1 ]; then
+        # Interactive terminal
+        printf "     Install now? (y/N): "
+        read -r answer || true
+        case "$answer" in
+            [Yy]*|[Yy][Ee][Ss]*) should_install=true ;;
+            *) printf "Installation skipped by user.\n"; return 0 ;;
+        esac
+    else
+        # Non-interactive (curl | sh, scripts, CI, etc.)
+        printf "${YELLOW}Non-interactive mode detected → installing automatically...${NC}\n"
+        should_install=true
+    fi
+
+    if [ "$should_install" = "true" ]; then
+        perform_self_install
+        exit 0
+    fi
+}
 
 show_timer_help() {
      cat << EOF
@@ -302,16 +504,17 @@ main() {
             --self-update)  cmd="self-update" ;;
             --force|--reinstall) FORCE_REINSTALL=1 ;;
             start|stop|status|list|kill|reset)
-                cmd="$1" ;;
-            *)              NAME="$1" ;;
+                cmd="$1" 
+                ;;
+            *)              
+                NAME="$1" 
+                ;;
         esac
         shift
     done
 
-    if [ "$cmd" = "start" ] || [ "$cmd" = "stop" ] || [ "$cmd" = "status" ] || \
-       [ "$cmd" = "list" ] || [ "$cmd" = "kill" ] || [ "$cmd" = "reset" ]; then
-        show_install_suggestion
-    fi
+    # Check if tool needs to be installed first
+    maybe_install
 
     local STORAGE_MODE TIMER_FILE
     STORAGE_MODE=$([ "$PERSIST" -eq 1 ] && echo "persistent" || echo "volatile")

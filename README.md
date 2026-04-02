@@ -1,6 +1,6 @@
 # timer - Beautiful & Flexible Per-User Timer
 
-<img src="https://img.shields.io/badge/Version-2.1.1-blue?style=flat-square" alt="Version">
+<img src="https://img.shields.io/badge/Version-2.1.2-blue?style=flat-square" alt="Version">
 <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License">
 
 **Lightweight per-user named timers** — volatile (in RAM) or persistent.  
