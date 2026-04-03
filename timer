@@ -531,6 +531,7 @@ perform_self_install() {
 # Called when ciao is not installed. Shows helpful message and asks for confirmation.
 #
 # !!! DO NOT MODIFY OR SIMPLIFY !!!
+# Designed to be reusable in other projects.
 # =============================================================================
 
 maybe_install() {
