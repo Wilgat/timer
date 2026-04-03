@@ -1,6 +1,6 @@
 #!/bin/sh
 # =============================================================================
-# timer – version 2.3.0
+# timer – version 2.4.0
 # =============================================================================
 #
 # Lightweight per-user named timers (volatile in RAM or persistent).
@@ -84,7 +84,7 @@
 
 # ----------------------------- Project Constants -----------------------------
 APP_NAME="timer"           # ← HARDCODED - Required for curl | sh install
-VERSION="2.3.0"
+VERSION="2.4.0"
 DESCRIPTION="Lightweight per-user named timers (volatile or persistent)"
 REMOTE_VERSION=$VERSION
 
