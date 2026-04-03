@@ -447,7 +447,7 @@ add_to_shell_path() {
 # =============================================================================
 #
 # GENERAL PURPOSE:
-# Downloads and installs timer to the correct location (global or user-local).
+# Downloads and installs the script to the correct location (global or user-local).
 #
 # Please don't modify this code for root-only installed
 # You can check [ "$(id -u)" -eq 0 ] before calling / executing 
