@@ -1,6 +1,6 @@
 #!/bin/sh
 # =============================================================================
-# timer – version 2.2.0
+# timer – version 2.3.0
 # =============================================================================
 #
 # Lightweight per-user named timers (volatile in RAM or persistent).
@@ -84,7 +84,7 @@
 
 # ----------------------------- Project Constants -----------------------------
 APP_NAME="timer"           # ← HARDCODED - Required for curl | sh install
-VERSION="2.2.0"
+VERSION="2.3.0"
 DESCRIPTION="Lightweight per-user named timers (volatile or persistent)"
 REMOTE_VERSION=$VERSION
 
@@ -545,11 +545,16 @@ show_timer_help() {
 ${APP_NAME} – version ${VERSION} - Lightweight per-user named timers (volatile or persistent)
 
 Usage:
-  ${APP_NAME} start [--persist] [name]          Start a timer
-  ${APP_NAME} stop [name]                       Stop and show elapsed time
-  ${APP_NAME} kill|reset [name]                 Discard or reset timer
-  ${APP_NAME} status [name]                     Show elapsed time without stopping
-  ${APP_NAME} list [--persist]                  List all running timers
+  ${APP_NAME} start [--persist] [name]  Start a timer
+  ${APP_NAME} stop [name]               Stop and show elapsed time
+  ${APP_NAME} kill|reset [name]         Discard or reset timer
+  ${APP_NAME} status [name]             Show elapsed time without stopping
+  ${APP_NAME} list [--persist]          List all running timers
+  ${APP_NAME} version                   Show version
+  ${APP_NAME} version-check             Compare with latest
+  sudo ${APP_NAME} self-update          Update to latest version
+  sudo ${APP_NAME} reinstall            Force to reinstall
+  ${APP_NAME} help                      This help
 
 Options:
   --persist           Store in ~/.cache/timer/ (survives reboot)
@@ -568,13 +573,13 @@ main() {
 
     while [ $# -gt 0 ]; do
         case "$1" in
-            --persist)      PERSIST=1 ;;
-            --quiet|-q)     QUIET=1 ;;
-            --help|-h)      cmd="help" ;;
-            --version|-v)   cmd="version" ;;
-            --version-check) cmd="version-check" ;;
-            --self-update)  cmd="self-update" ;;
-            --force|--reinstall) FORCE_REINSTALL=1 ;;
+            --persist)                      PERSIST=1 ;;
+            --quiet|-q)                     QUIET=1 ;;
+            help|--help|-h)                 cmd="help" ;;
+            version|--version|-v)           cmd="version" ;;
+            version-check|--version-check)  cmd="version-check" ;;
+            self-update|--self-update)      cmd="self-update" ;;
+            reinstall|--force|--reinstall)  FORCE_REINSTALL=1 ;;
             start|stop|status|list|kill|reset)
                 cmd="$1" 
                 ;;
