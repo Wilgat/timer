@@ -1,6 +1,6 @@
 #!/bin/sh
 # =============================================================================
-# timer – version 2.4.0
+# timer – version 2.5.0
 # =============================================================================
 #
 # Lightweight per-user named timers (volatile in RAM or persistent).
@@ -84,7 +84,7 @@
 
 # ----------------------------- Project Constants -----------------------------
 APP_NAME="timer"           # ← HARDCODED - Required for curl | sh install
-VERSION="2.4.0"
+VERSION="2.5.0"
 DESCRIPTION="Lightweight per-user named timers (volatile or persistent)"
 REMOTE_VERSION=$VERSION
 
@@ -150,51 +150,6 @@ double_line() {
     [ "${QUIET}" -eq 0 ] && echo "==============================================================" >&2 
 } 
 
-# =============================================================================
-# is_installed() - Robust installation check
-# =============================================================================
-#
-# GENERAL PURPOSE:
-# Checks whether ciao is already installed, supporting both root
-# and normal user installations with safe fallbacks.
-#
-# Please don't modify this code for root-only installed
-# You can check [ "$(id -u)" -eq 0 ] before calling / excuting 
-#   this function
-#
-# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
-# =============================================================================
-
-is_installed() {
-    : "${GLOBAL_BIN:=/usr/local/bin}"
-    : "${USER_BIN:=${HOME}/.local/bin}"
-    : "${INSTALL_PATH:=${GLOBAL_BIN}/${APP_NAME}}"
-
-    if [ "$(id -u)" -eq 0 ]; then
-        IS_ROOT=1
-        INSTALL_PATH="${GLOBAL_BIN}/${APP_NAME}"
-    else
-        IS_ROOT=0
-        INSTALL_PATH="${USER_BIN}/${APP_NAME}"
-    fi
-
-    # Support explicit parameters or force flags
-    if [ "${1:-}" = "--user" ] || [ "${FORCE_USER:-0}" -eq 1 ]; then
-        [ -f "${USER_BIN}/${APP_NAME}" ] && [ -x "${USER_BIN}/${APP_NAME}" ] && return 0
-        return 1
-    elif [ "${1:-}" = "--global" ] || [ "${FORCE_GLOBAL:-0}" -eq 1 ]; then
-        [ -f "${GLOBAL_BIN}/${APP_NAME}" ] && [ -x "${GLOBAL_BIN}/${APP_NAME}" ] && return 0
-        return 1
-    fi
-
-    # Main logic
-    if [ "$IS_ROOT" -eq 1 ]; then
-        [ -f "${INSTALL_PATH}" ] && [ -x "${INSTALL_PATH}" ]
-    else
-        { [ -f "${GLOBAL_BIN}/${APP_NAME}" ] && [ -x "${GLOBAL_BIN}/${APP_NAME}" ]; } ||
-        { [ -f "${USER_BIN}/${APP_NAME}"   ] && [ -x "${USER_BIN}/${APP_NAME}"   ]; }
-    fi
-}
 
 # =============================================================================
 # get_timer_file() - Return full path to timer file
@@ -246,6 +201,53 @@ list_timers() {
     done
 
     [ "$found" -eq 0 ] && echo "No running timers found."
+}
+
+
+# =============================================================================
+# is_installed() - Robust installation check
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Checks whether ciao is already installed, supporting both root
+# and normal user installations with safe fallbacks.
+#
+# Please don't modify this code for root-only installed
+# You can check [ "$(id -u)" -eq 0 ] before calling / excuting 
+#   this function
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# =============================================================================
+
+is_installed() {
+    : "${GLOBAL_BIN:=/usr/local/bin}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+    : "${INSTALL_PATH:=${GLOBAL_BIN}/${APP_NAME}}"
+
+    if [ "$(id -u)" -eq 0 ]; then
+        IS_ROOT=1
+        INSTALL_PATH="${GLOBAL_BIN}/${APP_NAME}"
+    else
+        IS_ROOT=0
+        INSTALL_PATH="${USER_BIN}/${APP_NAME}"
+    fi
+
+    # Support explicit parameters or force flags
+    if [ "${1:-}" = "--user" ] || [ "${FORCE_USER:-0}" -eq 1 ]; then
+        [ -f "${USER_BIN}/${APP_NAME}" ] && [ -x "${USER_BIN}/${APP_NAME}" ] && return 0
+        return 1
+    elif [ "${1:-}" = "--global" ] || [ "${FORCE_GLOBAL:-0}" -eq 1 ]; then
+        [ -f "${GLOBAL_BIN}/${APP_NAME}" ] && [ -x "${GLOBAL_BIN}/${APP_NAME}" ] && return 0
+        return 1
+    fi
+
+    # Main logic
+    if [ "$IS_ROOT" -eq 1 ]; then
+        [ -f "${INSTALL_PATH}" ] && [ -x "${INSTALL_PATH}" ]
+    else
+        { [ -f "${GLOBAL_BIN}/${APP_NAME}" ] && [ -x "${GLOBAL_BIN}/${APP_NAME}" ]; } ||
+        { [ -f "${USER_BIN}/${APP_NAME}"   ] && [ -x "${USER_BIN}/${APP_NAME}"   ]; }
+    fi
 }
 
 # =============================================================================
@@ -445,10 +447,10 @@ add_to_shell_path() {
 # =============================================================================
 #
 # GENERAL PURPOSE:
-# Downloads and installs ciao to the correct location (global or user-local).
+# Downloads and installs timer to the correct location (global or user-local).
 #
 # Please don't modify this code for root-only installed
-# You can check [ "$(id -u)" -eq 0 ] before calling / excuting 
+# You can check [ "$(id -u)" -eq 0 ] before calling / executing 
 #   this function
 #
 # !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
@@ -478,9 +480,17 @@ perform_self_install() {
         return 0
     fi
 
-    if ! mkdir -p "${GLOBAL_BIN}" 2>/dev/null; then
-        error "Failed to create ${GLOBAL_BIN}"
-        return 1
+    # Create correct target directory (root vs user)
+    if [ "$IS_ROOT" -eq 1 ]; then
+        if ! mkdir -p "${GLOBAL_BIN}" 2>/dev/null; then
+            error "Failed to create ${GLOBAL_BIN}"
+            return 1
+        fi
+    else
+        if ! mkdir -p "${USER_BIN}" 2>/dev/null; then
+            error "Failed to create ${USER_BIN}"
+            return 1
+        fi
     fi
 
     local tmp_file
@@ -518,10 +528,14 @@ perform_self_install() {
         return 1
     fi
 
+    # Add ~/.local/bin to PATH for normal user installs
+    if [ "$IS_ROOT" -eq 0 ]; then
+        add_to_shell_path
+    fi
+    
     success "${APP_NAME} ${REMOTE_VERSION} successfully installed to ${INSTALL_PATH}"
     return 0
 }
-
 
 # =============================================================================
 # maybe_install() - Friendly installation prompt
