@@ -87,6 +87,7 @@ APP_NAME="timer"           # ← HARDCODED - Required for curl | sh install
 VERSION="2.5.0"
 DESCRIPTION="Lightweight per-user named timers (volatile or persistent)"
 REMOTE_VERSION=$VERSION
+SH=sh
 
 # Repository source (used for self-update / installation)
 REPO_USER="Wilgat"
@@ -559,9 +560,9 @@ maybe_install() {
     printf "Recommended installation command:\n\n"
 
     if [ "$IS_ROOT" -eq 1 ]; then
-        printf "     ${GREEN}sudo curl -fsSL %s | sudo sh${NC}\n" "$SCRIPT_URL"
+        printf "     ${GREEN}sudo curl -fsSL %s | sudo ${SH}${NC}\n" "$SCRIPT_URL"
     else
-        printf "     ${GREEN}curl -fsSL %s | sh${NC}\n" "$SCRIPT_URL"
+        printf "     ${GREEN}curl -fsSL %s | ${SH}${NC}\n" "$SCRIPT_URL"
     fi
     printf "\n"
 
@@ -576,7 +577,7 @@ maybe_install() {
             *) printf "Installation skipped by user.\n"; return 0 ;;
         esac
     else
-        # Non-interactive (curl | sh, scripts, CI, etc.)
+        # Non-interactive (curl | sh, curl | bash, scripts, CI, etc.)
         printf "${YELLOW}Non-interactive mode detected → installing automatically...${NC}\n"
         should_install=true
     fi
