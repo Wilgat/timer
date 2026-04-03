@@ -1,6 +1,6 @@
 #!/bin/sh
 # =============================================================================
-# timer – version 2.1.3
+# timer – version 2.2.0
 # =============================================================================
 #
 # Lightweight per-user named timers (volatile in RAM or persistent).
@@ -84,12 +84,14 @@
 
 # ----------------------------- Project Constants -----------------------------
 APP_NAME="timer"           # ← HARDCODED - Required for curl | sh install
-VERSION="2.1.3"
+VERSION="2.2.0"
 DESCRIPTION="Lightweight per-user named timers (volatile or persistent)"
+REMOTE_VERSION=$VERSION
 
 # Repository source (used for self-update / installation)
-REPO_BASE_URL="https://raw.githubusercontent.com/Wilgat/timer/main"
-SCRIPT_URL="${REPO_BASE_URL}/${APP_NAME}"
+REPO_USER="Wilgat"
+REPO_NAME="timer"
+SCRIPT_URL="https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${APP_NAME}"
 
 # ----------------------------- Safe Variable Defaults ------------------------
 : "${GLOBAL_BIN:=/usr/local/bin}"
@@ -234,7 +236,7 @@ list_timers() {
 # =============================================================================
 #
 # GENERAL PURPOSE:
-# Safely reads the VERSION constant from the installed timer script.
+# Safely reads the VERSION constant from the installed script.
 # Used by --version-check and --self-update.
 #
 # !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
@@ -265,13 +267,13 @@ get_installed_version() {
 #
 # !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
 # =============================================================================
+
 version_check() {
     info "Checking latest version of ${APP_NAME}..."
 
-    local remote_version
-    remote_version=$(curl -fsSL "${SCRIPT_URL}" 2>/dev/null | grep '^VERSION="' | cut -d'"' -f2 || echo "")
+    REMOTE_VERSION=$(curl -fsSL "${SCRIPT_URL}" 2>/dev/null | grep '^VERSION="' | cut -d'"' -f2 || echo "")
 
-    if [ -z "$remote_version" ]; then
+    if [ -z "$REMOTE_VERSION" ]; then
         error "Failed to fetch remote version"
         return 1
     fi
@@ -280,15 +282,17 @@ version_check() {
     local_version=$(get_installed_version)
 
     printf "Local version : %s\n" "$local_version"
-    printf "Latest version: %s\n\n" "$remote_version"
+    printf "Latest version: %s\n\n" "$REMOTE_VERSION"
 
-    if [ "$local_version" = "$remote_version" ]; then
+    if [ "$local_version" = "$REMOTE_VERSION" ]; then
         success "You are running the latest version."
+        return 0
+    elif [ "$local_version" = "not installed" ]; then
+        warn "${APP_NAME} is not installed yet."
     else
-        warn "A newer version is available (${remote_version})"
+        warn "A newer version is available (${REMOTE_VERSION})"
     fi
 }
-
 # =============================================================================
 # self_update() - Perform self-update to latest version
 # =============================================================================
@@ -299,10 +303,32 @@ version_check() {
 #
 # !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
 # =============================================================================
+
 self_update() {
-    info "Checking for updates..."
-    # TODO: Paste your full original self_update logic here if different
-    echo "Self-update: implement your original logic"
+    info "Starting self-update of ${APP_NAME}..."
+
+    local REMOTE_VERSION
+    REMOTE_VERSION=$(curl -fsSL "${SCRIPT_URL}" 2>/dev/null | grep '^VERSION="' | cut -d'"' -f2 || echo "")
+
+    if [ -z "$REMOTE_VERSION" ]; then
+        error "Failed to fetch latest version"
+        return 1
+    fi
+
+    local local_version
+    local_version=$(get_installed_version)
+
+    if [ "$local_version" = "$REMOTE_VERSION" ] && [ "${FORCE_REINSTALL}" -eq 0 ]; then
+        success "Already running the latest version (${REMOTE_VERSION})."
+        return 0
+    fi
+
+    if [ "$local_version" != "$REMOTE_VERSION" ]; then
+        info "Updating from ${local_version} → ${REMOTE_VERSION}"
+    fi
+
+    FORCE_REINSTALL=1
+    perform_self_install
 }
 
 # =============================================================================
@@ -336,42 +362,60 @@ in_path() {
 
 add_to_shell_path() {
     local added=0
+    local shell_config="N/A"
 
     # Bash
     local bashrc="${HOME}/.bashrc"
     if [ -f "$bashrc" ]; then
+        if [ "$shell_config" = "N/A" ]; then
+            shell_config="${bashrc}"
+        else
+            shell_config="${shell_config} ${bashrc}"
+        fi
         if ! grep -qF 'export PATH="$HOME/.local/bin:$PATH"' "$bashrc" 2>/dev/null; then
             printf "\n# Added by %s installer (%s)\n" "$APP_NAME" "$VERSION" >> "$bashrc"
             printf 'export PATH="$HOME/.local/bin:$PATH"\n' >> "$bashrc"
             added=1
+            printf "${YELLOW}→ Added ~/.local/bin to PATH for bash${NC}\n"
         fi
     fi
 
     # Zsh
     local zshrc="${HOME}/.zshrc"
     if [ -f "$zshrc" ]; then
+        if [ "$shell_config" = "N/A" ]; then
+            shell_config="${zshrc}"
+        else
+            shell_config="${shell_config} ${zshrc}"
+        fi
         if ! grep -qF 'export PATH="$HOME/.local/bin:$PATH"' "$zshrc" 2>/dev/null; then
             printf "\n# Added by %s installer (%s)\n" "$APP_NAME" "$VERSION" >> "$zshrc"
             printf 'export PATH="$HOME/.local/bin:$PATH"\n' >> "$zshrc"
             added=1
+            printf "${YELLOW}→ Added ~/.local/bin to PATH for zsh${NC}\n"
         fi
     fi
 
     # Fish
     local fish_config="${HOME}/.config/fish/config.fish"
     if [ -d "${HOME}/.config/fish" ] || mkdir -p "${HOME}/.config/fish" 2>/dev/null; then
+        if [ "$shell_config" = "N/A" ]; then
+            shell_config="${fish_config}"
+        else
+            shell_config="${shell_config} ${fish_config}"
+        fi
         if [ -f "$fish_config" ] && grep -qF 'set -gx PATH $HOME/.local/bin $PATH' "$fish_config" 2>/dev/null; then
             : # already present
         else
             printf "\n# Added by %s installer (%s)\n" "$APP_NAME" "$VERSION" >> "$fish_config"
             printf 'set -gx PATH $HOME/.local/bin $PATH\n' >> "$fish_config"
             added=1
+            printf "${YELLOW}→ Added ~/.local/bin to PATH for fish shell${NC}\n"
         fi
     fi
 
     if [ "$added" -eq 1 ]; then
-        printf "${YELLOW}→ Added ~/.local/bin to PATH for bash/zsh/fish${NC}\n"
-        printf "${YELLOW}→ Restart your terminal or run: source <your config file>${NC}\n"
+        printf "${YELLOW}→ Restart your terminal or run: source ${shell_config}${NC}\n"
     fi
 }
 
@@ -386,30 +430,27 @@ add_to_shell_path() {
 # =============================================================================
 
 perform_self_install() {
-    info "Starting installation of ${APP_NAME} ${VERSION}..."
+    if [ -z "$REMOTE_VERSION" ]; then
+        REMOTE_VERSION=${VERSION}
+    fi
+    info "Starting installation of ${APP_NAME} ${REMOTE_VERSION}..."
 
     if is_installed && [ "${FORCE_REINSTALL}" -eq 0 ]; then
-        success "${APP_NAME} is already installed. Use --force or --reinstall to override."
+        success "${APP_NAME} is already installed. Use --force to override."
         return 0
     fi
 
-    # Determine install location
-    if [ "$IS_ROOT" -eq 1 ]; then
-        INSTALL_DIR="${GLOBAL_BIN}"
-        INSTALL_PATH="${GLOBAL_BIN}/${APP_NAME}"
-    else
-        INSTALL_DIR="${USER_BIN}"
-        INSTALL_PATH="${USER_BIN}/${APP_NAME}"
+    if [ "$IS_ROOT" -eq 0 ]; then
+        die "Self-install requires root privileges. Please run with sudo."
     fi
 
-    # Create directory
-    if ! mkdir -p "${INSTALL_DIR}" 2>/dev/null; then
-        error "Failed to create ${INSTALL_DIR}"
-        error "Try running with sudo or --user flag"
+    INSTALL_PATH="${GLOBAL_BIN}/${APP_NAME}"
+
+    if ! mkdir -p "${GLOBAL_BIN}" 2>/dev/null; then
+        error "Failed to create ${GLOBAL_BIN}"
         return 1
     fi
 
-    # Download to temporary file (secure mktemp)
     local tmp_file
     tmp_file=$(mktemp -t "${APP_NAME}.XXXXXX") || {
         error "Failed to create temporary file"
@@ -436,8 +477,7 @@ perform_self_install() {
         return 1
     fi
 
-    # chmod +x is unreliable on Git Bash (Windows), but shebang usually suffices
-    chmod +x "${tmp_file}" 2>/dev/null || warn "chmod +x failed (common on Git Bash / Windows - shebang should still allow execution)"
+    chmod +x "${tmp_file}" 2>/dev/null || warn "chmod +x failed"
 
     rm -f "${INSTALL_PATH}" 2>/dev/null
     if ! mv "${tmp_file}" "${INSTALL_PATH}" 2>/dev/null; then
@@ -446,21 +486,10 @@ perform_self_install() {
         return 1
     fi
 
-    success "${APP_NAME} ${VERSION} successfully installed to ${INSTALL_PATH}"
-
-    # PATH guidance for normal users
-    if [ "$IS_ROOT" -eq 0 ]; then
-        if ! in_path; then
-            add_to_shell_path
-        else
-            success "${APP_NAME} is now available in your PATH"
-        fi
-    else
-        success "You can now run: ${APP_NAME}"
-    fi
-
+    success "${APP_NAME} ${REMOTE_VERSION} successfully installed to ${INSTALL_PATH}"
     return 0
 }
+
 
 # =============================================================================
 # maybe_install() - Friendly installation prompt
