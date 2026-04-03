@@ -451,10 +451,6 @@ perform_self_install() {
         return 0
     fi
 
-    if [ "$IS_ROOT" -eq 0 ]; then
-        die "Self-install requires root privileges. Please run with sudo."
-    fi
-
     INSTALL_PATH="${GLOBAL_BIN}/${APP_NAME}"
 
     if ! mkdir -p "${GLOBAL_BIN}" 2>/dev/null; then
