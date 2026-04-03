@@ -131,10 +131,21 @@ VOLATILE_DIR="/dev/shm"
 PERSISTENT_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/timer"
 
 # ----------------------------- POSIX-safe logging functions ------------------
+die() { printf >&2 "${RED}Error: %s${NC}\n" "$*"; exit 1; }
 info()    { [ "${QUIET}" -eq 0 ] && printf "${GREEN}[INFO]${NC} %s\n" "$*"; }
 warn()    { [ "${QUIET}" -eq 0 ] && printf "${YELLOW}[WARN]${NC} %s\n" "$*" >&2 || true; }
 error()   { printf "${RED}[ERROR]${NC} %s\n" "$*" >&2; }
 success() { [ "${QUIET}" -eq 0 ] && printf "${GREEN}[OK]${NC} %s\n" "$*"; }
+msg()     { [ "${QUIET}" -eq 0 ] && printf "%s\n" "$*"; }
+[ -t 0 ] && [ -t 1 ] && info "Interactive Mode"
+
+empty_line() {  
+    [ "${QUIET}" -eq 0 ] && echo "" >&2
+}
+
+double_line() { 
+    [ "${QUIET}" -eq 0 ] && echo "==============================================================" >&2 
+} 
 
 # =============================================================================
 # is_installed() - Robust installation check
@@ -552,8 +563,8 @@ Usage:
   ${APP_NAME} list [--persist]          List all running timers
   ${APP_NAME} version                   Show version
   ${APP_NAME} version-check             Compare with latest
-  sudo ${APP_NAME} self-update          Update to latest version
-  sudo ${APP_NAME} reinstall            Force to reinstall
+  ${APP_NAME} self-update               Update to latest version
+  ${APP_NAME} reinstall                 Force to reinstall
   ${APP_NAME} help                      This help
 
 Options:
