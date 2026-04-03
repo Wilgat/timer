@@ -102,10 +102,13 @@ SCRIPT_URL="https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${A
 if [ -z "${IS_ROOT:-}" ]; then
     if [ "$(id -u)" -eq 0 ]; then
         IS_ROOT=1
+        INSTALL_PATH="${GLOBAL_BIN}/${APP_NAME}"
     else
         IS_ROOT=0
+        INSTALL_PATH="${USER_BIN}/${APP_NAME}"
     fi
 fi
+
 
 # ----------------------------- Force Flags & Quiet Mode ----------------------
 : "${FORCE_USER:=0}"
@@ -155,21 +158,24 @@ double_line() {
 # Checks whether ciao is already installed, supporting both root
 # and normal user installations with safe fallbacks.
 #
+# Please don't modify this code for root-only installed
+# You can check [ "$(id -u)" -eq 0 ] before calling / excuting 
+#   this function
+#
 # !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
 # =============================================================================
 
 is_installed() {
     : "${GLOBAL_BIN:=/usr/local/bin}"
     : "${USER_BIN:=${HOME}/.local/bin}"
-    : "${APP_NAME:=ciao}"
     : "${INSTALL_PATH:=${GLOBAL_BIN}/${APP_NAME}}"
 
-    if [ -z "${IS_ROOT:-}" ]; then
-        if [ "$(id -u)" -eq 0 ]; then
-            IS_ROOT=1
-        else
-            IS_ROOT=0
-        fi
+    if [ "$(id -u)" -eq 0 ]; then
+        IS_ROOT=1
+        INSTALL_PATH="${GLOBAL_BIN}/${APP_NAME}"
+    else
+        IS_ROOT=0
+        INSTALL_PATH="${USER_BIN}/${APP_NAME}"
     fi
 
     # Support explicit parameters or force flags
@@ -251,7 +257,7 @@ list_timers() {
 # Used by --version-check and --self-update.
 #
 # !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
-# Designed to be reusable in other Wilgat projects.
+# Designed to be reusable in other projects.
 # =============================================================================
 get_installed_version() {
     local bin_path
@@ -277,6 +283,7 @@ get_installed_version() {
 # If not installed and running in interactive terminal, it suggests installation.
 #
 # !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other projects.
 # =============================================================================
 
 version_check() {
@@ -313,6 +320,7 @@ version_check() {
 # Respects --force and --quiet.
 #
 # !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other projects.
 # =============================================================================
 
 self_update() {
@@ -351,6 +359,7 @@ self_update() {
 # POSIX-compatible using case statement (works in sh/dash/bash/zsh).
 #
 # !!! DO NOT MODIFY OR SIMPLIFY !!!
+# Designed to be reusable in other projects.
 # =============================================================================
 
 in_path() {
@@ -369,6 +378,7 @@ in_path() {
 # Works even if the user is currently using a different shell.
 #
 # !!! DO NOT MODIFY OR SIMPLIFY !!!
+# Designed to be reusable in other projects.
 # =============================================================================
 
 add_to_shell_path() {
@@ -437,10 +447,27 @@ add_to_shell_path() {
 # GENERAL PURPOSE:
 # Downloads and installs ciao to the correct location (global or user-local).
 #
+# Please don't modify this code for root-only installed
+# You can check [ "$(id -u)" -eq 0 ] before calling / excuting 
+#   this function
+#
 # !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other projects.
 # =============================================================================
 
 perform_self_install() {
+    : "${GLOBAL_BIN:=/usr/local/bin}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+    : "${INSTALL_PATH:=${GLOBAL_BIN}/${APP_NAME}}"
+
+    if [ "$(id -u)" -eq 0 ]; then
+        IS_ROOT=1
+        INSTALL_PATH="${GLOBAL_BIN}/${APP_NAME}"
+    else
+        IS_ROOT=0
+        INSTALL_PATH="${USER_BIN}/${APP_NAME}"
+    fi
+
     if [ -z "$REMOTE_VERSION" ]; then
         REMOTE_VERSION=${VERSION}
     fi
@@ -450,8 +477,6 @@ perform_self_install() {
         success "${APP_NAME} is already installed. Use --force to override."
         return 0
     fi
-
-    INSTALL_PATH="${GLOBAL_BIN}/${APP_NAME}"
 
     if ! mkdir -p "${GLOBAL_BIN}" 2>/dev/null; then
         error "Failed to create ${GLOBAL_BIN}"
