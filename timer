@@ -209,7 +209,7 @@ list_timers() {
 # =============================================================================
 #
 # GENERAL PURPOSE:
-# Checks whether ciao is already installed, supporting both root
+# Checks whether the program is already installed, supporting both root
 # and normal user installations with safe fallbacks.
 #
 # Please don't modify this code for root-only installed
@@ -542,7 +542,7 @@ perform_self_install() {
 # =============================================================================
 #
 # GENERAL PURPOSE:
-# Called when ciao is not installed. Shows helpful message and asks for confirmation.
+# Called when the program is not installed. Shows helpful message and asks for confirmation.
 #
 # !!! DO NOT MODIFY OR SIMPLIFY !!!
 # Designed to be reusable in other projects.
