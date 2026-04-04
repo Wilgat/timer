@@ -1,6 +1,6 @@
 #!/bin/sh
 # =============================================================================
-# timer – version 2.8.1
+# timer – version 2.8.2
 # =============================================================================
 #
 # Lightweight per-user named timers (volatile in RAM or persistent).
@@ -84,7 +84,7 @@
 
 # ----------------------------- Project Constants -----------------------------
 APP_NAME="timer"           # ← HARDCODED - Required for curl | sh install
-VERSION="2.8.1"
+VERSION="2.8.2"
 DESCRIPTION="Lightweight per-user named timers (volatile or persistent)"
 REMOTE_VERSION=$VERSION
 SH=sh
@@ -123,7 +123,7 @@ SCRIPT_URL="https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${A
 #   - Errors must be returned as {"type": "error", ...} on stdout.
 #   - Use output_json() ONLY ONCE per command, typically at the end.
 #
-#   JSON Output Examples (v2.8.1 - complete):
+#   JSON Output Examples (v2.8.2 - complete):
 #
 #   Success:
 #   {"type":"success","message":"Timer 'build' started.","name":"build","mode":"volatile"}
@@ -139,8 +139,8 @@ SCRIPT_URL="https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${A
 #   {"type":"error","message":"No timer 'foo' running.","code":"no_timer"}
 #
 #   Version / About:
-#   {"type":"version","app":"timer","version":"2.8.1"}
-#   {"type":"about","version":"2.8.1","installed":true,...}
+#   {"type":"version","app":"timer","version":"2.8.2"}
+#   {"type":"about","version":"2.8.2","installed":true,...}
 #
 # When both flags appear: --json wins.
 #
@@ -248,17 +248,19 @@ output_text() {
 # output_json() - SINGLE SOURCE OF TRUTH FOR JSON OUTPUT
 # =============================================================================
 #
-# Only prints when JSON=1.
-# Does nothing when JSON=0.
+# Correct final version for v2.8.0
 #
-# This is the central function for all structured JSON output.
-# It supports the formats documented in the "QUIET AND JSON MODE BEHAVIOR" section.
+# Usage examples:
+#   output_json "success" "Timer started" "name" "build" "mode" "volatile"
+#   output_json "status" "Timer running" "name" "default" "minutes" "7"
+#   output_json "error" "No timer running" "code" "no_timer"
 #
-# RULE: This function should be called AT MOST ONCE per script execution
-#       in JSON mode to avoid producing invalid JSON.
+# - $1 = type
+# - $2 = message (can be "" if no message)
+# - Then zero or more "key" "value" pairs
 #
-# !!! THIS IS PART OF THE SINGLE SOURCE OF TRUTH FOR OUTPUT !!!
-# Do NOT call output_json() more than once per command.
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# This is the single source of truth for all JSON output.
 # =============================================================================
 
 output_json() {
@@ -266,10 +268,16 @@ output_json() {
     [ "${JSON}" -eq 0 ] && return 0
 
     local type="$1"
-    shift
+    local message="$2"
+    shift 2
 
     printf '{'
     printf '"type":"%s"' "$type"
+
+    if [ -n "$message" ]; then
+        message=$(printf '%s' "$message" | sed 's/"/\\"/g; s/\\/\\\\/g')
+        printf ',"message":"%s"' "$message"
+    fi
 
     while [ $# -ge 2 ]; do
         local key="$1"
@@ -288,11 +296,14 @@ output_json() {
     printf '}\n'
 }
 
-# output_json_error helper
+# =============================================================================
+# output_json_error() - Standardized error output
+# =============================================================================
+
 output_json_error() {
     local message="$1"
     local code="${2:-unknown_error}"
-    output_json "error" "message" "$message" "code" "$code"
+    output_json "error" "$message" "code" "$code"
 }
 
 # =============================================================================
@@ -1003,8 +1014,19 @@ show_about() {
 
     empty_line
 
-    # Current shell detection
+    # === Improved Shell Detection ===
+    # Avoid showing "timer" as the shell when the script is running
+    local current_shell="unknown"
     current_shell=$(ps -p $$ -o comm= 2>/dev/null | tr -d '()' || echo "unknown")
+    
+    # If we see the script name itself, try to get the real parent shell
+    if [ "$current_shell" = "timer" ] || [ "$current_shell" = "sh" ] || [ "$current_shell" = "dash" ]; then
+        local parent_pid
+        parent_pid=$(ps -p $$ -o ppid= 2>/dev/null | tr -d ' ')
+        if [ -n "$parent_pid" ]; then
+            current_shell=$(ps -p "$parent_pid" -o comm= 2>/dev/null | tr -d '()' || echo "$current_shell")
+        fi
+    fi
     msg "Current shell:   ${current_shell}"
 
     # TTY status
@@ -1019,12 +1041,12 @@ show_about() {
 }
 
 show_timer_help() {
-    [ "${QUIET}" -eq 1 ] && [ "${JSON}" -eq 0 ] && return 0
-
     if [ "${JSON}" -eq 1 ]; then
-        output_json "success" "message" "Use '${APP_NAME} help' without --json to see full help text."
+        output_json "success" "Help text available in human mode. Run without --json."
         return 0
     fi
+
+    [ "${QUIET}" -eq 1 ] && return 0
 
     cat << EOF
 ${APP_NAME} – version ${VERSION} - Lightweight per-user named timers (volatile or persistent)
@@ -1049,7 +1071,7 @@ Options:
   --quiet, -q         Suppress non-error output
   --json              Output in machine-readable JSON format (implies --quiet)
 
-New in 2.8.1:
+New in 2.8.2:
   • Full JSON output support for all commands
   • Improved argument parsing
   • Robust timer name sanitization
@@ -1187,7 +1209,7 @@ timer_start() {
     if ! date +%s > "$TIMER_FILE" 2>/dev/null; then
         if [ -f "$TIMER_FILE" ]; then
             if [ "${JSON}" -eq 1 ]; then
-                output_json "error" "message" "Timer '${NAME}' is already running." "code" "already_running"
+                output_json "error" "Timer '${NAME}' is already running." "code" "already_running"
             else
                 warn "Timer '${NAME}' is already running."
             fi
@@ -1205,7 +1227,9 @@ timer_start() {
     [ "$PERSIST" -eq 1 ] && mode="persistent"
 
     if [ "${JSON}" -eq 1 ]; then
-        output_json "success" "message" "Timer '${NAME}' started." "name" "$NAME" "mode" "$mode"
+        output_json "success" "Timer '${NAME}' started." \
+            "name" "$NAME" \
+            "mode" "$mode"
     else
         success "Timer '${NAME}' started."
         [ "$PERSIST" -eq 1 ] && info "  (persistent mode)"
@@ -1242,8 +1266,7 @@ timer_stop() {
     seconds=$((elapsed % 60))
 
     if [ "${JSON}" -eq 1 ]; then
-        output_json "success" \
-            "message" "Timer '${NAME}' stopped after ${minutes} min ${seconds} sec." \
+        output_json "success" "Timer '${NAME}' stopped after ${minutes} min ${seconds} sec." \
             "name" "$NAME" \
             "minutes" "$minutes" \
             "seconds" "$seconds" \
@@ -1280,8 +1303,7 @@ timer_status() {
     seconds=$((elapsed % 60))
 
     if [ "${JSON}" -eq 1 ]; then
-        output_json "status" \
-            "message" "Timer '${NAME}' running." \
+        output_json "status" "Timer '${NAME}' running." \
             "name" "$NAME" \
             "minutes" "$minutes" \
             "seconds" "$seconds" \
@@ -1304,24 +1326,22 @@ timer_status() {
 
 list_timers() {
     local requested_mode="$1"
-    local base_dir found name start_time current_time elapsed minutes seconds file
+    local base_dir timers_json count=0 file name start_time current_time elapsed minutes seconds
 
     base_dir=$(resolve_timer_base_dir "$requested_mode")
 
     if [ ! -d "$base_dir" ]; then
         if [ "${JSON}" -eq 1 ]; then
-            output_json "list" "mode" "$requested_mode" "count" "0" "timers" "[]"
+            output_json "list" "No running timers found." "mode" "$requested_mode" "count" "0" "timers" "[]"
         else
             msg "No running timers found."
         fi
         return 0
     fi
 
-    found=0
-    local timers_json="["
+    timers_json="["
     for file in "${base_dir}"/timer_"${USERNAME}"_*; do
         [ -f "$file" ] || continue
-        found=1
         name="${file##*timer_${USERNAME}_}"
         start_time=$(cat "$file" 2>/dev/null) || continue
         current_time=$(date +%s 2>/dev/null) || continue
@@ -1329,24 +1349,28 @@ list_timers() {
         minutes=$((elapsed / 60))
         seconds=$((elapsed % 60))
 
-        if [ "$found" -gt 1 ]; then
+        if [ "$count" -gt 0 ]; then
             timers_json="${timers_json},"
         fi
         timers_json="${timers_json}{\"name\":\"${name}\",\"minutes\":${minutes},\"seconds\":${seconds},\"elapsed\":${elapsed}}"
+        count=$((count + 1))
     done
     timers_json="${timers_json}]"
 
     if [ "${JSON}" -eq 1 ]; then
-        output_json "list" "mode" "$requested_mode" "count" "$found" "timers" "$timers_json"
+        output_json "list" "" \
+            "mode" "$requested_mode" \
+            "count" "$count" \
+            "timers" "$timers_json"
     else
-        if [ "$found" -eq 0 ]; then
+        if [ "$count" -eq 0 ]; then
             msg "No running timers found."
         else
             for file in "${base_dir}"/timer_"${USERNAME}"_*; do
                 [ -f "$file" ] || continue
                 name="${file##*timer_${USERNAME}_}"
                 start_time=$(cat "$file" 2>/dev/null) || continue
-                current_time=$(date +%s 2>/dev/null) || continue
+                current_time=$(date +%s)
                 elapsed=$((current_time - start_time))
                 minutes=$((elapsed / 60))
                 seconds=$((elapsed % 60))
@@ -1511,13 +1535,13 @@ main() {
             rm -f "$TIMER_FILE"
             if [ "$cmd" = "reset" ]; then
                 if [ "${JSON}" -eq 1 ]; then
-                    output_json "success" "message" "Timer '${NAME}' has been reset." "name" "$NAME"
+                    output_json "success" "Timer '${NAME}' has been reset." "name" "$NAME"
                 else
                     success "Timer '${NAME}' has been reset."
                 fi
             else
                 if [ "${JSON}" -eq 1 ]; then
-                    output_json "success" "message" "Timer '${NAME}' discarded." "name" "$NAME"
+                    output_json "success" "Timer '${NAME}' discarded." "name" "$NAME"
                 else
                     warn "Timer '${NAME}' discarded."
                 fi
