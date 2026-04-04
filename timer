@@ -207,7 +207,7 @@ if [ -z "${IS_ROOT:-}" ]; then
         IS_ROOT=0
         INSTALL_PATH="${USER_BIN}/${APP_NAME}"
     fi
-f
+fi
 
 USERNAME="$(id -un 2>/dev/null || echo "unknown")"
 
