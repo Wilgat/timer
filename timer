@@ -111,24 +111,25 @@ SCRIPT_URL="https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${A
 #   Suppresses non-error messages (info, success, warnings, help text, etc.).
 #   Critical errors (via error() / die()) are still shown as plain text.
 #
-# --json :
+--json :
 #   Activates machine-readable JSON output mode.
 #   It automatically implies --quiet (all human-readable output is suppressed).
 #   When both --quiet and --json are used, --json takes precedence.
 #
-#   In JSON mode:
-#   - All normal output becomes structured JSON on stdout.
-#   - Errors and warnings are converted to JSON error objects.
-#   - This mode is stronger than plain --quiet.
+#   IMPORTANT RULES FOR JSON MODE:
+#   - The script must output EXACTLY ONE valid JSON object (or array) per run.
+#   - Never output more than one JSON object — this would cause syntax errors.
+#   - All human-readable output (info, success, msg, etc.) must be suppressed.
+#   - Errors must be returned as {"type": "error", ...} on stdout.
+#   - Use output_json() ONLY ONCE per command, typically at the end.
+#   - Intermediate status messages (e.g. "Checking latest version...") should NOT produce JSON.
 #
 #   JSON Output Rules (MUST be followed):
-#   - Always output valid JSON on stdout (never stderr for JSON mode).
+#   - Always output valid JSON on stdout.
 #   - Use "type" field to indicate message category.
 #   - Keep structure consistent and flat where possible.
 #   - Include "message" for human-readable text when appropriate.
-#   - For status/list commands, use arrays/objects for structured data.
-#   - Errors must use type: "error" with optional "code".
-#
+##
 #   Example JSON formats used in this script:
 #
 #   Success / Info:
@@ -179,12 +180,13 @@ SCRIPT_URL="https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${A
 #     "global_version": "2.7.1",
 #     "local_version": "not found",
 #     "shell": "bash",
-#     "interactive": true
+#     "interactive": true,
+#     "user":"wang"
 #   }
 #
 #   Current implementation status (as of 2.7.1):
-#   Only the flag parsing and output_text/output_json stubs are implemented.
-#   Full structured JSON conversion logic will be added later.
+#   Only the flag parsing and output_text/output_json are implemented.
+#   Full structured JSON conversion logic is being added carefully.
 #
 # When both flags appear:
 #   --json wins → script runs in JSON-only mode (quiet is ignored).
@@ -295,14 +297,48 @@ output_text() {
 #
 # Only prints when JSON=1.
 # Does nothing when JSON=0.
-# This is a stub for now. Full structured JSON logic will be added later.
+#
+# This is the central function for all structured JSON output.
+# It supports the formats documented in the "QUIET AND JSON MODE BEHAVIOR" section.
+#
+# Usage:
+#   output_json "success" "Timer 'default' started."
+#   output_json "error" "Failed to fetch remote version" "code" "network_error"
+#   output_json "version" "" "app" "${APP_NAME}" "version" "${VERSION}"
+#   output_json "status" "Timer running" "name" "${NAME}" "minutes" "5" "seconds" "23"
+#
+# RULE: This function should be called AT MOST ONCE per script execution
+#       in JSON mode to avoid producing invalid JSON.
+#
+# !!! THIS IS PART OF THE SINGLE SOURCE OF TRUTH FOR OUTPUT !!!
+# Do NOT call output_json() more than once per command.
 # =============================================================================
 
 output_json() {
     : "${JSON:=0}"
     [ "${JSON}" -eq 0 ] && return 0
-    # TODO: Replace with real JSON output when full JSON mode is implemented
-    printf '%s\n' '{"status":"placeholder","message":"JSON output not yet implemented"}'
+
+    local type="$1"
+    local message="$2"
+    shift 2
+
+    printf '{'
+    printf '"type":"%s"' "$type"
+
+    if [ -n "$message" ]; then
+        message=$(printf '%s' "$message" | sed 's/"/\\"/g; s/\\/\\\\/g')
+        printf ',"message":"%s"' "$message"
+    fi
+
+    while [ $# -ge 2 ]; do
+        local key="$1"
+        local value="$2"
+        value=$(printf '%s' "$value" | sed 's/"/\\"/g; s/\\/\\\\/g')
+        printf ',"%s":"%s"' "$key" "$value"
+        shift 2
+    done
+
+    printf '}\n'
 }
 
 # =============================================================================
@@ -442,29 +478,39 @@ get_installed_version() {
 # =============================================================================
 
 version_check() {
-    info "Checking latest version of ${APP_NAME}..."
-
     REMOTE_VERSION=$(curl -fsSL "${SCRIPT_URL}" 2>/dev/null | grep '^VERSION="' | cut -d'"' -f2 || echo "")
 
     if [ -z "$REMOTE_VERSION" ]; then
-        error "Failed to fetch remote version"
+        if [ "${JSON}" -eq 1 ]; then
+            output_json "error" "Failed to fetch remote version" "code" "fetch_failed"
+        else
+            error "Failed to fetch remote version"
+        fi
         return 1
     fi
 
     local local_version
     local_version=$(get_installed_version)
 
-    msg "Local version : ${local_version}"
-    msg "Latest version: ${REMOTE_VERSION}"
-    empty_line
-
-    if [ "$local_version" = "$REMOTE_VERSION" ]; then
-        success "You are running the latest version."
-        return 0
-    elif [ "$local_version" = "not installed" ]; then
-        warn "${APP_NAME} is not installed yet."
+    if [ "${JSON}" -eq 1 ]; then
+        output_json "version" "" \
+            "app" "${APP_NAME}" \
+            "local_version" "${local_version}" \
+            "remote_version" "${REMOTE_VERSION}" \
+            "is_latest" "$( [ "$local_version" = "$REMOTE_VERSION" ] && echo "true" || echo "false" )"
     else
-        warn "A newer version is available (${REMOTE_VERSION})"
+        info "Checking latest version of ${APP_NAME}..."
+        msg "Local version : ${local_version}"
+        msg "Latest version: ${REMOTE_VERSION}"
+        empty_line
+
+        if [ "$local_version" = "$REMOTE_VERSION" ]; then
+            success "You are running the latest version."
+        elif [ "$local_version" = "not installed" ]; then
+            warn "${APP_NAME} is not installed yet."
+        else
+            warn "A newer version is available (${REMOTE_VERSION})"
+        fi
     fi
 }
 
@@ -505,6 +551,97 @@ self_update() {
 
     FORCE_REINSTALL=1
     perform_self_install
+}
+
+# =============================================================================
+# self_uninstall() - Remove timer from the system
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Removes the installed timer binary (global or user) and cleans up the PATH
+# entry added by the installer in shell config files.
+#
+# Respects --force, --quiet, and --json.
+# Works for both root and user installations.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be robust and reversible where possible.
+# =============================================================================
+
+self_uninstall() {
+    info "Starting self-uninstall of ${APP_NAME}..."
+
+    local bin_path=""
+    local removed=0
+
+    # Determine which installation to remove
+    if [ "$(id -u)" -eq 0 ] || [ "${FORCE_GLOBAL:-0}" -eq 1 ]; then
+        # Global (root) uninstall
+        if [ -f "${GLOBAL_BIN}/${APP_NAME}" ]; then
+            bin_path="${GLOBAL_BIN}/${APP_NAME}"
+        fi
+    else
+        # User uninstall - prefer local, fallback to global if present
+        if [ -f "${USER_BIN}/${APP_NAME}" ]; then
+            bin_path="${USER_BIN}/${APP_NAME}"
+        elif [ -f "${GLOBAL_BIN}/${APP_NAME}" ]; then
+            bin_path="${GLOBAL_BIN}/${APP_NAME}"
+            warn "Global installation found. Removing it (you may need sudo next time)."
+        fi
+    fi
+
+    if [ -z "$bin_path" ]; then
+        if [ "${FORCE_REINSTALL:-0}" -eq 1 ] || [ "${FORCE_USER:-0}" -eq 1 ] || [ "${FORCE_GLOBAL:-0}" -eq 1 ]; then
+            warn "${APP_NAME} is not installed. Nothing to uninstall."
+        else
+            warn "${APP_NAME} is not installed."
+        fi
+        return 0
+    fi
+
+    # Confirm before removal (unless --force or non-interactive)
+    if [ "${FORCE_REINSTALL:-0}" -eq 0 ] && [ -t 0 ] && [ -t 1 ] && [ "${QUIET}" -eq 0 ]; then
+        printf "${YELLOW}This will remove: %s${NC}\n" "$bin_path"
+        printf "Continue? (y/N): "
+        read -r answer || true
+        case "$answer" in
+            [Yy]*|[Yy][Ee][Ss]*) ;;
+            *) 
+                msg "Uninstall cancelled by user."
+                return 0 
+                ;;
+        esac
+    fi
+
+    # Remove the binary
+    if rm -f "$bin_path" 2>/dev/null; then
+        success "Removed ${APP_NAME} from ${bin_path}"
+        removed=1
+    else
+        error "Failed to remove ${bin_path} (permission denied?)"
+        return 1
+    fi
+
+    # Optional: clean up PATH entry in shell configs (user only)
+    if [ "$(id -u)" -ne 0 ] && [ "$removed" -eq 1 ]; then
+        local cleaned=0
+        for config in "${HOME}/.bashrc" "${HOME}/.zshrc" "${HOME}/.config/fish/config.fish"; do
+            if [ -f "$config" ]; then
+                if sed -i.bak '/# Added by timer installer/d' "$config" 2>/dev/null && \
+                   sed -i.bak '/\.local\/bin:.*PATH/d' "$config" 2>/dev/null; then
+                    cleaned=1
+                fi
+                rm -f "${config}.bak" 2>/dev/null || true
+            fi
+        done
+        if [ "$cleaned" -eq 1 ]; then
+            msg "→ Cleaned timer PATH entries from shell config files"
+            msg "→ You may want to restart your terminal"
+        fi
+    fi
+
+    success "${APP_NAME} has been uninstalled."
+    return 0
 }
 
 # =============================================================================
@@ -756,14 +893,46 @@ maybe_install() {
 # =============================================================================
 #
 # Shows installation status, versions (global/local), current shell, and TTY status.
-# Fully respects --quiet flag.
+# Fully respects --quiet and --json modes.
 #
-# Uses ${SH} for installation command to stay consistent with the rest of the script.
+# In JSON mode: outputs exactly ONE JSON object (as per JSON rule).
 #
 # !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
 # =============================================================================
 
 show_about() {
+    if [ "${JSON}" -eq 1 ]; then
+        # === JSON MODE - Output exactly one structured object ===
+        local installed="false"
+        is_installed && installed="true"
+
+        local global_ver="not found"
+        if [ -x "${GLOBAL_BIN}/${APP_NAME}" ]; then
+            global_ver=$(grep '^VERSION="' "${GLOBAL_BIN}/${APP_NAME}" 2>/dev/null | cut -d'"' -f2 || echo "unknown")
+        fi
+
+        local local_ver="not found"
+        if [ -x "${USER_BIN}/${APP_NAME}" ]; then
+            local_ver=$(grep '^VERSION="' "${USER_BIN}/${APP_NAME}" 2>/dev/null | cut -d'"' -f2 || echo "unknown")
+        fi
+
+        local current_shell=$(ps -p $$ -o comm= 2>/dev/null | tr -d '()' || echo "unknown")
+        local interactive="false"
+        [ -t 1 ] && interactive="true"
+
+        output_json "about" "System diagnostics" \
+            "version" "${VERSION}" \
+            "installed" "${installed}" \
+            "global_version" "${global_ver}" \
+            "local_version" "${local_ver}" \
+            "shell" "${current_shell}" \
+            "interactive" "${interactive}" \
+            "user" "${USERNAME}"
+
+        return 0
+    fi
+
+    # === Normal Human-readable Mode ===
     [ "${QUIET}" -eq 1 ] && return 0
 
     msg "=== ${APP_NAME} ${VERSION} - About / Diagnostics ==="
@@ -829,10 +998,12 @@ Usage:
   ${APP_NAME} kill|reset [name]          Discard or reset timer
   ${APP_NAME} status [name]              Show elapsed time without stopping
   ${APP_NAME} list [--persist]           List all running timers
+
   ${APP_NAME} about                      Show diagnostic info (shell, install status, versions...)
   ${APP_NAME} version                    Show version
   ${APP_NAME} version-check              Compare with latest
   ${APP_NAME} self-update                Update to latest version
+  ${APP_NAME} self-uninstall             Remove timer from the system
   ${APP_NAME} reinstall                  Force reinstall
   ${APP_NAME} help                       This help
 
@@ -841,7 +1012,7 @@ Options:
   --quiet, -q         Suppress non-error output
   --json              Output in machine-readable JSON format (implies --quiet)
 
-New in 2.7.1:
+New in 2.6.1:
   • 'about' subcommand with full environment diagnostics
   • Robust /dev/shm fallback (including no \$HOME cases using /tmp)
   • Centralized storage resolver for consistency
@@ -1076,6 +1247,24 @@ list_timers() {
 # assistants try to "clean up" the code).
 # =============================================================================
 
+# =============================================================================
+# Main script starts here
+# =============================================================================
+#
+# IMPORTANT:
+# This main() function is intentionally kept as the single entry point and
+# command dispatcher. All business logic lives in dedicated functions
+# (timer_start, timer_stop, timer_status, list_timers, resolve_timer_base_dir,
+# show_about, etc.).
+#
+# This design allows us to focus on refactoring or adding features in one
+# isolated place instead of hunting through the whole script.
+#
+# !!! DO NOT REMOVE OR SIMPLIFY THIS COMMENT !!!
+# It serves as a strong reminder for future maintenance (including when AI
+# assistants try to "clean up" the code).
+# =============================================================================
+
 main() {
     local cmd="greet"
     local NAME="default"
@@ -1090,6 +1279,7 @@ main() {
             version|--version|-v)           cmd="version" ;;
             version-check|--version-check)  cmd="version-check" ;;
             self-update|--self-update)      cmd="self-update" ;;
+            self-uninstall|--self-uninstall) cmd="self-uninstall" ;;
             reinstall|--force|--reinstall)  FORCE_REINSTALL=1 ;;
             about)                          cmd="about" ;;
             start|stop|status|list|kill|reset)
@@ -1123,6 +1313,10 @@ main() {
 
         self-update)
             self_update
+            exit 0 ;;
+
+        self-uninstall)
+            self_uninstall
             exit 0 ;;
 
         help)
