@@ -1,6 +1,6 @@
 #!/bin/sh
 # =============================================================================
-# timer – version 2.6.1
+# timer – version 2.7.0
 # =============================================================================
 #
 # Lightweight per-user named timers (volatile in RAM or persistent).
@@ -84,7 +84,7 @@
 
 # ----------------------------- Project Constants -----------------------------
 APP_NAME="timer"           # ← HARDCODED - Required for curl | sh install
-VERSION="2.6.1"
+VERSION="2.7.0"
 DESCRIPTION="Lightweight per-user named timers (volatile or persistent)"
 REMOTE_VERSION=$VERSION
 SH=sh
@@ -141,7 +141,7 @@ SCRIPT_URL="https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${A
 #   {
 #     "type": "version",
 #     "app": "timer",
-#     "version": "2.6.1"
+#     "version": "2.7.0"
 #   }
 #
 #   Status:
@@ -174,15 +174,15 @@ SCRIPT_URL="https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${A
 #   About / Diagnostics:
 #   {
 #     "type": "about",
-#     "version": "2.6.1",
+#     "version": "2.7.0",
 #     "installed": true,
-#     "global_version": "2.6.1",
+#     "global_version": "2.7.0",
 #     "local_version": "not found",
 #     "shell": "bash",
 #     "interactive": true
 #   }
 #
-#   Current implementation status (as of 2.6.1):
+#   Current implementation status (as of 2.7.0):
 #   Only the flag parsing and output_text/output_json stubs are implemented.
 #   Full structured JSON conversion logic will be added later.
 #
@@ -824,7 +824,7 @@ Options:
   --quiet, -q         Suppress non-error output
   --json              Output in machine-readable JSON format (implies --quiet)
 
-New in 2.6.1:
+New in 2.7.0:
   • 'about' subcommand with full environment diagnostics
   • Robust /dev/shm fallback (including no \$HOME cases using /tmp)
   • Centralized storage resolver for consistency
