@@ -1,6 +1,6 @@
 #!/bin/sh
 # =============================================================================
-# timer – version 2.7.0
+# timer – version 2.7.1
 # =============================================================================
 #
 # Lightweight per-user named timers (volatile in RAM or persistent).
@@ -84,7 +84,7 @@
 
 # ----------------------------- Project Constants -----------------------------
 APP_NAME="timer"           # ← HARDCODED - Required for curl | sh install
-VERSION="2.7.0"
+VERSION="2.7.1"
 DESCRIPTION="Lightweight per-user named timers (volatile or persistent)"
 REMOTE_VERSION=$VERSION
 SH=sh
@@ -141,7 +141,7 @@ SCRIPT_URL="https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${A
 #   {
 #     "type": "version",
 #     "app": "timer",
-#     "version": "2.7.0"
+#     "version": "2.7.1"
 #   }
 #
 #   Status:
@@ -174,15 +174,15 @@ SCRIPT_URL="https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${A
 #   About / Diagnostics:
 #   {
 #     "type": "about",
-#     "version": "2.7.0",
+#     "version": "2.7.1",
 #     "installed": true,
-#     "global_version": "2.7.0",
+#     "global_version": "2.7.1",
 #     "local_version": "not found",
 #     "shell": "bash",
 #     "interactive": true
 #   }
 #
-#   Current implementation status (as of 2.7.0):
+#   Current implementation status (as of 2.7.1):
 #   Only the flag parsing and output_text/output_json stubs are implemented.
 #   Full structured JSON conversion logic will be added later.
 #
@@ -220,7 +220,7 @@ PERSISTENT_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/timer"
 # =============================================================================
 #
 # !!! THIS IS THE SINGLE SOURCE OF TRUTH FOR ALL OUTPUT !!!
-# All info/success/warn/error/msg/empty_line/double_line must go through this.
+# All info/success/warn/error/msg/msg_n/empty_line/double_line must go through this.
 # Do NOT add direct printf/echo anywhere else in the script.
 #
 # Behavior:
@@ -248,7 +248,7 @@ output_text() {
         return 0
     fi
 
-    # Re-evaluate colors safely (non-interactive / quiet / json safe)
+    # Re-evaluate colors safely
     local RED='' GREEN='' YELLOW='' BLUE='' NC=''
     if [ -t 1 ] && [ "${QUIET}" -eq 0 ] && [ "${JSON}" -eq 0 ]; then
         RED='\033[0;31m'
@@ -279,8 +279,11 @@ output_text() {
                 printf "\n"
             fi
             ;;
+        plain_n)                     # ← NEW: no trailing newline
+            printf "%s" "${message}"
+            ;;
         *)
-            # Fallback for unknown level
+            # Fallback
             printf "%s\n" "${message}"
             ;;
     esac
@@ -300,6 +303,20 @@ output_json() {
     [ "${JSON}" -eq 0 ] && return 0
     # TODO: Replace with real JSON output when full JSON mode is implemented
     printf '%s\n' '{"status":"placeholder","message":"JSON output not yet implemented"}'
+}
+
+# =============================================================================
+# msg_n() - Print message WITHOUT trailing newline
+# =============================================================================
+#
+# Use this for interactive prompts (e.g. "Install now? (y/N): ")
+# Respects --quiet and --json (prints nothing in those modes).
+#
+# !!! THIS IS PART OF THE SINGLE SOURCE OF TRUTH FOR OUTPUT !!!
+# =============================================================================
+
+msg_n() {
+    output_text "plain_n" "$*"
 }
 
 # =============================================================================
@@ -714,7 +731,7 @@ maybe_install() {
     local should_install=false
 
     if [ -t 0 ] && [ -t 1 ]; then
-        printf "     Install now? (y/N): "
+        msg_n "     Install now? (y/N): "     # No newline at the end
         read -r answer || true
         case "$answer" in
             [Yy]*|[Yy][Ee][Ss]*) should_install=true ;;
@@ -824,7 +841,7 @@ Options:
   --quiet, -q         Suppress non-error output
   --json              Output in machine-readable JSON format (implies --quiet)
 
-New in 2.7.0:
+New in 2.7.1:
   • 'about' subcommand with full environment diagnostics
   • Robust /dev/shm fallback (including no \$HOME cases using /tmp)
   • Centralized storage resolver for consistency
