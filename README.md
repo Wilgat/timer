@@ -1,32 +1,32 @@
-# timer - Beautiful & Flexible Per-User Timer
+# timer - Lightweight Per-User Named Timers
 
-<img src="https://img.shields.io/badge/Version-2.5.0-blue?style=flat-square" alt="Version">
+<img src="https://img.shields.io/badge/Version-2.6.1-blue?style=flat-square" alt="Version">
 <img src="https://img.shields.io/badge/License-MIT-green?style=flat-square" alt="MIT License">
 
-**Lightweight per-user named timers** — volatile (in RAM) or persistent.  
-Built with the same defensive philosophy as **ciao**.
-
-> A robust, zero-dependency POSIX shell script for starting, stopping, and monitoring named timers in the terminal.
+**Beautifully simple, extremely robust** per-user named timers for the terminal.  
+Volatile (in RAM) or persistent. Zero dependencies. Built with the same defensive philosophy as [ciao](https://github.com/Wilgat/ciao).
 
 ---
 
 ## ✨ Features
 
-- **Per-user isolation** — each user has their own independent timers
-- **Named timers** — `default`, `work`, `coffee`, `meeting`, etc.
-- **Volatile mode** (default): lives in `/dev/shm` → disappears on reboot
-- **Persistent mode** (`--persist`): survives reboots (stored in `~/.cache/timer/`)
-- One-liner install (`curl | sh`)
-- Supports both **user** (`~/.local/bin`) and **root/system** (`/usr/local/bin`) installation
-- Full self-update and version checking
-- Extremely defensive code — works on Alpine (BusyBox ash), Git Bash, macOS, Rocky Linux, etc.
-- No external dependencies
+- **Per-user isolation** — timers are completely separate per user
+- **Named timers** — `default`, `work`, `pomodoro`, `meeting`, etc.
+- **Two storage modes**:
+  - **Volatile** (default): Fast, in `/dev/shm` — lost on reboot
+  - **Persistent** (`--persist`): Survives reboots (`~/.cache/timer/`)
+- Smart fallback when `/dev/shm` is unavailable (Git Bash, minimal containers, etc.)
+- One-liner install via `curl | sh`
+- Supports user (`~/.local/bin`) and system-wide (`/usr/local/bin`) installation
+- Built-in self-update, version check, and diagnostics (`about`)
+- `--json` output mode (planned / partially prepared)
+- Extremely defensive — works reliably on Alpine (BusyBox ash), Git Bash, macOS, Rocky Linux, and more
 
 ---
 
 ## 🚀 Quick Installation
 
-**For normal users:**
+**User installation (recommended):**
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/main/timer | sh
@@ -43,97 +43,85 @@ curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/main/timer | sudo sh
 ## 📖 Usage
 
 ```sh
-timer start                # Start default timer
-timer start work           # Start named timer
-timer start --persist pomodoro   # Persistent timer
+# Start timers
+timer start                    # Start default timer
+timer start work               # Start a named timer
+timer start --persist pomodoro # Persistent timer (survives reboot)
 
-timer status               # Show elapsed time (without stopping)
-timer stop                 # Stop and show elapsed time
-timer kill work            # Force discard a timer
+# Query timers
+timer status                   # Show elapsed time (without stopping)
+timer status work
+timer stop                     # Stop and display elapsed time
+timer stop work
 
-timer list                 # List all running timers
-timer list --persist       # List persistent timers only
+# Management
+timer list                     # List all running timers
+timer list --persist           # List only persistent timers
+timer kill work                # Discard a timer
+timer reset work               # Reset (same as kill in current version)
 
-timer --version
-timer --version-check
-timer --self-update
-timer --help
+# Information & Maintenance
+timer about                    # Show diagnostics (install status, versions, shell, etc.)
+timer version
+timer version-check
+timer self-update
+timer help
 ```
+
+**Options:**
+- `--persist` — Use persistent storage
+- `--quiet, -q` — Suppress non-error output
+- `--json` — Machine-readable JSON output (implies `--quiet`; full support coming soon)
 
 ---
 
-## Program Structure (for curious people)
+## Why This Defensive Style?
 
-This script is intentionally written in a **verbose, heavily commented, and defensive style**. Every critical section is protected against common edge cases (non-interactive shells, minimal environments, missing variables, etc.).
+The script is **intentionally verbose**, heavily commented, and full of repeated safety checks. This is not accidental.
 
-### Overall Architecture
-
-```
-timer (single file shell script)
-├── Header & Metadata
-├── Constants & Safe Defaults
-├── Root / Environment Detection
-├── Color & Logging System
-├── Core Helper Functions
-│   ├── get_timer_file()          → Determines storage path
-│   ├── list_timers()             → Shows all active timers
-│   ├── is_installed()            → Robust install check
-│   ├── get_installed_version()
-│   ├── version_check()
-│   ├── self_update()
-│   ├── show_install_suggestion() → curl | sh logic
-│   └── show_timer_help()
-├── Main Argument Parser
-├── Command Handler (start/stop/status/list/kill)
-└── Entry Point
-```
-
-### Key Design Decisions
-
-- **Single-file design**: Everything is contained in one executable script for maximum portability.
-- **Defensive programming**: Uses `: "${VAR:=default}"` pattern extensively to prevent undefined variable errors.
-- **Two storage backends**:
-  - Volatile → `/dev/shm/timer_${USER}_${NAME}` (fast, in-memory, lost on reboot)
-  - Persistent → `~/.cache/timer/timer_${USER}_${NAME}` (survives reboot)
-- **Self-contained installation**: The script can install, update, and maintain itself.
-- **POSIX compatibility**: Carefully written to run on `dash`, `ash` (BusyBox), and Bash without relying on bashisms.
-- **Non-interactive safety**: All interactive prompts are skipped when run via `curl | sh` or in scripts.
-
-The heavy commenting and "DO NOT SIMPLIFY" warnings are deliberate — they protect subtle but important behaviors that have been refined through real-world testing across many environments.
-
----
-
-## Why This Coding Style & Heavy Comments?
-
-This is completely intentional.
-
-The verbose style, repeated safe defaults, extensive comments, and explicit warnings (`!!! DO NOT MODIFY OR SIMPLIFY !!!`) exist to protect the script from breaking in edge cases such as:
-
-- `curl | sh` installation
-- Non-interactive environments (CI, Docker, cron)
+It protects against real-world edge cases such as:
+- `curl | sh` installation in non-interactive environments
 - Minimal shells (`dash`, BusyBox `ash`)
-- Missing `$HOME`, no `/dev/shm`, Git Bash on Windows, etc.
+- Missing `$HOME`, no `/dev/shm`, restricted containers
+- Git Bash on Windows
 
-This defensive approach was refined through real-world testing and is shared with other tools like **ciao**. While it may look overly cautious to some, it ensures maximum reliability and portability across very different systems. Clean, minimalist code often fails silently in these scenarios — this style doesn't.
+The many `!!! DO NOT MODIFY OR SIMPLIFY !!!` warnings exist to prevent well-meaning "cleanups" from breaking subtle but critical behaviors. This same philosophy powers other tools like **ciao**.
+
+While it may look "ugly" to some, this style has proven extremely reliable across diverse systems.
 
 ---
 
 ## Platform Compatibility
 
-| Platform          | Shell              | Status     | Notes |
-|-------------------|--------------------|------------|-------|
-| Alpine Linux      | BusyBox ash        | Excellent  | Primary minimal target |
-| Git Bash          | Bash (MSYS2)       | Excellent  | Windows support |
-| Rocky/RHEL/CentOS | Bash               | Excellent  | - |
-| macOS             | Bash / zsh         | Excellent  | - |
-| Most Linux distros| dash / bash        | Excellent  | - |
+| Platform              | Shell                | Status     | Notes                          |
+|-----------------------|----------------------|------------|--------------------------------|
+| Alpine Linux          | BusyBox ash          | Excellent  | Primary minimal target         |
+| Git Bash (Windows)    | Bash (MSYS2)         | Excellent  | Full fallback support          |
+| Rocky/RHEL/CentOS     | Bash                 | Excellent  | -                              |
+| macOS                 | Bash / zsh           | Excellent  | -                              |
+| Most Linux distros    | dash / bash          | Excellent  | -                              |
+
+---
+
+## Program Structure
+
+The script is a **single self-contained file** with clear separation:
+
+- Constants & safe defaults
+- Environment / root detection
+- Logging & color system
+- Core helpers (`resolve_timer_base_dir`, `get_timer_file`, etc.)
+- Dedicated command functions (`timer_start`, `timer_stop`, ...)
+- Central `main()` dispatcher (kept simple on purpose)
+
+All critical paths are protected. The heavy commenting serves as both documentation and protection against future refactoring.
 
 ---
 
 ## Contributing
 
-Feel free to open issues or PRs.  
-When modifying core functions, **please preserve the defensive style and comments**.
+Contributions are welcome.  
+When submitting changes, **please preserve the defensive style and existing comments**, especially around edge-case handling.
 
 ---
 
@@ -143,5 +131,9 @@ MIT
 
 ---
 
-**Made with the same care and paranoia as [ciao](https://github.com/Wilgat/ciao).**  
+**Made with care and a healthy dose of paranoia.**  
 Enjoy your timers! ⏱️
+
+---
+
+*Last updated for version 2.6.1*

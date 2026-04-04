@@ -1,6 +1,6 @@
 #!/bin/sh
 # =============================================================================
-# timer – version 2.5.0
+# timer – version 2.6.1
 # =============================================================================
 #
 # Lightweight per-user named timers (volatile in RAM or persistent).
@@ -84,15 +84,53 @@
 
 # ----------------------------- Project Constants -----------------------------
 APP_NAME="timer"           # ← HARDCODED - Required for curl | sh install
-VERSION="2.5.0"
+VERSION="2.6.1"
 DESCRIPTION="Lightweight per-user named timers (volatile or persistent)"
 REMOTE_VERSION=$VERSION
 SH=sh
 
-# Repository source (used for self-update / installation)
+# -------- Repository source (used for self-update / installation) ------------
 REPO_USER="Wilgat"
 REPO_NAME="timer"
 SCRIPT_URL="https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${APP_NAME}"
+
+# ----------------------------------- Force Flags  ----------------------------
+: "${FORCE_USER:=0}"
+: "${FORCE_GLOBAL:=0}"
+: "${FORCE_REINSTALL:=0}"
+
+# ----------------------------- Quiet & JSON Mode -----------------------------
+: "${QUIET:=0}"
+: "${JSON:=0}"
+
+# =============================================================================
+# QUIET AND JSON MODE BEHAVIOR
+# =============================================================================
+#
+# --quiet / -q :
+#   Suppresses non-error messages (info, success, warnings, help text, etc.).
+#   Critical errors (via error() / die()) are still shown as plain text.
+#
+# --json :
+#   Activates machine-readable JSON output mode.
+#   It automatically implies --quiet (all human-readable output is suppressed).
+#   When both --quiet and --json are used, --json takes precedence.
+#
+#   In JSON mode:
+#   - All normal output becomes structured JSON on stdout.
+#   - Errors and warnings are converted to JSON error objects.
+#   - This mode is stronger than plain --quiet.
+#
+#   Current implementation status (as of 2.6.1):
+#   Only the flag parsing is implemented. Full JSON conversion logic
+#   will be added later.
+#
+# When both flags appear:
+#   --json wins → script runs in JSON-only mode (quiet is ignored).
+#
+# !!! DO NOT REMOVE OR SIMPLIFY THIS COMMENT !!!
+# It documents the intended behavior for future JSON implementation.
+# =============================================================================
 
 # ----------------------------- Safe Variable Defaults ------------------------
 : "${GLOBAL_BIN:=/usr/local/bin}"
@@ -109,13 +147,6 @@ if [ -z "${IS_ROOT:-}" ]; then
         INSTALL_PATH="${USER_BIN}/${APP_NAME}"
     fi
 fi
-
-
-# ----------------------------- Force Flags & Quiet Mode ----------------------
-: "${FORCE_USER:=0}"
-: "${FORCE_GLOBAL:=0}"
-: "${FORCE_REINSTALL:=0}"
-: "${QUIET:=0}"
 
 # ----------------------------- Color Output (Non-interactive Safe) -----------
 if [ -t 1 ] && [ "${QUIET}" -eq 0 ]; then
@@ -151,60 +182,6 @@ double_line() {
     [ "${QUIET}" -eq 0 ] && echo "==============================================================" >&2 
 } 
 
-
-# =============================================================================
-# get_timer_file() - Return full path to timer file
-# =============================================================================
-get_timer_file() {
-    local name="$1"
-    local mode="$2"
-    local base_dir
-
-    if [ "$mode" = "persistent" ]; then
-        base_dir="$PERSISTENT_DIR"
-        mkdir -p "$base_dir" 2>/dev/null || true
-    else
-        base_dir="$VOLATILE_DIR"
-    fi
-
-    echo "${base_dir}/timer_${USERNAME}_${name}"
-}
-
-# =============================================================================
-# list_timers() - List all running timers for current user
-# =============================================================================
-list_timers() {
-    local mode="$1"
-    local base_dir found name start_time current_time elapsed minutes seconds file
-
-    if [ "$mode" = "persistent" ]; then
-        base_dir="$PERSISTENT_DIR"
-    else
-        base_dir="$VOLATILE_DIR"
-    fi
-
-    if [ ! -d "$base_dir" ]; then
-        echo "No running timers found."
-        return 0
-    fi
-
-    found=0
-    for file in "${base_dir}"/timer_"${USERNAME}"_*; do
-        [ -f "$file" ] || continue
-        found=1
-        name="${file##*timer_${USERNAME}_}"
-        start_time=$(cat "$file" 2>/dev/null) || continue
-        current_time=$(date +%s 2>/dev/null) || continue
-        elapsed=$((current_time - start_time))
-        minutes=$((elapsed / 60))
-        seconds=$((elapsed % 60))
-        printf "${GREEN}%-12s${NC} running for %02d min %02d sec\n" "$name" "$minutes" "$seconds"
-    done
-
-    [ "$found" -eq 0 ] && echo "No running timers found."
-}
-
-
 # =============================================================================
 # is_installed() - Robust installation check
 # =============================================================================
@@ -218,6 +195,7 @@ list_timers() {
 #   this function
 #
 # !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other projects.
 # =============================================================================
 
 is_installed() {
@@ -542,8 +520,9 @@ perform_self_install() {
 # maybe_install() - Friendly installation prompt
 # =============================================================================
 #
-# GENERAL PURPOSE:
-# Called when the program is not installed. Shows helpful message and asks for confirmation.
+# Respects both --quiet and --json modes.
+# In JSON mode we skip the interactive prompt entirely (will be handled later
+# when full JSON logic is added).
 #
 # !!! DO NOT MODIFY OR SIMPLIFY !!!
 # Designed to be reusable in other projects.
@@ -551,6 +530,13 @@ perform_self_install() {
 
 maybe_install() {
     if is_installed && [ "${FORCE_REINSTALL}" -eq 0 ]; then
+        return 0
+    fi
+
+    # In JSON mode we do not show interactive prompts
+    if [ "${JSON}" -eq 1 ] || [ "${QUIET}" -eq 1 ]; then
+        # For now we just skip installation prompt in quiet/json mode
+        # Full JSON error/response will be added later
         return 0
     fi
 
@@ -569,7 +555,6 @@ maybe_install() {
     local should_install=false
 
     if [ -t 0 ] && [ -t 1 ]; then
-        # Interactive terminal
         printf "     Install now? (y/N): "
         read -r answer || true
         case "$answer" in
@@ -577,7 +562,6 @@ maybe_install() {
             *) printf "Installation skipped by user.\n"; return 0 ;;
         esac
     else
-        # Non-interactive (curl | sh, curl | bash, scripts, CI, etc.)
         printf "${YELLOW}Non-interactive mode detected → installing automatically...${NC}\n"
         should_install=true
     fi
@@ -588,32 +572,351 @@ maybe_install() {
     fi
 }
 
+# =============================================================================
+# show_about() - Display diagnostic information about the current environment
+# =============================================================================
+#
+# Shows installation status, versions (global/local), current shell, and TTY status.
+# Fully respects --quiet flag.
+#
+# Uses ${SH} for installation command to stay consistent with the rest of the script.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# =============================================================================
+
+show_about() {
+    [ "${QUIET}" -eq 1 ] && return 0
+
+    printf "${GREEN}=== ${APP_NAME} ${VERSION} - About / Diagnostics ===${NC}\n\n"
+
+    # Installation status
+    if is_installed; then
+        success "Timer is installed."
+    else
+        if [ -t 1 ]; then
+            warn "Timer is NOT installed in your PATH."
+            printf "   Recommended: ${GREEN}curl -fsSL %s | %s${NC}\n" "$SCRIPT_URL" "${SH}"
+        else
+            warn "Timer is NOT installed."
+            printf "   Recommended: curl -fsSL %s | %s\n" "$SCRIPT_URL" "${SH}"
+        fi
+    fi
+
+    printf "\n"
+
+    # Global installation
+    if [ -x "${GLOBAL_BIN}/${APP_NAME}" ]; then
+        global_ver=$(grep '^VERSION="' "${GLOBAL_BIN}/${APP_NAME}" 2>/dev/null | cut -d'"' -f2 || echo "unknown")
+        printf "Global install (${GLOBAL_BIN}/${APP_NAME}):  ${GREEN}%s${NC}\n" "$global_ver"
+    else
+        printf "Global install (${GLOBAL_BIN}/${APP_NAME}):  ${YELLOW}not found${NC}\n"
+    fi
+
+    # Local (user) installation
+    if [ -x "${USER_BIN}/${APP_NAME}" ]; then
+        local_ver=$(grep '^VERSION="' "${USER_BIN}/${APP_NAME}" 2>/dev/null | cut -d'"' -f2 || echo "unknown")
+        printf "Local install  (${USER_BIN}/${APP_NAME}):   ${GREEN}%s${NC}\n" "$local_ver"
+    else
+        printf "Local install  (${USER_BIN}/${APP_NAME}):   ${YELLOW}not found${NC}\n"
+    fi
+
+    printf "\n"
+
+    # Current shell detection
+    current_shell=$(ps -p $$ -o comm= 2>/dev/null | tr -d '()' || echo "unknown")
+    printf "Current shell:   %s\n" "$current_shell"
+
+    # TTY status
+    if [ -t 1 ]; then
+        printf "TTY / Interactive: ${GREEN}yes${NC}\n"
+    else
+        printf "TTY / Interactive: ${YELLOW}no (non-interactive mode)${NC}\n"
+    fi
+
+    printf "\n"
+    msg "Use '${APP_NAME} about' to see this information again."
+}
+
 show_timer_help() {
-     cat << EOF
+    [ "${QUIET}" -eq 1 ] && [ "${JSON}" -eq 0 ] && return 0
+
+    cat << EOF
 ${APP_NAME} – version ${VERSION} - Lightweight per-user named timers (volatile or persistent)
 
 Usage:
-  ${APP_NAME} start [--persist] [name]  Start a timer
-  ${APP_NAME} stop [name]               Stop and show elapsed time
-  ${APP_NAME} kill|reset [name]         Discard or reset timer
-  ${APP_NAME} status [name]             Show elapsed time without stopping
-  ${APP_NAME} list [--persist]          List all running timers
-  ${APP_NAME} version                   Show version
-  ${APP_NAME} version-check             Compare with latest
-  ${APP_NAME} self-update               Update to latest version
-  ${APP_NAME} reinstall                 Force to reinstall
-  ${APP_NAME} help                      This help
+  ${APP_NAME} start [--persist] [name]   Start a timer
+  ${APP_NAME} stop [name]                Stop and show elapsed time
+  ${APP_NAME} kill|reset [name]          Discard or reset timer
+  ${APP_NAME} status [name]              Show elapsed time without stopping
+  ${APP_NAME} list [--persist]           List all running timers
+  ${APP_NAME} about                      Show diagnostic info (shell, install status, versions...)
+  ${APP_NAME} version                    Show version
+  ${APP_NAME} version-check              Compare with latest
+  ${APP_NAME} self-update                Update to latest version
+  ${APP_NAME} reinstall                  Force reinstall
+  ${APP_NAME} help                       This help
 
 Options:
-  --persist           Store in ~/.cache/timer/ (survives reboot)
+  --persist           Store in persistent storage (survives reboot)
   --quiet, -q         Suppress non-error output
-  --help, -h          Show this help message
+  --json              Output in machine-readable JSON format (implies --quiet)
+
+New in 2.6.1:
+  • 'about' subcommand with full environment diagnostics
+  • Robust /dev/shm fallback (including no \$HOME cases using /tmp)
+  • Centralized storage resolver for consistency
 EOF
+}
+
+# =============================================================================
+# resolve_timer_base_dir() - Central storage resolver with full fallback
+# =============================================================================
+#
+# SINGLE SOURCE OF TRUTH for all timer storage decisions.
+# Handles missing /dev/shm, missing $HOME, and ensures we always have
+# a writable location or die() with clear message.
+#
+# Priority for volatile mode:
+#   1. /dev/shm          (fastest, RAM)
+#   2. /tmp              (standard fallback, almost always available)
+#   3. /tmp/timer_${USERNAME}  (safe per-user subdir when $HOME is missing)
+#
+# For persistent mode: always tries XDG_CACHE_HOME → ~/.cache → /tmp/timer_${USERNAME}
+#
+# !!! DO NOT MODIFY OR DUPLICATE THIS LOGIC !!!
+# All timer functions must use this helper (via get_timer_file or directly)
+# to keep behavior 100% consistent.
+# =============================================================================
+
+resolve_timer_base_dir() {
+    local requested_mode="$1"
+    local actual_mode="$requested_mode"
+    local base_dir
+
+    # === Volatile mode fallback chain ===
+    if [ "$requested_mode" = "volatile" ]; then
+        if [ -d "$VOLATILE_DIR" ] && [ -w "$VOLATILE_DIR" ]; then
+            base_dir="$VOLATILE_DIR"
+        elif [ -d "/tmp" ] && [ -w "/tmp" ]; then
+            actual_mode="fallback"
+            base_dir="/tmp"
+            if [ "${QUIET}" -eq 0 ]; then
+                warn "Volatile storage (/dev/shm) not available. Falling back to /tmp."
+            fi
+        else
+            # Last resort: create a per-user subdirectory under /tmp
+            base_dir="/tmp/timer_${USERNAME}"
+            if ! mkdir -p "$base_dir" 2>/dev/null || [ ! -w "$base_dir" ]; then
+                die "No writable temporary storage available (/dev/shm, /tmp). Timer cannot start."
+            fi
+            actual_mode="fallback"
+            if [ "${QUIET}" -eq 0 ]; then
+                warn "Volatile storage unavailable. Using fallback directory: $base_dir"
+            fi
+        fi
+    else
+        # === Persistent mode ===
+        if [ -n "${HOME:-}" ] && [ -d "${HOME}" ] && [ -w "${HOME}" ]; then
+            base_dir="${PERSISTENT_DIR}"
+            mkdir -p "$base_dir" 2>/dev/null || true
+        else
+            # No usable $HOME → fallback to /tmp per-user directory
+            base_dir="/tmp/timer_${USERNAME}_persistent"
+            if ! mkdir -p "$base_dir" 2>/dev/null || [ ! -w "$base_dir" ]; then
+                die "No writable location for persistent storage (no usable \$HOME and cannot write to /tmp). Timer cannot continue."
+            fi
+            if [ "${QUIET}" -eq 0 ]; then
+                warn "No usable \$HOME detected. Persistent timers will use fallback directory: $base_dir"
+            fi
+        fi
+    fi
+
+    echo "$base_dir"
+}
+
+# =============================================================================
+# get_timer_file() - Return full path to timer file
+# =============================================================================
+#
+# Thin wrapper around the central resolve_timer_base_dir().
+# Guarantees consistent fallback behavior and warnings across start/stop/status/list/etc.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# =============================================================================
+
+get_timer_file() {
+    local name="$1"
+    local requested_mode="$2"
+    local base_dir
+
+    base_dir=$(resolve_timer_base_dir "$requested_mode")
+
+    # Filename format ensures per-user isolation even with fallbacks
+    echo "${base_dir}/timer_${USERNAME}_${name}"
+}
+
+# =============================================================================
+# get_timer_file() - Return full path to timer file
+# =============================================================================
+#
+# Uses the central resolve_timer_base_dir() helper to guarantee consistent
+# fallback behavior and warning across the entire script.
+#
+# - volatile  → /dev/shm (fast, lost on reboot)
+# - persistent → ~/.cache/timer (survives reboot)
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# It must remain a thin wrapper around the central resolver.
+# =============================================================================
+
+get_timer_file() {
+    local name="$1"
+    local requested_mode="$2"
+    local base_dir
+
+    base_dir=$(resolve_timer_base_dir "$requested_mode")
+
+    # Timer filename format guarantees per-user isolation
+    echo "${base_dir}/timer_${USERNAME}_${name}"
+}
+
+# =============================================================================
+# timer_start() - Start a new timer
+# =============================================================================
+#
+# Uses atomic file creation to eliminate race condition.
+# Relies on get_timer_file() → resolve_timer_base_dir() for fallback.
+#
+# !!! DO NOT SIMPLIFY THIS LOGIC !!!
+# The atomic pattern + error distinction is intentional.
+# =============================================================================
+
+timer_start() {
+    # Attempt to create the timer file atomically (no TOCTOU race)
+    if ! date +%s > "$TIMER_FILE" 2>/dev/null; then
+        if [ -f "$TIMER_FILE" ]; then
+            warn "Timer '${NAME}' is already running."
+        else
+            error "Cannot create timer file."
+        fi
+        exit 1
+    fi
+
+    success "Timer '${NAME}' started."
+    [ "$PERSIST" -eq 1 ] && info "  (persistent mode)"
+}
+
+# =============================================================================
+# timer_stop() - Stop a timer and show elapsed time
+# =============================================================================
+#
+# Uses TIMER_FILE (which was resolved via get_timer_file → central fallback).
+# No additional fallback code needed here.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY !!!
+# =============================================================================
+
+timer_stop() {
+    if [ ! -f "$TIMER_FILE" ]; then
+        warn "No timer '${NAME}' running."
+        exit 1
+    fi
+
+    local start_time current_time elapsed minutes seconds
+    start_time=$(cat "$TIMER_FILE" 2>/dev/null)
+    rm -f "$TIMER_FILE"
+
+    current_time=$(date +%s)
+    elapsed=$((current_time - start_time))
+    minutes=$((elapsed / 60))
+    seconds=$((elapsed % 60))
+
+    success "Timer '${NAME}' stopped after ${minutes} min ${seconds} sec."
+}
+
+# =============================================================================
+# timer_status() - Show current elapsed time without stopping the timer
+# =============================================================================
+#
+# Uses TIMER_FILE (resolved via central fallback logic).
+#
+# !!! DO NOT MODIFY OR SIMPLIFY !!!
+# =============================================================================
+
+timer_status() {
+    if [ ! -f "$TIMER_FILE" ]; then
+        warn "No timer '${NAME}' running."
+        exit 1
+    fi
+
+    local start_time current_time elapsed minutes seconds
+    start_time=$(cat "$TIMER_FILE" 2>/dev/null)
+    current_time=$(date +%s)
+    elapsed=$((current_time - start_time))
+    minutes=$((elapsed / 60))
+    seconds=$((elapsed % 60))
+
+    printf "${GREEN}Timer '%s':${NC} %d min %d sec\n" "$NAME" "$minutes" "$seconds"
+}
+
+# =============================================================================
+# list_timers() - List all running timers for current user
+# =============================================================================
+#
+# Now uses the central resolve_timer_base_dir() helper so it respects the
+# exact same /dev/shm fallback as every other timer command.
+# Only one "No running timers found." message is ever shown.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY !!!
+# =============================================================================
+
+list_timers() {
+    local requested_mode="$1"
+    local base_dir found name start_time current_time elapsed minutes seconds file
+
+    base_dir=$(resolve_timer_base_dir "$requested_mode")
+
+    if [ ! -d "$base_dir" ]; then
+        echo "No running timers found."
+        return 0
+    fi
+
+    found=0
+    for file in "${base_dir}"/timer_"${USERNAME}"_*; do
+        [ -f "$file" ] || continue
+        found=1
+        name="${file##*timer_${USERNAME}_}"
+        start_time=$(cat "$file" 2>/dev/null) || continue
+        current_time=$(date +%s 2>/dev/null) || continue
+        elapsed=$((current_time - start_time))
+        minutes=$((elapsed / 60))
+        seconds=$((elapsed % 60))
+        printf "${GREEN}%-12s${NC} running for %02d min %02d sec\n" "$name" "$minutes" "$seconds"
+    done
+
+    if [ "$found" -eq 0 ]; then
+        echo "No running timers found."
+    fi
 }
 
 # =============================================================================
 # Main script starts here
 # =============================================================================
+#
+# IMPORTANT:
+# This main() function is intentionally kept as the single entry point and
+# command dispatcher. All business logic lives in dedicated functions
+# (timer_start, timer_stop, timer_status, list_timers, resolve_timer_base_dir,
+# show_about, etc.).
+#
+# This design allows us to focus on refactoring or adding features in one
+# isolated place instead of hunting through the whole script.
+#
+# !!! DO NOT REMOVE OR SIMPLIFY THIS COMMENT !!!
+# It serves as a strong reminder for future maintenance (including when AI
+# assistants try to "clean up" the code).
+# =============================================================================
+
 main() {
     local cmd="greet"
     local NAME="default"
@@ -623,11 +926,13 @@ main() {
         case "$1" in
             --persist)                      PERSIST=1 ;;
             --quiet|-q)                     QUIET=1 ;;
-            help|--help|-h)                 cmd="help" ;;
+            --json)                         JSON=1; QUIET=1 ;;   # --json implies and overrides quiet
+            help)                           cmd="help" ;;
             version|--version|-v)           cmd="version" ;;
             version-check|--version-check)  cmd="version-check" ;;
             self-update|--self-update)      cmd="self-update" ;;
             reinstall|--force|--reinstall)  FORCE_REINSTALL=1 ;;
+            about)                          cmd="about" ;;
             start|stop|status|list|kill|reset)
                 cmd="$1" 
                 ;;
@@ -641,45 +946,44 @@ main() {
     # Check if tool needs to be installed first
     maybe_install
 
+    # Determine storage mode and get timer file path
     local STORAGE_MODE TIMER_FILE
     STORAGE_MODE=$([ "$PERSIST" -eq 1 ] && echo "persistent" || echo "volatile")
     TIMER_FILE=$(get_timer_file "$NAME" "$STORAGE_MODE")
 
     case "$cmd" in
         greet)
-            printf "${GREEN}Timer!${NC}\n" ;;
+            [ "${QUIET}" -eq 0 ] && printf "${GREEN}Timer!${NC}\n" ;;
+
         version)
-            printf "%s version %s\n" "$APP_NAME" "$VERSION" ;;
+            [ "${QUIET}" -eq 0 ] && printf "%s version %s\n" "$APP_NAME" "$VERSION" ;;
+
         version-check)
-            version_check; exit 0 ;;
+            version_check
+            exit 0 ;;
+
         self-update)
-            self_update; exit 0 ;;
+            self_update
+            exit 0 ;;
+
         help)
-            show_timer_help; exit 0 ;;
+            show_timer_help
+            exit 0 ;;
+
+        about)
+            show_about
+            exit 0 ;;
 
         start)
-            if [ -f "$TIMER_FILE" ]; then
-                warn "Timer '${NAME}' is already running."
-                exit 1
-            fi
-            date +%s > "$TIMER_FILE" || { error "Cannot create timer file."; exit 1; }
-            success "Timer '${NAME}' started."
-            [ "$PERSIST" -eq 1 ] && info "  (persistent mode)"
+            timer_start
             ;;
 
         stop)
-            if [ ! -f "$TIMER_FILE" ]; then
-                warn "No timer '${NAME}' running."
-                exit 1
-            fi
-            local start_time current_time elapsed minutes seconds
-            start_time=$(cat "$TIMER_FILE" 2>/dev/null)
-            rm -f "$TIMER_FILE"
-            current_time=$(date +%s)
-            elapsed=$((current_time - start_time))
-            minutes=$((elapsed / 60))
-            seconds=$((elapsed % 60))
-            success "Timer '${NAME}' stopped after ${minutes} min ${seconds} sec."
+            timer_stop
+            ;;
+
+        status)
+            timer_status
             ;;
 
         kill|reset)
@@ -695,27 +999,13 @@ main() {
             fi
             ;;
 
-        status)
-            if [ ! -f "$TIMER_FILE" ]; then
-                warn "No timer '${NAME}' running."
-                exit 1
-            fi
-            local start_time current_time elapsed minutes seconds
-            start_time=$(cat "$TIMER_FILE")
-            current_time=$(date +%s)
-            elapsed=$((current_time - start_time))
-            minutes=$((elapsed / 60))
-            seconds=$((elapsed % 60))
-            printf "${GREEN}Timer '%s':${NC} %d min %d sec\n" "$NAME" "$minutes" "$seconds"
-            ;;
-
         list)
             list_timers "$STORAGE_MODE"
             ;;
 
         *)
             error "Unknown command: ${cmd}"
-            echo "Use '${APP_NAME} --help' for available cmds."
+            echo "Use '${APP_NAME} help' for available commands."
             exit 1
             ;;
     esac
