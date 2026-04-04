@@ -1,6 +1,6 @@
 #!/bin/sh
 # =============================================================================
-# timer – version 2.8.0
+# timer – version 2.8.1
 # =============================================================================
 #
 # Lightweight per-user named timers (volatile in RAM or persistent).
@@ -84,7 +84,7 @@
 
 # ----------------------------- Project Constants -----------------------------
 APP_NAME="timer"           # ← HARDCODED - Required for curl | sh install
-VERSION="2.8.0"
+VERSION="2.8.1"
 DESCRIPTION="Lightweight per-user named timers (volatile or persistent)"
 REMOTE_VERSION=$VERSION
 SH=sh
@@ -123,7 +123,7 @@ SCRIPT_URL="https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${A
 #   - Errors must be returned as {"type": "error", ...} on stdout.
 #   - Use output_json() ONLY ONCE per command, typically at the end.
 #
-#   JSON Output Examples (v2.8.0 - complete):
+#   JSON Output Examples (v2.8.1 - complete):
 #
 #   Success:
 #   {"type":"success","message":"Timer 'build' started.","name":"build","mode":"volatile"}
@@ -139,8 +139,8 @@ SCRIPT_URL="https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${A
 #   {"type":"error","message":"No timer 'foo' running.","code":"no_timer"}
 #
 #   Version / About:
-#   {"type":"version","app":"timer","version":"2.8.0"}
-#   {"type":"about","version":"2.8.0","installed":true,...}
+#   {"type":"version","app":"timer","version":"2.8.1"}
+#   {"type":"about","version":"2.8.1","installed":true,...}
 #
 # When both flags appear: --json wins.
 #
@@ -1049,7 +1049,7 @@ Options:
   --quiet, -q         Suppress non-error output
   --json              Output in machine-readable JSON format (implies --quiet)
 
-New in 2.8.0:
+New in 2.8.1:
   • Full JSON output support for all commands
   • Improved argument parsing
   • Robust timer name sanitization
@@ -1379,26 +1379,40 @@ main() {
     local NAME="default"
     local PERSIST=0
 
+    # === Phase 1: Parse all arguments (flags first, then command + name) ===
     while [ $# -gt 0 ]; do
         case "$1" in
-            --persist)                      PERSIST=1 ;;
-            --quiet|-q)                     QUIET=1 ;;
-            --json)                         JSON=1; QUIET=1 ;;
-            help)                           cmd="help" ;;
-            version|--version|-v)           cmd="version" ;;
-            version-check|--version-check)  cmd="version-check" ;;
-            self-update|--self-update)      cmd="self-update" ;;
-            self-uninstall|--self-uninstall) cmd="self-uninstall" ;;
-            reinstall|--force|--reinstall)  FORCE_REINSTALL=1 ;;
-            about)                          cmd="about" ;;
-            start|stop|status|list|kill|reset)
-                cmd="$1" 
+            --persist)
+                PERSIST=1
                 ;;
-            *)              
+            --quiet|-q)
+                QUIET=1
+                ;;
+            --json)
+                JSON=1
+                QUIET=1
+                ;;
+            help|version|--version|-v|version-check|--version-check|self-update|--self-update)
+                cmd="${1#--}"
+                ;;
+            self-uninstall|--self-uninstall)
+                cmd="self-uninstall"
+                ;;
+            reinstall|--reinstall|--force)
+                FORCE_REINSTALL=1
+                ;;
+            about)
+                cmd="about"
+                ;;
+            start|stop|status|list|kill|reset)
+                cmd="$1"
+                ;;
+            *)
+                # Everything else is treated as timer name (only for timer commands)
                 if [ "$cmd" = "greet" ] || [ "$cmd" = "start" ] || [ "$cmd" = "stop" ] || \
                    [ "$cmd" = "status" ] || [ "$cmd" = "kill" ] || [ "$cmd" = "reset" ] || \
                    [ "$cmd" = "list" ]; then
-                    NAME="$1" 
+                    NAME="$1"
                 else
                     if [ "${JSON}" -eq 1 ]; then
                         output_json_error "Unknown argument: $1" "bad_argument"
@@ -1413,27 +1427,116 @@ main() {
         shift
     done
 
-    # Sanitize timer NAME
+    # === Sanitize timer NAME (only if it's a timer operation) ===
     if [ "$cmd" = "start" ] || [ "$cmd" = "stop" ] || [ "$cmd" = "status" ] || \
        [ "$cmd" = "kill" ] || [ "$cmd" = "reset" ] || [ "$cmd" = "list" ] || \
        [ "$cmd" = "greet" ]; then
         sanitize_timer_name
     fi
 
-    # Only auto-install for core timer commands
+    # === Phase 2: Only run maybe_install for actual timer operations ===
     case "$cmd" in
         start|stop|status|list|kill|reset|greet)
             maybe_install
             ;;
+        *)
+            # Management commands (about, version-check, self-*, help) skip auto-install
+            ;;
     esac
 
+    # Determine storage mode and timer file path
     local STORAGE_MODE TIMER_FILE
     STORAGE_MODE=$([ "$PERSIST" -eq 1 ] && echo "persistent" || echo "volatile")
     TIMER_FILE=$(get_timer_file "$NAME" "$STORAGE_MODE")
 
+    # === Dispatch commands ===
     case "$cmd" in
-        # ... (dispatch logic with JSON support as in previous response)
-        # All timer functions now properly call output_json when JSON=1
+        greet)
+            if [ "${JSON}" -eq 1 ]; then
+                output_json "success" "message" "Timer ready."
+            else
+                info "Timer!"
+            fi
+            ;;
+
+        version)
+            if [ "${JSON}" -eq 1 ]; then
+                output_json "version" "app" "${APP_NAME}" "version" "${VERSION}"
+            else
+                msg "${APP_NAME} version ${VERSION}"
+            fi
+            ;;
+
+        version-check)
+            version_check
+            exit 0 ;;
+
+        self-update)
+            self_update
+            exit 0 ;;
+
+        self-uninstall)
+            self_uninstall
+            exit 0 ;;
+
+        help)
+            show_timer_help
+            exit 0 ;;
+
+        about)
+            show_about
+            exit 0 ;;
+
+        start)
+            timer_start
+            ;;
+
+        stop)
+            timer_stop
+            ;;
+
+        status)
+            timer_status
+            ;;
+
+        kill|reset)
+            if [ ! -f "$TIMER_FILE" ]; then
+                if [ "${JSON}" -eq 1 ]; then
+                    output_json_error "No timer '${NAME}' running." "no_timer"
+                else
+                    warn "No timer '${NAME}' running."
+                fi
+                exit 1
+            fi
+            rm -f "$TIMER_FILE"
+            if [ "$cmd" = "reset" ]; then
+                if [ "${JSON}" -eq 1 ]; then
+                    output_json "success" "message" "Timer '${NAME}' has been reset." "name" "$NAME"
+                else
+                    success "Timer '${NAME}' has been reset."
+                fi
+            else
+                if [ "${JSON}" -eq 1 ]; then
+                    output_json "success" "message" "Timer '${NAME}' discarded." "name" "$NAME"
+                else
+                    warn "Timer '${NAME}' discarded."
+                fi
+            fi
+            ;;
+
+        list)
+            list_timers "$STORAGE_MODE"
+            ;;
+
+        *)
+            if [ "${JSON}" -eq 1 ]; then
+                output_json_error "Unknown command: ${cmd}" "unknown_command"
+            else
+                error "Unknown command: ${cmd}"
+                msg "Use '${APP_NAME} help' for available commands."
+            fi
+            exit 1
+            ;;
     esac
 }
 
