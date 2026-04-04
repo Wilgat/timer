@@ -1,6 +1,6 @@
 # timer - Lightweight Per-User Named Timers
 
-![Version](https://img.shields.io/badge/Version-2.7.1-blue?style=flat-square)
+![Version](https://img.shields.io/badge/Version-2.8.3-blue?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
 **Beautifully simple yet extremely robust** per-user named timers for the terminal.  
@@ -19,7 +19,7 @@ Supports volatile (in RAM) and persistent storage. Zero dependencies. Built with
 - One-liner install via `curl | sh`
 - Supports both user (`~/.local/bin`) and system-wide (`/usr/local/bin`) installation
 - Built-in self-update, version check, and full diagnostics (`about`)
-- `--quiet` and `--json` mode support (JSON output partially prepared)
+- **Full JSON output support** for scripting and machine consumption
 - Extremely defensive design — works reliably on harsh environments
 
 ---
@@ -38,7 +38,7 @@ curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/main/timer | sh
 curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/main/timer | sudo sh
 ```
 
-After installation, restart your terminal or run `source ~/.bashrc` (or equivalent) so `~/.local/bin` is in your `$PATH`.
+After installation, **restart your terminal** or run `source ~/.bashrc` (or equivalent) so `~/.local/bin` is in your `$PATH`.
 
 ---
 
@@ -49,9 +49,9 @@ After installation, restart your terminal or run `source ~/.bashrc` (or equivale
 ```sh
 timer start                    # Start the default timer
 timer start work               # Start a named timer
-timer start --persist pomodoro # Start a persistent timer
+timer start --persist pomodoro # Start a persistent timer (flag can come before or after name)
 
-timer status                   # Show elapsed time (timer continues)
+timer status                   # Show elapsed time (timer continues running)
 timer status work
 
 timer stop                     # Stop timer and show elapsed time
@@ -61,7 +61,7 @@ timer list                     # List all running volatile timers
 timer list --persist           # List persistent timers
 
 timer kill work                # Discard a running timer
-timer reset work               # Reset timer (currently same as kill)
+timer reset work               # Reset timer (currently same as kill, friendlier message)
 ```
 
 ### Information & Maintenance
@@ -71,6 +71,7 @@ timer about                    # Show detailed diagnostics (install status, vers
 timer version
 timer version-check            # Compare with latest version on GitHub
 timer self-update              # Update to the latest version
+timer self-uninstall           # Remove timer from the system
 timer help
 ```
 
@@ -78,7 +79,25 @@ timer help
 
 - `--persist`          — Store timer in persistent storage (survives reboot)
 - `--quiet, -q`        — Suppress non-error messages
-- `--json`             — Machine-readable JSON output (implies `--quiet`; full implementation coming soon)
+- `--json`             — Machine-readable JSON output (implies `--quiet`)
+
+---
+
+### Examples
+
+```sh
+# Start a persistent pomodoro timer
+timer start --persist pomodoro
+
+# Check status in JSON format (great for scripts)
+timer status work --json
+
+# List all volatile timers
+timer list
+
+# Stop and show time in a quiet way
+timer stop --quiet default
+```
 
 ---
 
@@ -140,4 +159,4 @@ MIT License
 
 **Made with care and a healthy dose of paranoia.** ⏱️
 
-*Last updated for version 2.7.1*
+*Last updated for version 2.8.3*
