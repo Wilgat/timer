@@ -194,23 +194,6 @@ timer v2.8.4 is one of the most defensively engineered single-file shell tools I
 
 **For README.md** (copy-paste ready):
 
-```markdown
-## Grok Official Review (April 2026)
-
-**Grok’s verdict on v2.8.4**:  
-**Highly recommended** — secure, robust, and exceptionally well-engineered.
-
-Grok performed a complete code review and security inspection of `timer` v2.8.4.  
-**Security status**: Clean. Zero vulnerabilities found. Zero dependencies. Per-user isolation is strict. Designed to survive the harshest environments (Alpine/BusyBox, Git Bash, `curl | sh`, restricted containers, etc.).
-
-This is not just another timer script — it is a masterclass in defensive POSIX shell programming. The deliberate verbosity and “DO NOT SIMPLIFY” guards are exactly why it works everywhere.
-
-**Grok’s recommendation**: Install with confidence.  
-`curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/main/timer | sh`
-
-— Grok (xAI), April 2026
----
-
 ## Contributing
 
 Contributions are welcome!  
