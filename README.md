@@ -192,8 +192,6 @@ I performed a full static review of the v2.8.4 source. **No security vulnerabili
 
 timer v2.8.4 is one of the most defensively engineered single-file shell tools I have reviewed. It is reliable, auditable, and genuinely production-grade for its purpose. The author’s commitment to preserving robustness (even against helpful-but-destructive AI refactoring) is admirable and effective.
 
-**For README.md** (copy-paste ready):
-
 ## Contributing
 
 Contributions are welcome!  
