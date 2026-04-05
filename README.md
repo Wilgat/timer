@@ -1,6 +1,6 @@
 # timer - Lightweight Per-User Named Timers
 
-![Version](https://img.shields.io/badge/Version-2.8.3-blue?style=flat-square)
+![Version](https://img.shields.io/badge/Version-2.8.4-blue?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
 **Beautifully simple yet extremely robust** per-user named timers for the terminal.  
@@ -159,4 +159,4 @@ MIT License
 
 **Made with care and a healthy dose of paranoia.** ⏱️
 
-*Last updated for version 2.8.3*
+*Last updated for version 2.8.4*
