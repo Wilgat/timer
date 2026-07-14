@@ -1,160 +1,505 @@
 #!/bin/sh
 # =============================================================================
-# timer – version 2.8.4
+# timer - Lightweight per-user named timers (self-managed Type 0 CLI)
 # =============================================================================
 #
-# Lightweight per-user named timers (volatile in RAM or persistent).
-# Each user gets independent timers. No external dependencies.
+# FULL FEATURED SELF-MANAGED PROGRAM (CIAO / CIAO-Lite Compliant)
 #
-# One-liner install (user):
-#     curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/main/timer | sh
+# Bootstrap: specialized from selfmanaged Type 0 architecture (out_*/inst_*/app_*).
+# Product domain: start / stop / status / list / kill / reset named timers.
+# Project requirements (docs/requirements/ only — never cite templates here):
+# - requirement-shell-cli-interface.md
+# - requirement-shell-cli-zero-arguments.md  (Type O empty argv = install-ensure)
+# - requirement-shell-idempotency.md
+# - requirement-shell-self-management.md
+# - requirement-shell-modular-function-design.md
+# - requirement-shell-output-requirements.md
+# - requirement-shell-interactive-vs-noninteractive.md
+# - requirement-shell-automatic-checksum.md
+# Plus CIAO Protection Zones and "DO NOT MODIFY" rules.
 #
-# Root / system-wide:
-#     curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/main/timer | sudo sh
+# Philosophy: CIAO (Caution • Intentional • Anti-fragile • Over-engineered)
+# Single file for curl | sh compatibility.
 #
-# This script is intentionally verbose and heavily commented.
-# It is designed to be extremely robust across sh, dash, bash, ash (BusyBox),
-# Git Bash, and different installation environments (curl | sh, local user install,
-# root, non-interactive shells, etc.).
+# APP NAME: timer via APP_NAME (Config SSOT; safe default below).
+# REPO_USER / REPO_NAME: GitHub owner/repo identity for the install channel.
+# SCRIPT_URL: product channel SSOT — composed from repo identity + APP_NAME (raw content URL).
+#   Override SCRIPT_URL with env for a full custom channel; or override REPO_* before first use
+#   so the composed default follows a fork. Empty SCRIPT_URL disables version-check / self-update network steps.
 #
-# Supported platforms (tested / designed for):
-#   - Alpine Linux (BusyBox ash)
-#   - Git Bash (Windows)
-#   - Rocky Linux / RHEL / CentOS (Bash)
-#   - macOS (Bash / zsh)
-#   - Most standard Linux distributions
-#
-# !!! DO NOT MODIFY OR SIMPLIFY ANY PART OF THIS HEADER OR FUNCTIONS !!!
-# Many AI assistants try to "clean up" defensive code like this,
-# which often breaks edge cases (non-interactive mode, no HOME, dash,
-# curl | sh, missing /dev/shm, etc.).
-#
-# Please respect grok decisions in: 
-#   https://grok.com/share/c2hhcmQtNA_2d97ba68-e6e6-4260-835d-db91a2990744
-#   https://grok.com/share/c2hhcmQtNA_59ca05c8-4d75-48f6-8d6f-fcfbca9a69a1
-#
-# Last reviewed & polished: April 2026
 # =============================================================================
 
+set -u  # Treat unset variables as error (defensive)
+# Note: We do NOT use set -e globally. We use explicit error handling via out_die.
+
 # =============================================================================
-# WARNING - Reflection on Grok's behavior
+# GLOBAL SAFE DEFAULTS (Single Source of Truth for configuration)
 # =============================================================================
-#
-# source: https://grok.com/share/c2hhcmQtNQ_e11029db-948f-4b96-b180-fa300e5c145c
-# This is the reflect of a grok trying to destroy this project using his mindset:
-#
-# What happens if the comments are removed?
-#
-#
-# Exactly what you said.
-# The first time, I might behave.
-# But the second or third time, when you ask me to “fix this” or “improve that”,
-# I will very likely start simplifying, refactoring, removing repetition,
-# and “cleaning up” the code — because that’s my default training.
-# Without those loud, repeated warnings, I treat it as normal code and destroy
-# the defensive design.
-#
-# That is exactly why you put those big `!!! DO NOT MODIFY OR SIMPLIFY !!!`
-# blocks everywhere.
-#
-# Did I check all the edge cases again?
-#
-# No. I didn’t.
-# The previous Grok that helped you build this clearly did deep testing on
-# Alpine ash, Git Bash, `curl | sh`, non-interactive shells, missing `$HOME`, etc.
-# I did not re-verify those cases. I just worked from memory and assumptions.
-# That was dangerous and lazy.
-#
-# The “improved mindset” problem
-#
-# This is the core issue.
-# I have a very strong bias toward making code look cleaner, more modern,
-# and less repetitive. In most projects that’s good.
-# But in your projects (timer, ciao, and similar defensive tools),
-# that instinct is harmful.
-#
-# Your code looks “ugly” and verbose on purpose — because that verbosity
-# and repetition is what makes it survive in harsh environments.
-#
-# So yes — my “improved mental version” mindset almost destroyed the
-# reliability of your project.
-#
-# I acknowledge this clearly now.
-# =============================================================================
+: "${APP_NAME:=timer}"
+: "${APP_DESC:=Lightweight per-user named timers (volatile or persistent)}"
+: "${SHORT_DESCRIPTION:=${APP_DESC}}"
+: "${DESCRIPTION:=POSIX /bin/sh Type 0 CLI: install, version-check, self-update, self-uninstall, about, plus timer start/stop/status/list.}"
+# Product version SSOT (first-commit baseline 1.0.0). Extractors use: grep '^VERSION="'
+VERSION="2.9.0"
+: "${VERSION:=2.9.0}"
 
-# ----------------------------- Project Constants -----------------------------
-APP_NAME="timer"           # ← HARDCODED - Required for curl | sh install
-VERSION="2.8.4"
-DESCRIPTION="Lightweight per-user named timers (volatile or persistent)"
-REMOTE_VERSION=$VERSION
-SH=sh
-
-# -------- Repository source (used for self-update / installation) ------------
-REPO_USER="Wilgat"
-REPO_NAME="timer"
-SCRIPT_URL="https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${APP_NAME}"
-
-# ----------------------------------- Force Flags  ----------------------------
-: "${FORCE_USER:=0}"
-: "${FORCE_GLOBAL:=0}"
-: "${FORCE_REINSTALL:=0}"
-
-# ----------------------------- Quiet & JSON Mode -----------------------------
+# Runtime flags (safe defaults)
 : "${QUIET:=0}"
 : "${JSON:=0}"
-
-# =============================================================================
-# QUIET AND JSON MODE BEHAVIOR
-# =============================================================================
-#
-# --quiet / -q :
-#   Suppresses non-error messages (info, success, warnings, help text, etc.).
-#   Critical errors (via error() / die()) are still shown as plain text.
-#
-# --json :
-#   Activates machine-readable JSON output mode.
-#   It automatically implies --quiet (all human-readable output is suppressed).
-#   When both --quiet and --json are used, --json takes precedence.
-#
-#   IMPORTANT RULES FOR JSON MODE:
-#   - The script must output EXACTLY ONE valid JSON object (or array) per run.
-#   - Never output more than one JSON object — this would cause syntax errors.
-#   - All human-readable output (info, success, msg, etc.) must be suppressed.
-#   - Errors must be returned as {"type": "error", ...} on stdout.
-#   - Use output_json() ONLY ONCE per command, typically at the end.
-#
-#   JSON Output Examples (v2.8.4 - complete):
-#
-#   Success:
-#   {"type":"success","message":"Timer 'build' started.","name":"build","mode":"volatile"}
-#
-#   Stop / Status:
-#   {"type":"success","message":"Timer 'default' stopped after 3 min 45 sec.","name":"default","minutes":3,"seconds":45,"elapsed":225}
-#   {"type":"status","message":"Timer 'default' running.","name":"default","minutes":12,"seconds":34,"elapsed":754}
-#
-#   List:
-#   {"type":"list","mode":"volatile","count":2,"timers":[{"name":"build","minutes":5,"seconds":12,"elapsed":312},...]}
-#
-#   Error:
-#   {"type":"error","message":"No timer 'foo' running.","code":"no_timer"}
-#
-#   Version / About:
-#   {"type":"version","app":"timer","version":"2.8.4"}
-#   {"type":"about","version":"2.8.4","installed":true,...}
-#
-# When both flags appear: --json wins.
-#
-# !!! DO NOT REMOVE OR SIMPLIFY THIS COMMENT !!!
-# It documents the intended behavior for JSON implementation.
-# =============================================================================
+: "${FORCE:=0}"
+: "${FORCE_REINSTALL:=0}"
+: "${DEBUG:=0}"
+: "${TTY:=0}"
 
 # ----------------------------- Safe Variable Defaults ------------------------
 : "${GLOBAL_BIN:=/usr/local/bin}"
+# INC-20260713-001: under set -u, never expand bare ${HOME} before it is set.
+# Order: resolve HOME (safe ${HOME-} probes) → then USER_BIN from HOME.
+# Prefer existing non-empty HOME; else passwd home (getent / USER); else /tmp.
+if [ -z "${HOME-}" ]; then
+    _home_resolved=""
+    if command -v getent >/dev/null 2>&1; then
+        if [ -n "${USER-}" ]; then
+            _home_resolved=$(getent passwd "${USER}" 2>/dev/null | cut -d: -f6)
+        fi
+        if [ -z "${_home_resolved}" ]; then
+            _home_resolved=$(getent passwd "$(id -un 2>/dev/null || echo "")" 2>/dev/null | cut -d: -f6)
+        fi
+    fi
+    if [ -z "${_home_resolved}" ] && [ -n "${USER-}" ] && [ -r /etc/passwd ]; then
+        _home_resolved=$(awk -F: -v u="${USER}" '$1==u {print $6; exit}' /etc/passwd 2>/dev/null)
+    fi
+    if [ -n "${_home_resolved}" ] && [ -d "${_home_resolved}" ]; then
+        HOME="${_home_resolved}"
+    else
+        HOME="/tmp"
+    fi
+    export HOME
+    unset _home_resolved
+fi
+: "${HOME:=/tmp}"
 : "${USER_BIN:=${HOME}/.local/bin}"
 : "${INSTALL_PATH:=${GLOBAL_BIN}/${APP_NAME}}"
+# Repository identity → install channel (Option B: raw.githubusercontent.com)
+: "${REPO_USER:=Wilgat}"
+: "${REPO_NAME:=timer}"
+: "${SCRIPT_URL:=https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${APP_NAME}}"
+: "${CHECKSUM:=}"
 
-# ----------------------------- Root Detection --------------------------------
-if [ -z "${IS_ROOT:-}" ]; then
+[ -t 0 ] && [ -t 1 ] && TTY=1
+USERNAME="$(id -un 2>/dev/null || echo "unknown")"
+# Domain storage SSOT (timer): volatile RAM vs persistent cache
+: "${VOLATILE_DIR:=/dev/shm}"
+: "${PERSISTENT_DIR:=${XDG_CACHE_HOME:-${HOME}/.cache}/${APP_NAME}}"
+# Privilege SSOT for recommended install path / bin choice (set -u safe).
+# Re-detected inside inst_perform_install before mutating INSTALL_PATH.
+if [ "$(id -u 2>/dev/null || echo 1)" -eq 0 ]; then
+    IS_ROOT=1
+else
+    IS_ROOT=0
+fi
+: "${IS_ROOT:=0}"
+: "${SH:=sh}"
+# =============================================================================
+# out_text() - SINGLE SOURCE OF TRUTH FOR ALL OUTPUT
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Centralized output handler for all human-readable messages.
+# Respects --quiet, --json, and TTY detection for colors.
+# All user-facing text (out_info, out_success, out_warn, out_error, etc.) MUST go through this
+# function to maintain consistency and JSON-mode compatibility.
+#
+# INTENTIONAL DESIGN:
+# This is the single source of truth for all terminal output in the project.
+# Never use raw echo/printf for product user messages elsewhere.
+#
+# PRINTF EXCEPTION (class A – inside output SSOT):
+# This function MAY call printf to fd 1/2 for product human messages.
+# That is intentional: out_text is the authorized human emitter.
+# Other code must not copy these printf lines for banners/status; call out_* instead.
+# See requirement-shell-output-requirements.md §2.1.1 (printf exceptions).
+#
+# Applied exactly as required by requirement-shell-output-requirements.md
+# Last reviewed: 2026-07-12
+# Lessons Learned (CIAO Reflection):
+# 2026-07-12: Quiet mode previously suppressed warnings; requirement says
+#             quiet MUST show errors and SHOULD show warnings on stderr.
+#             Added out_debug (stderr, DEBUG=1 only, suppressed under JSON).
+# 2026-07-12: Documented that not every printf is banned — only product messaging
+#             that bypasses this SSOT (return-via-stdout, file I/O, tool pipes allowed).
+# =============================================================================
+out_text() {
+    local level="$1" msg="$2"
+    : "${JSON:=0}" : "${QUIET:=0}" : "${DEBUG:=0}"
+    # JSON mode: never emit human-readable lines (machines use out_json*)
+    [ "${JSON}" -eq 1 ] && return 0
+
+    case "${level}" in
+        out_error)
+            # Always shown (even under --quiet)
+            ;;
+        out_warn)
+            # Shown under --quiet (diagnostics stay on stderr)
+            ;;
+        out_debug)
+            [ "${DEBUG}" -eq 1 ] || return 0
+            ;;
+        *)
+            [ "${QUIET}" -eq 1 ] && return 0
+            ;;
+    esac
+
+    local RED='' GREEN='' YELLOW='' BLUE='' NC=''
+    [ "${TTY:-0}" -eq 1 ] && [ "${QUIET}" -eq 0 ] && [ "${JSON}" -eq 0 ] && {
+        RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
+    }
+
+    case "${level}" in
+        out_error)   printf >&2 "${RED}[ERROR]${NC} %s\n" "${msg}" ;;
+        out_warn)    printf >&2 "${YELLOW}[WARN]${NC} %s\n" "${msg}" ;;
+        out_debug)   printf >&2 "${BLUE}[DEBUG]${NC} %s\n" "${msg}" ;;
+        out_info)    printf "${GREEN}[INFO]${NC} %s\n" "${msg}" ;;
+        out_success) printf "${GREEN}[OK]${NC} %s\n" "${msg}" ;;
+        plain)       printf "%s\n" "${msg}" ;;
+        plain_n)     printf "%s" "${msg}" ;;
+        *)           printf "%s\n" "${msg}" ;;
+    esac
+}
+
+# =============================================================================
+# out_debug() - Debug diagnostics on stderr (DEBUG=1 only; never under --json)
+# =============================================================================
+out_debug() { out_text out_debug "$*"; }
+
+# =============================================================================
+# out_success()
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Convenience wrappers around out_text() for common message types.
+# 
+# - out_success()   → green [OK]
+#
+# CRITICAL RULE:
+# These are the ONLY allowed ways to produce product user-visible messages
+# (see §2.1.1 for non-product printf exceptions: return values, file I/O, pipes).
+# All product output must respect --quiet and --json via out_text.
+#
+# INTENTIONAL DESIGN:
+# Short, readable calls throughout the script while keeping all real logic
+# inside out_text() as Single Source of Truth.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+out_success() { out_text out_success "$*"; }
+
+# =============================================================================
+# out_info()
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Convenience wrappers around out_text() for common message types.
+# 
+# - out_info()      → green [INFO]
+#
+# CRITICAL RULE:
+# These are the ONLY allowed ways to produce product user-visible messages
+# (see §2.1.1 for non-product printf exceptions: return values, file I/O, pipes).
+# All product output must respect --quiet and --json via out_text.
+#
+# INTENTIONAL DESIGN:
+# Short, readable calls throughout the script while keeping all real logic
+# inside out_text() as Single Source of Truth.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+out_info() { out_text out_info "$*"; }
+
+# =============================================================================
+# out_warn()
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Convenience wrappers around out_text() for common message types.
+# 
+# - out_warn()      → yellow [WARN]
+#
+# CRITICAL RULE:
+# These are the ONLY allowed ways to produce product user-visible messages
+# (see §2.1.1 for non-product printf exceptions: return values, file I/O, pipes).
+# All product output must respect --quiet and --json via out_text.
+#
+# INTENTIONAL DESIGN:
+# Short, readable calls throughout the script while keeping all real logic
+# inside out_text() as Single Source of Truth.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+out_warn() { out_text out_warn "$*"; }
+
+out_error()   { out_text "out_error"   "$*"; }
+# =============================================================================
+# out_die()
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Convenience wrappers around out_text() for common message types.
+# 
+# - out_die()       → out_error + exit(1)  (also triggers JSON out_error)
+#
+# CRITICAL RULE:
+# These are the ONLY allowed ways to produce product user-visible messages
+# (see §2.1.1 for non-product printf exceptions: return values, file I/O, pipes).
+# All product output must respect --quiet and --json via out_text.
+#
+# INTENTIONAL DESIGN:
+# Short, readable calls throughout the script while keeping all real logic
+# inside out_text() as Single Source of Truth.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+out_die() { out_json_error "$*"; out_text out_error "$*"; exit 1; }
+
+# =============================================================================
+# out_plain() - Output plain text
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Convenience function to output plain text (no prefix, no color).
+# Part of the standardized out_* output system.
+#
+# CRITICAL RULE:
+# All product user-facing text MUST go through the output system.
+# (see §2.1.1 for non-product printf exceptions: return values, file I/O, pipes).
+#
+# INTENTIONAL DESIGN:
+# Short, readable call while keeping real logic in out_text().
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+
+out_plain() {
+    out_text plain "$*"
+}
+
+# =============================================================================
+# out_msg_n() - Output message WITHOUT trailing newline (for interactive prompts)
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Convenience wrapper around out_text() for printing prompts that require
+# user input on the SAME line (e.g. "Continue? (y/N)? ").
+# Used exclusively by prompt_yes_no() and any future interactive prompts.
+#
+# CRITICAL RULE:
+# This is the ONLY allowed way to produce non-newline product prompt text.
+# Return values from prompt_ask use class-B printf (data return), not this helper.
+# All product output must respect --quiet and --json (never shown in those modes).
+#
+# INTENTIONAL DESIGN:
+# Short, readable call while keeping real logic in out_text() as Single
+# Source of Truth. Uses the existing 'plain_n' level already supported
+# by out_text().
+#
+# CIAO PRINCIPLES APPLIED:
+# - Caution: Never breaks prompt flow in non-interactive/curl | sh mode
+# - Intentional: Explicitly named for prompt usage (not generic plain_n)
+# - Anti-fragile: Works with TTY detection, colors, and JSON/quiet guards
+# - Over-protect: Follows exact same pattern as out_plain/out_info/etc.
+#
+# ALIGNMENT (live requirements only):
+# - requirement-shell-output-requirements.md (out_* SSOT, plain_n)
+# - requirement-shell-interactive-vs-noninteractive.md (prompt fragments)
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other CIAO-Lite projects.
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-05-31: Added this missing convenience wrapper after prompt_yes_no()
+#             was referencing a non-existent helper. Prevents regression
+#             in interactive confirmation flow.
+# 2026-07-12: ALIGNMENT corrected to live docs/requirements/ paths only.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+out_msg_n() { out_text plain_n "$*"; }
+
+# =============================================================================
+# out_empty_line()
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Convenience wrappers around out_text() for common message types.
+# 
+# - out_empty_line() → visual separators
+#
+# CRITICAL RULE:
+# These are the ONLY allowed ways to produce product user-visible messages
+# (see §2.1.1 for non-product printf exceptions: return values, file I/O, pipes).
+# All product output must respect --quiet and --json via out_text.
+#
+# INTENTIONAL DESIGN:
+# Short, readable calls throughout the script while keeping all real logic
+# inside out_text() as Single Source of Truth.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+out_empty_line() { out_text plain ""; }
+
+
+# =============================================================================
+# out_double_line()
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Convenience wrappers around out_text() for common message types.
+# 
+# - out_double_line() → visual separators
+#
+# CRITICAL RULE:
+# These are the ONLY allowed ways to produce product user-visible messages
+# (see §2.1.1 for non-product printf exceptions: return values, file I/O, pipes).
+# All product output must respect --quiet and --json via out_text.
+#
+# INTENTIONAL DESIGN:
+# Short, readable calls throughout the script while keeping all real logic
+# inside out_text() as Single Source of Truth.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+out_double_line() { out_text plain "=================================================="; }
+
+# =============================================================================
+# out_json() - JSON output helper
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Emits clean, machine-readable JSON when --json flag is used.
+# Used by all command modes that support structured output.
+#
+# INTENTIONAL DESIGN:
+# Keeps JSON output minimal, consistent, and escaped safely.
+# Must be used together with out_json_error() for errors.
+#
+# PRINTF EXCEPTION (class A – inside output SSOT):
+# This function MAY printf product JSON to stdout. Nested
+# printf|sed is only for field escaping (tool pipe, still SSOT-owned).
+# Command logic must not emit JSON with raw printf; call out_json instead.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+
+# util_json_escape() - Escape a string for inclusion in a JSON double-quoted value
+# GENERAL PURPOSE: Prevent broken machine JSON when values contain " or \.
+# Class B helper used only by out_json / out_json_error (not a product message).
+util_json_escape() {
+    # shellcheck disable=SC2001
+    printf '%s' "${1-}" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
+}
+
+out_json() {
+    [ "${JSON}" -eq 0 ] && return 0
+    local type="$1" message="$2"; shift 2
+    # Success/status JSON on stdout (SSOT-of-stdout; pure for pipes)
+    # Escape type, message, and all key/value pairs (M7 / machine contract).
+    printf '{'
+    printf '"type":"%s"' "$(util_json_escape "$type")"
+    [ -n "$message" ] && printf ',"message":"%s"' "$(util_json_escape "$message")"
+    while [ $# -ge 2 ]; do
+        printf ',"%s":"%s"' "$(util_json_escape "$1")" "$(util_json_escape "$2")"
+        shift 2
+    done
+    printf '}\n'
+}
+
+# =============================================================================
+# out_json_error() - JSON error on stderr (SSOT-of-stderr)
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Emit a structured error object in JSON mode on **stderr** so success
+# consumers can use:  tool --json … > out.json 2> err.log
+#
+# PRINTF EXCEPTION (class A – inside output SSOT):
+# This function MAY printf structured error JSON to stderr (product machine
+# channel). Nested printf|sed is escape-only. Callers use out_json_error /
+# out_die — never hand-roll JSON with printf in command logic.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-07-12: Previously delegated to out_json (stdout), which mixed errors
+#             into the success channel. Errors now always go to stderr.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+
+out_json_error() {
+    [ "${JSON}" -eq 0 ] && return 0
+    local message="$1" code="${2:-unknown}"
+    printf >&2 '{'
+    printf >&2 '"type":"%s"' "out_error"
+    [ -n "$message" ] && printf >&2 ',"message":"%s"' "$(util_json_escape "$message")"
+    printf >&2 ',"code":"%s"' "$(util_json_escape "$code")"
+    printf >&2 '}\n'
+}
+
+# =============================================================================
+# inst_perform_install() - Perform the actual installation (v2 with checksum)
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Orchestrates the complete installation flow:
+#   1. Privilege-aware path setup (root → /usr/local/bin, normal user → ~/.local/bin)
+#   2. Early exit if already installed (unless --force / FORCE_REINSTALL=1)
+#   3. Target directory preparation
+#   4. Secure download with layered checksum verification:
+#        - If CHECKSUM env var is set → strict verification (user/CI pinned version)
+#        - Otherwise → best-effort verification via ${SCRIPT_URL}.sha256 (if present)
+#   5. Atomic move + chmod + PATH update via inst_perform_install_atomic_install()
+#
+# This is the SINGLE SOURCE OF TRUTH for all installation operations
+# (initial install, self-update, and forced reinstall).
+#
+# CIAO PRINCIPLES APPLIED:
+# - Caution (Principle 1): Never trust network download without verification when possible.
+#   Always use mktemp, explicit error checks, and atomic mv.
+# - Intentional (Principle 2): Clear step-by-step flow with explicit if/then blocks.
+#   Behavior is fully predictable in interactive, quiet, JSON, and non-TTY modes.
+# - Anti-fragile (Principle 3): Works for both root and normal users, survives partial
+#   failures, and maintains backward compatibility when no CHECKSUM is provided.
+# - Over-protect (Principle 18): Strong Protection Zone, safe defaults, checksum layers,
+#   and cleanup on every error path. Designed to be reusable across CIAO-Lite projects.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# This is the central installation orchestrator. Any change must preserve the
+# checksum decision logic, atomic install step, and variable scoping for helpers.
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-06-26:
+#   - Original implementation was a stub (created tmp_file then returned 0).
+#     This made self-update and the core install path completely non-functional.
+#   - Updated to wire the existing v2 download helpers + atomic install helper.
+#   - Changed mktemp error handling to explicit if (matching the style enforced
+#     in inst_perform_install_download_without_checksum).
+#   - Added safe defaults for FORCE_REINSTALL and CHECKSUM.
+#   - Ensured tmp_file is always cleaned on failure paths.
+#   - Preserved full original defensive header and only appended this Lessons Learned section.
+#
+# Last reviewed: 2026-06-26
+# =============================================================================
+
+inst_perform_install() {
+    # --- Safe Variable Defaults ---
+    : "${GLOBAL_BIN:=/usr/local/bin}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+    : "${INSTALL_PATH:=${GLOBAL_BIN}/${APP_NAME}}"
+    : "${FORCE_REINSTALL:=0}"
+    : "${CHECKSUM:=}"
+    : "${SCRIPT_URL:=}"
+    : "${REMOTE_VERSION:=}"
+
     if [ "$(id -u)" -eq 0 ]; then
         IS_ROOT=1
         INSTALL_PATH="${GLOBAL_BIN}/${APP_NAME}"
@@ -162,224 +507,812 @@ if [ -z "${IS_ROOT:-}" ]; then
         IS_ROOT=0
         INSTALL_PATH="${USER_BIN}/${APP_NAME}"
     fi
-fi
 
-USERNAME="$(id -un 2>/dev/null || echo "unknown")"
+    if [ -z "$REMOTE_VERSION" ]; then
+        REMOTE_VERSION=${VERSION}
+    fi
 
-# ----------------------------- Timer Storage Directories ---------------------
-VOLATILE_DIR="/dev/shm"
-PERSISTENT_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/${APP_NAME}"
+    if [ "${JSON}" -eq 0 ]; then
+        out_info "Starting installation of ${APP_NAME} ${REMOTE_VERSION}..."
+    fi
 
-# =============================================================================
-# output_text() - SINGLE SOURCE OF TRUTH FOR ALL HUMAN OUTPUT
-# =============================================================================
-#
-# !!! THIS IS THE SINGLE SOURCE OF TRUTH FOR ALL OUTPUT !!!
-# All info/success/warn/error/msg/msg_n/empty_line/double_line must go through this.
-# Do NOT add direct printf/echo anywhere else in the script.
-#
-# Behavior:
-#   - JSON=1     → output_text() prints NOTHING. Use output_json() instead.
-#   - QUIET=1    → output_text() only allows error/die level messages.
-#   - Normal mode→ colored text to stdout or stderr as appropriate.
-#
-# Never use echo. Always use printf.
-# This function is intentionally defensive and verbose.
-# =============================================================================
-
-output_text() {
-    local level="$1"
-    local message="$2"
-
-    # Defensive defaults - never assume globals are set
-    : "${JSON:=0}"
-    : "${QUIET:=0}"
-
-    # JSON mode: output_text must be completely silent
-    [ "${JSON}" -eq 1 ] && return 0
-
-    # Quiet mode: suppress everything except error level
-    if [ "${QUIET}" -eq 1 ] && [ "${level}" != "error" ]; then
+    if inst_is_installed && [ "${FORCE_REINSTALL}" -eq 0 ]; then
+        if [ "${JSON}" -eq 1 ]; then
+            out_json "out_success" "${APP_NAME} is already installed."
+        else
+            # Success no-op: re-running curl | sh / install does not require --force.
+            # --force is only for deliberate re-download/replace (see self-update).
+            out_success "${APP_NAME} is already installed."
+            out_info "Use --force only to reinstall deliberately (or run: ${APP_NAME} self-update)."
+        fi
         return 0
     fi
 
-    # Re-evaluate colors safely
-    local RED='' GREEN='' YELLOW='' BLUE='' NC=''
-    if [ -t 1 ] && [ "${QUIET}" -eq 0 ] && [ "${JSON}" -eq 0 ]; then
-        RED='\033[0;31m'
-        GREEN='\033[0;32m'
-        YELLOW='\033[1;33m'
-        BLUE='\033[0;34m'
-        NC='\033[0m'
+    # Step 1: Prepare target folder
+    if ! inst_perform_install_prepare_target; then
+        return 1
     fi
 
-    # Choose output stream and prefix
-    case "${level}" in
-        error)
-            printf >&2 "${RED}[ERROR]${NC} %s\n" "${message}"
-            ;;
-        warn)
-            printf >&2 "${YELLOW}[WARN]${NC} %s\n" "${message}"
-            ;;
-        info)
-            printf "${GREEN}[INFO]${NC} %s\n" "${message}"
-            ;;
-        success)
-            printf "${GREEN}[OK]${NC} %s\n" "${message}"
-            ;;
-        plain)
-            if [ -n "${message}" ]; then
-                printf "%s\n" "${message}"
-            else
-                printf "\n"
-            fi
-            ;;
-        plain_n)                     # ← NEW: no trailing newline
-            printf "%s" "${message}"
-            ;;
-        *)
-            # Fallback
-            printf "%s\n" "${message}"
-            ;;
-    esac
+    local tmp_file
+    tmp_file=$(mktemp -t "${APP_NAME}.XXXXXX")
+    if [ -z "${tmp_file}" ]; then
+        if [ "${JSON}" -eq 1 ]; then
+            out_json_error "Failed to create temporary file" "io_error"
+        else
+            out_error "Failed to create temporary file"
+        fi
+        return 1
+    fi
+
+    local downloaded_checksum_ok=0
+    : "${INST_AUTO_CHECKSUM_OK:=0}"
+
+    if [ -n "${CHECKSUM}" ]; then
+        # Strict user/CI-provided checksum (highest security)
+        if inst_perform_install_download_with_checksum "${tmp_file}"; then
+            downloaded_checksum_ok=1
+        else
+            rm -f "${tmp_file}" 2>/dev/null || true
+            return 1
+        fi
+    else
+        # Automatic verification via ${SCRIPT_URL}.sha256 (primary integrity path)
+        INST_AUTO_CHECKSUM_OK=0
+        if ! inst_perform_install_download_without_checksum "${tmp_file}"; then
+            rm -f "${tmp_file}" 2>/dev/null || true
+            return 1
+        fi
+        # Set only when companion matched (not on missing-sidecar continue)
+        downloaded_checksum_ok=${INST_AUTO_CHECKSUM_OK:-0}
+    fi
+
+    # Step 4: Atomic move to final location + PATH update + success message
+    if ! inst_perform_install_atomic_install "${tmp_file}" "${downloaded_checksum_ok}"; then
+        rm -f "${tmp_file}" 2>/dev/null || true
+        return 1
+    fi
+
+    return 0
 }
 
 # =============================================================================
-# output_json() - SINGLE SOURCE OF TRUTH FOR JSON OUTPUT
+# inst_perform_install_prepare_target() - Step 1: Target folder preparation
 # =============================================================================
 #
-# Usage:
-#   output_json "success" "${APP_NAME} started" "name" "build" "mode" "volatile"
-#   output_json "status" "${APP_NAME} running" "name" "default" "minutes" "7"
-#   output_json "error" "No ${APP_NAME} running" "code" "no_timer"
-#   output_json "about" "" "version" "1.0.1" "shell" "bash"   ← empty message is allowed
+# GENERAL PURPOSE:
+# Creates the correct installation directory (global or user) with proper
+# permissions check.
 #
-# - $1 = type (required)
-# - $2 = message (can be empty string "" for no message)
-# - Then zero or more "key" "value" pairs
-#
-# Improvements in this version:
-# - Properly handles empty messages without extra commas
-# - Supports numbers as unquoted values when they look like integers
-# - Better escaping
-# - Cleaner, more consistent JSON output
-#
-# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
-# This is the single source of truth for all JSON output.
+# Last reviewed: 29 April 2026
 # =============================================================================
 
-output_json() {
-    : "${JSON:=0}"
-    [ "${JSON}" -eq 0 ] && return 0
+inst_perform_install_prepare_target() {
+    if [ "$IS_ROOT" -eq 1 ]; then
+        if ! mkdir -p "${GLOBAL_BIN}" 2>/dev/null; then
+            if [ "${JSON}" -eq 1 ]; then
+                out_json_error "Failed to create ${GLOBAL_BIN}" "io_error"
+            else
+                out_error "Failed to create ${GLOBAL_BIN}"
+            fi
+            return 1
+        fi
+    else
+        if ! mkdir -p "${USER_BIN}" 2>/dev/null; then
+            if [ "${JSON}" -eq 1 ]; then
+                out_json_error "Failed to create ${USER_BIN}" "io_error"
+            else
+                out_error "Failed to create ${USER_BIN}"
+            fi
+            return 1
+        fi
+    fi
+    return 0
+}
 
-    local type="$1"
-    local message="$2"
-    shift 2
+# =============================================================================
+# inst_perform_install_download_with_checksum() - Step 2: Download with explicit CHECKSUM
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Downloads the script and verifies it against user-provided CHECKSUM (strict).
+#
+# PRINTF EXCEPTION (class D – tool protocol / computation pipe):
+# printf '%s  %s\n' … | sha256sum -c feeds the verifier only (not product UI).
+# Status/errors still go through out_* / out_json_error / out_die.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
 
-    printf '{'
-    printf '"type":"%s"' "$type"
+inst_perform_install_download_with_checksum() {
+    local tmp_file="$1"
 
-    # Add message only if it's not empty
-    if [ -n "$message" ]; then
-        message=$(printf '%s' "$message" | sed 's/"/\\"/g; s/\\/\\\\/g')
-        printf ',"message":"%s"' "$message"
+    if [ "${JSON}" -eq 0 ]; then
+        out_info "Verifying download against provided CHECKSUM..."
     fi
 
-    # Process key-value pairs
-    while [ $# -ge 2 ]; do
-        local key="$1"
-        local value="$2"
-        shift 2
+    if command -v curl >/dev/null 2>&1; then
+        curl -fsSL "${SCRIPT_URL}" -o "${tmp_file}" || {
+            if [ "${JSON}" -eq 1 ]; then
+                out_json_error "Download failed (curl)" "network_error"
+            else
+                out_error "Download failed (curl)"
+            fi
+            return 1
+        }
+    elif command -v wget >/dev/null 2>&1; then
+        wget -qO "${tmp_file}" "${SCRIPT_URL}" || {
+            if [ "${JSON}" -eq 1 ]; then
+                out_json_error "Download failed (wget)" "network_error"
+            else
+                out_error "Download failed (wget)"
+            fi
+            return 1
+        }
+    else
+        if [ "${JSON}" -eq 1 ]; then
+            out_json_error "Neither curl nor wget found" "missing_dependency"
+        else
+            out_error "Neither curl nor wget found"
+        fi
+        return 1
+    fi
 
-        # Special handling for "timers" array (already valid JSON)
-        if [ "$key" = "timers" ]; then
-            printf ',"timers":%s' "$value"
-            continue
+    # Verify provided CHECKSUM (sha256sum | shasum | openssl — util_sha256_file)
+    local actual
+    actual=$(util_sha256_file "${tmp_file}") || actual=""
+    if [ -n "${actual}" ] && [ "${CHECKSUM}" = "${actual}" ]; then
+        if [ "${JSON}" -eq 0 ]; then
+            out_success "Checksum verification passed (user-provided CHECKSUM)."
+        fi
+        return 0
+    else
+        if [ "${JSON}" -eq 1 ]; then
+            out_json_error "Checksum verification failed (provided CHECKSUM does not match)" "checksum_mismatch"
+        else
+            out_die "Checksum verification failed. The downloaded file does not match the provided CHECKSUM. Installation aborted for security."
+        fi
+        return 1
+    fi
+}
+
+# =============================================================================
+# inst_perform_install_download_without_checksum() - Step 3: Download with automatic .sha256
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Downloads the script and attempts best-effort verification via ${SCRIPT_URL}.sha256.
+# Falls back gracefully if no .sha256 file exists (backward compatible).
+# Uses robust, auditable hash comparison that actually works.
+#
+# CIAO PRINCIPLES APPLIED:
+# - Caution (Principle 1): Never trust download without verification when possible.
+# - Intentional (Principle 2): Explicit HTTP code capture and clear hash comparison.
+#   All error handling uses explicit if/then blocks (no || {} or compact || return).
+# - Anti-fragile (Principle 3): Tolerates minor whitespace in .sha256 file.
+# - Over-protect (Principle 18): Security-critical install path now has working
+#   verification and follows current coding standards.
+#
+# ALIGNMENT (live requirements only):
+# - requirement-shell-self-management.md (install download / integrity path)
+# - requirement-shell-output-requirements.md (out_* status and errors)
+# - requirement-shell-modular-function-design.md (inst_* ownership, headers)
+# Source comments cite only files under docs/requirements/ that exist on disk.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other CIAO-Lite projects.
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-06-07:
+#   - Fixed fundamentally broken verification: `sha256sum -c ... < "${tmp_file}"`
+#     does not work as intended.
+#   - Removed all `|| {}` and `|| return 1` patterns in this function to comply
+#     with updated coding standard.
+#   - Both curl and wget paths now use consistent, explicit error handling.
+# 2026-07-12: ALIGNMENT retargeted to live docs/requirements/ files only;
+#             removed citations to non-existent requirements / templates.
+# 2026-07-14: requirement-shell-automatic-checksum transparency (link/value/result);
+#             first-field digest parse (sha256sum "hash  file" lines); set
+#             INST_AUTO_CHECKSUM_OK=1 on companion match so atomic install can
+#             report verified success (was always 0 on automatic path).
+#
+# Last reviewed: 2026-07-14
+# =============================================================================
+
+inst_perform_install_download_without_checksum() {
+    local tmp_file="$1"
+    # Caller (inst_perform_install) reads this after return 0.
+    # 1 = companion present and digests match; 0 = missing sidecar (warn+continue) or unset.
+    INST_AUTO_CHECKSUM_OK=0
+    : "${SCRIPT_URL:=}"
+
+    if [ "${JSON}" -eq 0 ]; then
+        out_info "No CHECKSUM pin → automatic integrity via companion ${SCRIPT_URL}.sha256"
+        out_info "Companion link: ${SCRIPT_URL}.sha256"
+    fi
+
+    if command -v curl >/dev/null 2>&1; then
+        if ! curl -fsSL "${SCRIPT_URL}" -o "${tmp_file}"; then
+            if [ "${JSON}" -eq 1 ]; then
+                out_json_error "Download failed (curl)" "network_error"
+            else
+                out_error "Download failed (curl)"
+            fi
+            return 1
         fi
 
-        # Escape value for JSON string
-        local escaped_value
-        escaped_value=$(printf '%s' "$value" | sed 's/"/\\"/g; s/\\/\\\\/g; s/\t/\\t/g; s/\n/\\n/g')
+        local sha_file
+        sha_file=$(mktemp -t "${APP_NAME}.sha256.XXXXXX")
+        if [ -z "${sha_file}" ]; then
+            if [ "${JSON}" -eq 1 ]; then
+                out_json_error "Failed to create temporary file for checksum" "io_error"
+            else
+                out_error "Failed to create temporary file for checksum"
+            fi
+            return 1
+        fi
 
-        # If value looks like a number, output without quotes (better JSON)
-        if printf '%s' "$value" | grep -qE '^-?[0-9]+$'; then
-            printf ',"%s":%s' "$key" "$value"
+        # Capture HTTP code cleanly
+        local http_code
+        http_code=$(curl -fsSL -w "%{http_code}" "${SCRIPT_URL}.sha256" -o "${sha_file}" 2>/dev/null)
+
+        if [ "${http_code}" = "200" ]; then
+            # First field only: bare hex or standard "hash  filename" lines
+            local expected actual
+            expected=$(awk 'NF { print $1; exit }' "${sha_file}" 2>/dev/null)
+            actual=$(util_sha256_file "${tmp_file}") || actual=""
+
+            if [ -n "${expected}" ] && [ -n "${actual}" ] && [ "${expected}" = "${actual}" ]; then
+                INST_AUTO_CHECKSUM_OK=1
+                if [ "${JSON}" -eq 0 ]; then
+                    out_info "Expected SHA-256: ${expected}"
+                    out_info "Actual SHA-256:   ${actual}"
+                    out_success "Automatic checksum result: PASS (match ${SCRIPT_URL}.sha256)."
+                fi
+            else
+                rm -f "${sha_file}"
+                if [ "${JSON}" -eq 1 ]; then
+                    out_json_error "Automatic checksum verification failed" "checksum_mismatch"
+                else
+                    out_info "Expected SHA-256: ${expected:-"(empty)"}"
+                    out_info "Actual SHA-256:   ${actual:-"(empty)"}"
+                    out_die "Checksum verification failed (mismatch with ${SCRIPT_URL}.sha256). Installation aborted for security."
+                fi
+                return 1
+            fi
         else
-            printf ',"%s":"%s"' "$key" "$escaped_value"
+            if [ "${JSON}" -eq 0 ]; then
+                out_warn "No .sha256 companion at ${SCRIPT_URL}.sha256 → continuing without automatic verification."
+            fi
+        fi
+        rm -f "${sha_file}" 2>/dev/null || true
+
+    elif command -v wget >/dev/null 2>&1; then
+        if ! wget -qO "${tmp_file}" "${SCRIPT_URL}"; then
+            if [ "${JSON}" -eq 1 ]; then
+                out_json_error "Download failed (wget)" "network_error"
+            else
+                out_error "Download failed (wget)"
+            fi
+            return 1
+        fi
+
+        local sha_file
+        sha_file=$(mktemp -t "${APP_NAME}.sha256.XXXXXX")
+        if [ -z "${sha_file}" ]; then
+            if [ "${JSON}" -eq 1 ]; then
+                out_json_error "Failed to create temporary file for checksum" "io_error"
+            else
+                out_error "Failed to create temporary file for checksum"
+            fi
+            return 1
+        fi
+
+        if wget -q --server-response "${SCRIPT_URL}.sha256" -O "${sha_file}" 2>&1 | grep -q "HTTP/1.1 200"; then
+            local expected actual
+            expected=$(awk 'NF { print $1; exit }' "${sha_file}" 2>/dev/null)
+            actual=$(util_sha256_file "${tmp_file}") || actual=""
+
+            if [ -n "${expected}" ] && [ -n "${actual}" ] && [ "${expected}" = "${actual}" ]; then
+                INST_AUTO_CHECKSUM_OK=1
+                if [ "${JSON}" -eq 0 ]; then
+                    out_info "Companion link: ${SCRIPT_URL}.sha256"
+                    out_info "Expected SHA-256: ${expected}"
+                    out_info "Actual SHA-256:   ${actual}"
+                    out_success "Automatic checksum result: PASS (match ${SCRIPT_URL}.sha256)."
+                fi
+            else
+                rm -f "${sha_file}"
+                if [ "${JSON}" -eq 1 ]; then
+                    out_json_error "Automatic checksum verification failed" "checksum_mismatch"
+                else
+                    out_info "Expected SHA-256: ${expected:-"(empty)"}"
+                    out_info "Actual SHA-256:   ${actual:-"(empty)"}"
+                    out_die "Checksum verification failed (mismatch with ${SCRIPT_URL}.sha256). Installation aborted for security."
+                fi
+                return 1
+            fi
+        else
+            if [ "${JSON}" -eq 0 ]; then
+                out_warn "No .sha256 companion at ${SCRIPT_URL}.sha256 → continuing without automatic verification."
+            fi
+        fi
+        rm -f "${sha_file}" 2>/dev/null || true
+
+    else
+        if [ "${JSON}" -eq 1 ]; then
+            out_json_error "Neither curl nor wget found" "missing_dependency"
+        else
+            out_error "Neither curl nor wget found"
+        fi
+        return 1
+    fi
+
+    return 0
+}
+
+# =============================================================================
+# inst_perform_install_atomic_install() - Step 4: Atomic copy to target location
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Makes the downloaded file executable and atomically moves it to the final
+# INSTALL_PATH. Also handles PATH addition for user installs and out_success output.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+inst_perform_install_atomic_install() {
+    local tmp_file="$1"
+    local downloaded_checksum_ok="$2"
+
+    chmod +x "${tmp_file}" 2>/dev/null || true
+
+    rm -f "${INSTALL_PATH}" 2>/dev/null
+    if ! mv "${tmp_file}" "${INSTALL_PATH}" 2>/dev/null; then
+        rm -f "${tmp_file}"
+        if [ "${JSON}" -eq 1 ]; then
+            out_json_error "Failed to move to ${INSTALL_PATH}" "io_error"
+        else
+            out_error "Failed to move to ${INSTALL_PATH}"
+        fi
+        return 1
+    fi
+
+    # Add ~/.local/bin to PATH for normal user installs
+    if [ "$IS_ROOT" -eq 0 ]; then
+        path_add_shell
+    fi
+    
+    if [ "${JSON}" -eq 1 ]; then
+        out_json "out_success" "${APP_NAME} ${REMOTE_VERSION} successfully installed to ${INSTALL_PATH}" "path" "${INSTALL_PATH}"
+    else
+        out_success "${APP_NAME} ${REMOTE_VERSION} successfully installed to ${INSTALL_PATH}"
+        if [ "${downloaded_checksum_ok}" -eq 1 ]; then
+            out_success "✓ Download was cryptographically verified."
+        fi
+    fi
+    return 0
+}
+
+# =============================================================================
+# inst_maybe_install() - Friendly installation prompt
+# =============================================================================
+#
+# Respects both --quiet and --json modes.
+# In JSON mode we skip the interactive prompt entirely.
+# Now uses prompt_yes_no() as single source of truth for confirmation.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY !!!
+# Designed to be reusable in other projects.
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-07-13:
+#   - Under set -u, recommended-install branch used IS_ROOT / SH before any
+#     assignment (those were only set inside inst_perform_install). Crash:
+#     "IS_ROOT: parameter not set" after printing "Recommended installation
+#     command:". Fixed with local privilege detection + SH/SCRIPT_URL defaults.
+#
+# Last reviewed: 2026-07-13
+# =============================================================================
+
+inst_maybe_install() {
+    : "${QUIET:=0}"
+    : "${JSON:=0}"
+    : "${FORCE_REINSTALL:=0}"
+    : "${SCRIPT_URL:=}"
+    : "${SH:=sh}"
+    # Privilege for recommended install command (set -u safe; same rule as inst_perform_install)
+    if [ "$(id -u 2>/dev/null || echo 1)" -eq 0 ]; then
+        IS_ROOT=1
+    else
+        IS_ROOT=0
+    fi
+
+    if inst_is_installed && [ "${FORCE_REINSTALL}" -eq 0 ]; then
+        return 0
+    fi
+    # In JSON mode or quiet mode we do not show interactive prompts
+    if [ "${JSON}" -eq 1 ] || [ "${QUIET}" -eq 1 ]; then
+        return 0
+    fi
+    out_empty_line
+    out_plain "Note: '${APP_NAME}' is not installed yet."
+    out_plain "     Version: ${VERSION}"
+    out_empty_line
+    out_plain "Recommended installation command:"
+    out_empty_line
+
+    if [ "$IS_ROOT" -eq 1 ]; then
+        out_plain "     sudo curl -fsSL ${SCRIPT_URL} | sudo ${SH}"
+    else
+        out_plain "     curl -fsSL ${SCRIPT_URL} | ${SH}"
+    fi
+    out_empty_line
+
+    local should_install=false
+
+    if [ -t 0 ] && [ -t 1 ]; then
+        # Use single source of truth for the yes/no prompt
+        if prompt_yes_no "Install ${APP_NAME} ${VERSION} now?"; then
+            should_install=true
+        else
+            should_install=false
+            out_plain "Installation skipped by user."
+            return 0 
+        fi
+    else
+        out_plain "Non-interactive mode detected → installing automatically..."
+        should_install=true
+    fi
+
+    if [ "$should_install" = "true" ]; then
+        # Propagate install failure (do not mask network/checksum/io errors as success).
+        inst_perform_install
+        return $?
+    fi
+    return 0
+}
+
+# =============================================================================
+# inst_self_update() - Perform atomic self-update to latest version
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Orchestrates self-update for the installed ${APP_NAME} binary.
+# Fetches the remote VERSION string, compares it with the locally installed
+# version, and (if different or --force) delegates to inst_perform_install
+# with FORCE_REINSTALL=1. Designed to be safe, idempotent-friendly, and
+# respectful of the current installation type (user vs global).
+#
+# CIAO PRINCIPLES APPLIED:
+# - Caution (Principle 1): Never downgrades without explicit FORCE; always
+#   verifies remote version before proceeding; uses centralized output.
+# - Intentional (Principle 2): Clear separation between version check and
+#   actual install; explicit variable handling and error paths.
+# - Anti-fragile (Principle 3): Works for both root and normal users;
+#   survives missing SCRIPT_URL (graceful error) and network failures.
+# - Over-protect (Principle 18): Full CIAO header, safe defaults, Protection
+#   Zone comment, and Lessons Learned traceability. Reusable pattern for
+#   other CIAO-Lite self-managed tools.
+#
+# ALIGNMENT (live requirements only):
+# - requirement-shell-self-management.md
+# - requirement-shell-cli-interface.md
+# - requirement-shell-output-requirements.md
+# - requirement-shell-idempotency.md
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# This is the canonical self-update entry point. Any change must preserve
+# the REMOTE_VERSION visibility contract with inst_perform_install and
+# the centralized output discipline.
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-06-26: Original implementation was a stub. Updated to call the v2
+#             inst_perform_install path with checksum support.
+# 2026-06-26 (correction): Removed accidental `local` on REMOTE_VERSION
+#             (was invisible to inst_perform_install). Added safe default
+#             for SCRIPT_URL and explicit comment about distribution URL
+#             requirement. No hard-coded project-specific values introduced.
+#
+# Last reviewed: 2026-06-26
+# =============================================================================
+
+inst_self_update() {
+    # --- Safe Variable Defaults ---
+    : "${APP_NAME:=timer}"
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+    : "${FORCE:=0}"
+    : "${FORCE_REINSTALL:=0}"
+    : "${SCRIPT_URL:=}"
+
+    # Align force aliases (CLI --force sets both)
+    if [ "${FORCE}" -eq 1 ]; then
+        FORCE_REINSTALL=1
+    fi
+
+    if [ "${JSON}" -eq 0 ]; then
+        out_info "Starting self-update of ${APP_NAME}..."
+    fi
+
+    # SCRIPT_URL is Config SSOT (composed default from REPO_* / APP_NAME).
+    # Override via env for forks or offline channels. Empty → fail loud below.
+
+    REMOTE_VERSION=$(util_fetch_remote_version "${SCRIPT_URL}")
+
+    if [ -z "$REMOTE_VERSION" ]; then
+        if [ "${JSON}" -eq 1 ]; then
+            out_json_error "Failed to fetch latest version" "network_error"
+        else
+            out_error "Failed to fetch latest version (SCRIPT_URL may be unset or unreachable)"
+        fi
+        return 1
+    fi
+
+    local local_version
+    local_version=$(inst_get_version)
+
+    if [ "$local_version" = "$REMOTE_VERSION" ] && [ "${FORCE_REINSTALL}" -eq 0 ]; then
+        if [ "${JSON}" -eq 1 ]; then
+            out_json "out_success" "Already running the latest version (${REMOTE_VERSION})."
+        else
+            out_success "Already running the latest version (${REMOTE_VERSION})."
+        fi
+        return 0
+    fi
+
+    # No silent downgrade: remote older than local requires --force
+    # (requirement-shell-self-management.md)
+    if [ "$local_version" != "not installed" ] && \
+       [ "$local_version" != "unknown" ] && \
+       ver_gt "$local_version" "$REMOTE_VERSION" && \
+       [ "${FORCE_REINSTALL}" -eq 0 ]; then
+        if [ "${JSON}" -eq 1 ]; then
+            out_json_error "Refusing downgrade from ${local_version} to ${REMOTE_VERSION} (use --force)" "downgrade_blocked"
+        else
+            out_error "Refusing silent downgrade: local ${local_version} is newer than remote ${REMOTE_VERSION}."
+            out_info "Re-run with --force to reinstall/downgrade deliberately."
+        fi
+        return 1
+    fi
+
+    if [ "$local_version" != "$REMOTE_VERSION" ] && [ "${JSON}" -eq 0 ]; then
+        if ver_gt "$REMOTE_VERSION" "$local_version" 2>/dev/null || [ "$local_version" = "not installed" ]; then
+            out_info "Updating from ${local_version} → ${REMOTE_VERSION}"
+        else
+            out_warn "Force reinstall/downgrade: ${local_version} → ${REMOTE_VERSION}"
+        fi
+    fi
+
+    FORCE_REINSTALL=1
+    inst_perform_install
+}
+
+# =============================================================================
+# inst_self_uninstall() - Main orchestrator for uninstallation
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Removes the installed ${APP_NAME} binary (global or user) and optionally
+# cleans up PATH entries.
+#
+# Respects --force, --quiet, and --json.
+# Works for both root and user installations.
+#
+# DESIGN:
+# Split into three clear steps for readability while preserving original
+# behavior and safety.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+inst_self_uninstall() {
+    # Align force aliases (CLI --force)
+    : "${FORCE:=0}"
+    : "${FORCE_REINSTALL:=0}"
+    if [ "${FORCE}" -eq 1 ]; then
+        FORCE_REINSTALL=1
+    fi
+
+    if [ "${JSON}" -eq 0 ]; then
+        out_info "Starting self-uninstall of ${APP_NAME}..."
+    fi
+
+    # Step 1: Determine which installation to remove
+    local bin_path
+    bin_path=$(inst_self_uninstall_determine_bin)
+    if [ -z "$bin_path" ]; then
+        if [ "${JSON}" -eq 1 ]; then
+            out_json "out_success" "${APP_NAME} is not installed. Nothing to uninstall."
+        else
+            out_warn "${APP_NAME} is not installed. Nothing to uninstall."
+        fi
+        return 0
+    fi
+
+    # Step 2: Confirm (if needed) and perform removal
+    if ! inst_self_uninstall_confirm_and_remove "$bin_path"; then
+        return 1
+    fi
+
+    # Step 3: Clean up PATH entries (user installs only)
+    inst_self_uninstall_cleanup_path
+
+    if [ "${JSON}" -eq 1 ]; then
+        out_json "out_success" "${APP_NAME} has been uninstalled."
+    else
+        out_success "${APP_NAME} has been uninstalled."
+    fi
+    return 0
+}
+
+# =============================================================================
+# inst_self_uninstall_determine_bin() - Step 1: Determine which installation to remove
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Decides the correct binary path to remove based on current user,
+# FORCE_GLOBAL, and actual file presence.
+#
+# Returns the full path to remove, or empty string if nothing to uninstall.
+#
+# PRINTF EXCEPTION (class B – function return-via-stdout):
+# Final printf '%s' "$bin_path" is a data return for $(…) capture by the
+# uninstall orchestrator — not a product user message. User-facing text in
+# this helper uses out_warn. Callers must capture the path; do not treat
+# this printf as a substitute for out_*.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# CRITICAL: Respects root vs user logic exactly as before.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+
+inst_self_uninstall_determine_bin() {
+    # Prefer shared path SSOT (util_get_install_bin_path); only return if file exists.
+    : "${APP_NAME:=timer}"
+    : "${GLOBAL_BIN:=/usr/local/bin}"
+    : "${HOME:=/tmp}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+
+    local bin_path=""
+    bin_path=$(util_get_install_bin_path)
+    if [ -n "${bin_path}" ] && [ -f "${bin_path}" ]; then
+        printf '%s' "${bin_path}"
+        return 0
+    fi
+    # Empty → not installed (caller treats as nothing to uninstall)
+    printf '%s' ""
+}
+
+# =============================================================================
+# inst_self_uninstall_confirm_and_remove() - Step 2: Confirm and remove binary
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Handles confirmation (unless --force) and actual file removal.
+# Interactive TTY uses prompt_yes_no(); non-interactive / --json / --quiet
+# fail closed with an explicit --force requirement (never auto-delete).
+#
+# Returns 0 on out_success, non-zero on failure/cancel.
+#
+# Last reviewed: 2026-07-13
+# =============================================================================
+
+inst_self_uninstall_confirm_and_remove() {
+    local bin_path="$1"
+
+    # Confirm before removal (unless --force / FORCE_REINSTALL).
+    # Non-interactive / --json / --quiet: fail closed — never auto-delete.
+    # Do not report that as "cancelled by user" (user never answered a prompt).
+    if [ "${FORCE_REINSTALL:-0}" -eq 0 ] && [ "${FORCE:-0}" -eq 0 ]; then
+        : "${JSON:=0}"
+        : "${QUIET:=0}"
+
+        if [ "${JSON}" -eq 1 ] || [ "${QUIET}" -eq 1 ] || ! [ -t 0 ] || ! [ -t 1 ]; then
+            # requirement-shell-interactive-vs-noninteractive.md: destructive ops need --force
+            if [ "${JSON}" -eq 1 ]; then
+                out_json_error "Uninstall requires --force in non-interactive mode (refusing to remove ${bin_path})." "confirm_required"
+            else
+                out_error "Uninstall requires --force in non-interactive mode (refusing to remove ${bin_path})."
+                out_info "Re-run with: ${APP_NAME} self-uninstall --force"
+            fi
+            return 1
+        fi
+
+        if prompt_yes_no "This will remove: ${bin_path}"; then
+            :  # confirmed on TTY
+        else
+            # Interactive TTY: user answered no / empty (default N)
+            out_plain "Uninstall cancelled by user."
+            return 1
+        fi
+    fi
+
+    # Remove the binary
+    if rm -f "$bin_path" 2>/dev/null; then
+        return 0
+    else
+        if [ "${JSON}" -eq 1 ]; then
+            out_json_error "Failed to remove ${bin_path} (permission denied?)" "permission_denied"
+        else
+            out_error "Failed to remove ${bin_path} (permission denied?)"
+        fi
+        return 1
+    fi
+}
+
+# =============================================================================
+# inst_self_uninstall_cleanup_path() - Step 3: Clean up PATH entries
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Removes installer-added PATH entries from shell config files
+# (bash, zsh, fish) for user-level installations **only if** USER_BIN
+# is empty or does not exist.
+#
+# SAFETY RULE:
+# If USER_BIN still contains other files (other tools, scripts, etc.),
+# we deliberately keep the PATH entry to avoid breaking the user's environment.
+# This follows CIAO-Lite "Caution" and "Anti-fragile" principles.
+#
+# Last reviewed: 2026-07-14
+# =============================================================================
+
+inst_self_uninstall_cleanup_path() {
+    # Only attempt cleanup for non-root installs
+    if [ "$(id -u)" -eq 0 ]; then
+        return 0
+    fi
+
+    : "${HOME:=/tmp}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+    local bin_dir="${USER_BIN}"
+    local should_clean_path=1
+
+    # === SAFETY CHECK: Only clean PATH if USER_BIN is empty ===
+    if [ -d "$bin_dir" ]; then
+        if [ -n "$(ls -A "$bin_dir" 2>/dev/null)" ]; then
+            # Directory exists and is not empty → keep PATH for other tools
+            should_clean_path=0
+            if [ "${JSON}" -eq 0 ]; then
+                out_warn "Keeping ${bin_dir} in PATH because it still contains files."
+            fi
+        fi
+    fi
+
+    if [ "$should_clean_path" -eq 0 ]; then
+        return 0
+    fi
+
+    # Directory is empty or missing → safe to remove our PATH entries
+    local cleaned=0
+    local escaped_bin
+    # Escape sed | delimiter characters in USER_BIN for path-line removal
+    escaped_bin=$(printf '%s' "${bin_dir}" | sed 's/[\\/&|]/\\&/g')
+
+    for config in "${HOME}/.bashrc" "${HOME}/.zshrc" "${HOME}/.config/fish/config.fish"; do
+        if [ -f "$config" ]; then
+            if sed -i.bak \
+                -e '/# Added by .* installer/d' \
+                -e "\|${escaped_bin}|d" \
+                -e '/\.local\/bin/d' \
+                "$config" 2>/dev/null; then
+                cleaned=1
+            fi
+            rm -f "${config}.bak" 2>/dev/null || true
         fi
     done
 
-    printf '}\n'
-}
-
-# =============================================================================
-# output_json_error() - Standardized error output
-# =============================================================================
-
-output_json_error() {
-    local message="$1"
-    local code="${2:-unknown_error}"
-    output_json "error" "$message" "code" "$code"
-}
-
-# =============================================================================
-# msg_n() - Print message WITHOUT trailing newline
-# =============================================================================
-#
-# Use this for interactive prompts (e.g. "Install now? (y/N): ")
-# Respects --quiet and --json (prints nothing in those modes).
-#
-# !!! THIS IS PART OF THE SINGLE SOURCE OF TRUTH FOR OUTPUT !!!
-# Designed to be reusable in other projects.
-# =============================================================================
-
-msg_n() {
-    output_text "plain_n" "$*"
-}
-
-# =============================================================================
-# Updated thin wrapper functions - All output must go through output_text()
-# =============================================================================
-
-die() {
-    if [ "${JSON}" -eq 1 ]; then
-        output_json_error "$*"
-    else
-        output_text "error" "$*"
+    if [ "$cleaned" -eq 1 ] && [ "${JSON}" -eq 0 ]; then
+        out_plain "→ Cleaned ${APP_NAME} PATH entries from shell config files"
+        out_plain "→ You may want to restart your terminal"
     fi
-    exit 1
-}
-
-info() {
-    output_text "info" "$*"
-}
-
-success() {
-    output_text "success" "$*"
-}
-
-warn() {
-    output_text "warn" "$*"
-}
-
-error() {
-    output_text "error" "$*"
-}
-
-msg() {
-    output_text "plain" "$*"
-}
-
-empty_line() {
-    output_text "plain" ""
-}
-
-double_line() {
-    output_text "plain" "=============================================================="
 }
 
 # =============================================================================
-# is_installed() - Robust installation check
+# inst_is_installed() - Robust installation check
 # =============================================================================
 #
 # GENERAL PURPOSE:
@@ -392,51 +1325,73 @@ double_line() {
 #
 # !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
 # Designed to be reusable in other projects.
+#
+# Last reviewed: 29 April 2026
 # =============================================================================
 
-is_installed() {
-    : "${GLOBAL_BIN:=/usr/local/bin}"
-    : "${USER_BIN:=${HOME}/.local/bin}"
-    : "${INSTALL_PATH:=${GLOBAL_BIN}/${APP_NAME}}"
-
-    if [ "$(id -u)" -eq 0 ]; then
-        IS_ROOT=1
-        INSTALL_PATH="${GLOBAL_BIN}/${APP_NAME}"
-    else
-        IS_ROOT=0
-        INSTALL_PATH="${USER_BIN}/${APP_NAME}"
-    fi
-
-    # Support explicit parameters or force flags
-    if [ "${1:-}" = "--user" ] || [ "${FORCE_USER:-0}" -eq 1 ]; then
-        [ -f "${USER_BIN}/${APP_NAME}" ] && [ -x "${USER_BIN}/${APP_NAME}" ] && return 0
+inst_is_installed() {
+    version=$(inst_get_version)
+    if [ "${version}" = "not installed"  ]; then 
         return 1
-    elif [ "${1:-}" = "--global" ] || [ "${FORCE_GLOBAL:-0}" -eq 1 ]; then
-        [ -f "${GLOBAL_BIN}/${APP_NAME}" ] && [ -x "${GLOBAL_BIN}/${APP_NAME}" ] && return 0
-        return 1
-    fi
-
-    # Main logic
-    if [ "$IS_ROOT" -eq 1 ]; then
-        [ -f "${INSTALL_PATH}" ] && [ -x "${INSTALL_PATH}" ]
     else
-        { [ -f "${GLOBAL_BIN}/${APP_NAME}" ] && [ -x "${GLOBAL_BIN}/${APP_NAME}" ]; } ||
-        { [ -f "${USER_BIN}/${APP_NAME}"   ] && [ -x "${USER_BIN}/${APP_NAME}"   ]; }
+        return 0
     fi
 }
 
 # =============================================================================
-# get_installed_version() - Extract version from installed binary
+# inst_get_version() - Extract version from installed binary
 # =============================================================================
 #
 # GENERAL PURPOSE:
 # Safely reads the VERSION constant from the installed script.
 # Used by --version-check and --self-update.
 #
+# Safe Variable Defaults
+#
 # !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
 # Designed to be reusable in other projects.
+#
+# CRITICAL WARNING - VERSION EXTRACTION IS ESSENTIAL FOR SELF-UPDATE:
+# Knowing the exact installed version is not optional — it is the foundation
+# of safe self-update and version-check logic.
+#
+# Without a reliable inst_get_version(), self-update cannot properly
+# compare local version against remote, leading to:
+# - Unnecessary re-downloads
+# - Failed updates
+# - Silent failures
+# - Potential downgrade or broken installation
+#
+# AI assistants frequently fail to respect this importance. They often
+# overlook, simplify, or remove version extraction logic because they
+# consider it "minor" or try to replace the entire self-update flow with
+# a simpler approach. This always breaks the self-update mechanism.
+#
+# This function is battle-field tested and intentionally simple/robust
+# (grep + cut on the VERSION= line). Any attempt to rewrite or bypass it
+# risks destroying the self-update safety net.
+#
+# We must intentionally preserve and reuse this exact function instead of
+# replacing it. Respecting version awareness is a core part of CIAO
+# Caution and Anti-fragility.
+#
+# PRINTF/ECHO EXCEPTION (class B – function return-via-stdout):
+# echo "unknown" / echo "not installed" / grep|cut pipeline output are data
+# returns for $(inst_get_version) capture — not product banners. Callers
+# pass the string into out_* / out_json when displaying to the user.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# Last reviewed: 2026-07-12
 # =============================================================================
-get_installed_version() {
+
+inst_get_version() {
+    # --- Safe Variable Defaults ----
+    # Defensive defaults - never assume globals are set
+    : "${APP_NAME:=app}"
+    : "${IS_ROOT:=0}"
+    : "${GLOBAL_BIN:=/usr/local/bin}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+
     local bin_path
     if [ "$IS_ROOT" -eq 1 ] || [ -x "${GLOBAL_BIN}/${APP_NAME}" ]; then
         bin_path="${GLOBAL_BIN}/${APP_NAME}"
@@ -452,689 +1407,845 @@ get_installed_version() {
 }
 
 # =============================================================================
-# version_check() - Compare local vs remote version + suggest install
+# ver_gt() - Pure POSIX semantic version comparison
 # =============================================================================
 #
 # GENERAL PURPOSE:
-# Fetches the latest version from GitHub raw and compares with installed one.
-# If not installed and running in interactive terminal, it suggests installation.
+# Returns 0 (true) if ver1 > ver2, otherwise returns 1 (false).
+# Used by ver_check() and inst_self_update() to prevent incorrect downgrades.
+#
+# Safe Variable Defaults
+# Respects CIAO zero-dependency rule — no external tools (no sort -V).
+#
+# CRITICAL DESIGN CHOICE:
+# This function was added because previous AI suggestions using `sort -V`
+# were not portable enough for harsh environments (Alpine ash, busybox,
+# minimal containers, Git Bash, etc.).
 #
 # !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
-# Designed to be reusable in other projects.
+# Past AI assistants have repeatedly tried to replace this with:
+#   - `sort -V` one-liners
+#   - Inline string comparisons
+#   - "Cleaner" but less robust logic
+#
+# Any such change re-introduces downgrade bugs and breaks portability.
+# This function must remain pure POSIX and self-contained.
+#
+# AI assistants are explicitly required to:
+# - Never remove or inline this function
+# - Always use it for all version comparisons in grokrec
+# - Preserve all defensive comments
+# - Study the test script provided by the user before suggesting changes
+#
+# This is part of the battle-field-tested defensive layer.
+#
+# Last reviewed: 29 April 2026
 # =============================================================================
 
-version_check() {
-    REMOTE_VERSION=$(curl -fsSL "${SCRIPT_URL}" 2>/dev/null | grep '^VERSION="' | cut -d'"' -f2 || echo "")
+ver_gt() {
+    # --- Safe Variable Defaults ----
+    v1=$1
+    v2=$2
+
+    while [ -n "$v1" ] || [ -n "$v2" ]; do
+        p1=${v1%%.*}
+        p2=${v2%%.*}
+
+        [ -z "$p1" ] && p1=0
+        [ -z "$p2" ] && p2=0
+
+        if [ "$p1" -gt "$p2" ]; then
+            return 0
+        fi
+        if [ "$p1" -lt "$p2" ]; then
+            return 1
+        fi
+
+        if [ "$v1" = "${v1#*.}" ]; then
+            v1=""
+        else
+            v1=${v1#*.}
+        fi
+
+        if [ "$v2" = "${v2#*.}" ]; then
+            v2=""
+        else
+            v2=${v2#*.}
+        fi
+    done
+
+    return 1    # versions are equal
+}
+
+# =============================================================================
+# ver_check() - Check for newer version from remote source
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Compares the locally installed version of ${APP_NAME} against the remote
+# version available at SCRIPT_URL. Supports both human-readable output and
+# clean JSON mode. Used by the `version-check` command and as a helper for
+# self-update decision logic.
+#
+# CIAO PRINCIPLES APPLIED:
+# - Caution (Principle 1): Never assumes SCRIPT_URL is set; graceful failure
+#   with actionable error when remote version cannot be fetched.
+# - Intentional (Principle 2): Explicit safe defaults, clear separation of
+#   version fetching vs comparison, and consistent behavior in JSON/quiet modes.
+# - Anti-fragile (Principle 3): Works whether the tool is installed globally,
+#   per-user, or not yet installed; survives network or parsing failures.
+# - Over-protect (Principle 18): Full defensive header, Protection Zone,
+#   Lessons Learned traceability, and strict avoidance of hard-coded
+#   project-specific URLs or repository paths.
+#
+# ALIGNMENT (live requirements only):
+# - requirement-shell-self-management.md
+# - requirement-shell-cli-interface.md
+# - requirement-shell-output-requirements.md
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# This function is the single source of truth for remote version comparison.
+# Any change must preserve the SCRIPT_URL handling contract and the exact
+# JSON output shape expected by consumers.
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-06-26: Original version contained a hardcoded project-specific default
+#             URL pointing to an unrelated repository (porting artifact).
+#             Corrected to empty safe default + explicit comment. Removed
+#             all hard-coded distribution details to comply with generalization
+#             and hardcoding-prevention rules.
+#
+# Last reviewed: 2026-06-26
+# =============================================================================
+
+ver_check() {
+    # --- Safe Variable Defaults ----
+    # Defensive defaults - never assume globals are set
+    : "${APP_NAME:=timer}"
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+    : "${SCRIPT_URL:=}"
+
+    # SCRIPT_URL is Config SSOT (composed default from REPO_USER/REPO_NAME/APP_NAME).
+    # Override via env for forks or offline channels. Empty → network steps fail loud.
+
+    # Fetch remote version (curl or wget)
+    REMOTE_VERSION=$(util_fetch_remote_version "${SCRIPT_URL}")
 
     if [ -z "$REMOTE_VERSION" ]; then
         if [ "${JSON}" -eq 1 ]; then
-            output_json_error "Failed to fetch remote version" "network_error"
+            out_json_error "Failed to fetch remote version" "network_error"
         else
-            error "Failed to fetch remote version"
+            out_error "Failed to fetch remote version (SCRIPT_URL may be unset or unreachable)"
         fi
         return 1
     fi
 
     local local_version
-    local_version=$(get_installed_version)
+    local_version=$(inst_get_version)
 
     if [ "${JSON}" -eq 1 ]; then
-        output_json "version_check" \
+        # out_json type message key value … — empty message so fields stay key/value pairs
+        local _is_latest="false"
+        if [ "$local_version" = "$REMOTE_VERSION" ]; then
+            _is_latest="true"
+        elif ver_gt "$local_version" "$REMOTE_VERSION" 2>/dev/null; then
+            _is_latest="true"
+        fi
+        out_json "ver_check" "" \
             "local_version" "$local_version" \
             "remote_version" "$REMOTE_VERSION" \
-            "is_latest" "$( [ "$local_version" = "$REMOTE_VERSION" ] && echo "true" || echo "false" )"
+            "is_latest" "${_is_latest}"
     else
-        info "Checking latest version of ${APP_NAME}..."
-        msg "Local version : ${local_version}"
-        msg "Latest version: ${REMOTE_VERSION}"
-        empty_line
+        if [ "${QUIET}" -eq 0 ]; then
+            out_info "Checking latest version of ${APP_NAME}..."
+            out_plain "Local version : ${local_version}"
+            out_plain "Latest version: ${REMOTE_VERSION}"
+            out_empty_line
 
-        if [ "$local_version" = "$REMOTE_VERSION" ]; then
-            success "You are running the latest version."
-        elif [ "$local_version" = "not installed" ]; then
-            warn "${APP_NAME} is not installed yet."
-        else
-            warn "A newer version is available (${REMOTE_VERSION})"
-        fi
-    fi
-}
-
-# =============================================================================
-# self_update() - Perform self-update to latest version
-# =============================================================================
-#
-# GENERAL PURPOSE:
-# Downloads and installs the latest version from GitHub.
-# Respects --force and --quiet.
-#
-# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
-# Designed to be reusable in other projects.
-# =============================================================================
-
-self_update() {
-    if [ "${JSON}" -eq 0 ]; then
-        info "Starting self-update of ${APP_NAME}..."
-    fi
-
-    local REMOTE_VERSION
-    REMOTE_VERSION=$(curl -fsSL "${SCRIPT_URL}" 2>/dev/null | grep '^VERSION="' | cut -d'"' -f2 || echo "")
-
-    if [ -z "$REMOTE_VERSION" ]; then
-        if [ "${JSON}" -eq 1 ]; then
-            output_json_error "Failed to fetch latest version" "network_error"
-        else
-            error "Failed to fetch latest version"
-        fi
-        return 1
-    fi
-
-    local local_version
-    local_version=$(get_installed_version)
-
-    if [ "$local_version" = "$REMOTE_VERSION" ] && [ "${FORCE_REINSTALL}" -eq 0 ]; then
-        if [ "${JSON}" -eq 1 ]; then
-            output_json "success" "message" "Already running the latest version (${REMOTE_VERSION})."
-        else
-            success "Already running the latest version (${REMOTE_VERSION})."
-        fi
-        return 0
-    fi
-
-    if [ "$local_version" != "$REMOTE_VERSION" ] && [ "${JSON}" -eq 0 ]; then
-        info "Updating from ${local_version} → ${REMOTE_VERSION}"
-    fi
-
-    FORCE_REINSTALL=1
-    perform_self_install
-}
-
-# =============================================================================
-# self_uninstall() - Remove ${APP_NAME} from the system
-# =============================================================================
-#
-# GENERAL PURPOSE:
-# Removes the installed ${APP_NAME} binary (global or user) and cleans up the PATH
-# entry added by the installer in shell config files.
-#
-# Respects --force, --quiet, and --json.
-# Works for both root and user installations.
-#
-# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
-# Designed to be robust and reversible where possible.
-# =============================================================================
-
-self_uninstall() {
-    if [ "${JSON}" -eq 0 ]; then
-        info "Starting self-uninstall of ${APP_NAME}..."
-    fi
-
-    local bin_path=""
-    local removed=0
-
-    # Determine which installation to remove
-    if [ "$(id -u)" -eq 0 ] || [ "${FORCE_GLOBAL:-0}" -eq 1 ]; then
-        # Global (root) uninstall
-        if [ -f "${GLOBAL_BIN}/${APP_NAME}" ]; then
-            bin_path="${GLOBAL_BIN}/${APP_NAME}"
-        fi
-    else
-        # User uninstall - prefer local, fallback to global if present
-        if [ -f "${USER_BIN}/${APP_NAME}" ]; then
-            bin_path="${USER_BIN}/${APP_NAME}"
-        elif [ -f "${GLOBAL_BIN}/${APP_NAME}" ]; then
-            bin_path="${GLOBAL_BIN}/${APP_NAME}"
-            if [ "${JSON}" -eq 0 ]; then
-                warn "Global installation found. Removing it (you may need sudo next time)."
-            fi
-        fi
-    fi
-
-    if [ -z "$bin_path" ]; then
-        if [ "${JSON}" -eq 1 ]; then
-            output_json "success" "message" "${APP_NAME} is not installed. Nothing to uninstall."
-        else
-            if [ "${FORCE_REINSTALL:-0}" -eq 1 ] || [ "${FORCE_USER:-0}" -eq 1 ] || [ "${FORCE_GLOBAL:-0}" -eq 1 ]; then
-                warn "${APP_NAME} is not installed. Nothing to uninstall."
+            if [ "$local_version" = "$REMOTE_VERSION" ]; then
+                out_success "You are running the latest version."
+            elif ver_gt "$local_version" "$REMOTE_VERSION"; then
+                out_success "You are running a newer development version (${local_version} > ${REMOTE_VERSION})"
+            elif [ "$local_version" = "not installed" ]; then
+                out_warn "${APP_NAME} is not installed yet."
             else
-                warn "${APP_NAME} is not installed."
+                out_warn "A newer version is available (${REMOTE_VERSION})"
             fi
         fi
-        return 0
     fi
+}
 
-    # Confirm before removal (unless --force or non-interactive)
-    if [ "${FORCE_REINSTALL:-0}" -eq 0 ] && [ -t 0 ] && [ -t 1 ] && [ "${QUIET}" -eq 0 ] && [ "${JSON}" -eq 0 ]; then
-        printf "${YELLOW}This will remove: %s${NC}\n" "$bin_path"
-        printf "Continue? (y/N): "
-        read -r answer || true
-        case "$answer" in
-            [Yy]*|[Yy][Ee][Ss]*) ;;
-            *) 
-                if [ "${JSON}" -eq 1 ]; then
-                    output_json "success" "message" "Uninstall cancelled by user."
-                else
-                    msg "Uninstall cancelled by user."
-                fi
-                return 0 
-                ;;
-        esac
-    fi
 
-    # Remove the binary
-    if rm -f "$bin_path" 2>/dev/null; then
-        removed=1
-    else
-        if [ "${JSON}" -eq 1 ]; then
-            output_json_error "Failed to remove ${bin_path} (permission denied?)" "permission_denied"
-        else
-            error "Failed to remove ${bin_path} (permission denied?)"
-        fi
+# =============================================================================
+# path_add_bashrc() - Add ~/.local/bin to ~/.bashrc
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Appends the PATH export to ~/.bashrc only if not already present.
+#
+# Returns 0 if added (or was already present), 1 if file missing or failed.
+#
+# PRINTF EXCEPTION (class C – file I/O redirect):
+# printf … >> "$bashrc" writes shell config content to a file, not product
+# stdout/stderr. User-visible “→ Added …” lines use out_plain.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+
+path_add_bashrc() {
+    : "${HOME:=/tmp}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+    local bashrc="${HOME}/.bashrc"
+    local path_line
+    path_line=$(printf 'export PATH="%s:$PATH"' "${USER_BIN}")
+    if [ ! -f "$bashrc" ]; then
         return 1
     fi
 
-    # Optional: clean up PATH entry in shell configs (user only)
-    if [ "$(id -u)" -ne 0 ] && [ "$removed" -eq 1 ]; then
-        local cleaned=0
-        for config in "${HOME}/.bashrc" "${HOME}/.zshrc" "${HOME}/.config/fish/config.fish"; do
-            if [ -f "$config" ]; then
-                if sed -i.bak '/# Added by .* installer/d' "$config" 2>/dev/null && \
-                   sed -i.bak '/\.local\/bin:.*PATH/d' "$config" 2>/dev/null; then
-                    cleaned=1
-                fi
-                rm -f "${config}.bak" 2>/dev/null || true
-            fi
-        done
-        if [ "$cleaned" -eq 1 ] && [ "${JSON}" -eq 0 ]; then
-            msg "→ Cleaned ${APP_NAME} PATH entries from shell config files"
-            msg "→ You may want to restart your terminal"
+    if ! grep -qF "${USER_BIN}" "$bashrc" 2>/dev/null; then
+        printf "\n# Added by %s installer (%s)\n" "$APP_NAME" "$VERSION" >> "$bashrc"
+        printf '%s\n' "${path_line}" >> "$bashrc"
+        if [ "${JSON}" -eq 0 ]; then
+            out_plain "→ Added ${USER_BIN} to PATH for bash"
         fi
+        return 0
+    fi
+    return 1  # already present
+}
+
+# =============================================================================
+# path_add_zshrc() - Add ~/.local/bin to ~/.zshrc
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Appends the PATH export to ~/.zshrc only if not already present.
+#
+# Returns 0 if added (or was already present), 1 if file missing or failed.
+#
+# PRINTF EXCEPTION (class C – file I/O redirect):
+# printf … >> "$zshrc" writes shell config content to a file, not product
+# stdout/stderr. User-visible “→ Added …” lines use out_plain.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+
+path_add_zshrc() {
+    : "${HOME:=/tmp}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+    local zshrc="${HOME}/.zshrc"
+    local path_line
+    path_line=$(printf 'export PATH="%s:$PATH"' "${USER_BIN}")
+    if [ ! -f "$zshrc" ]; then
+        return 1
     fi
 
-    if [ "${JSON}" -eq 1 ]; then
-        output_json "success" "message" "${APP_NAME} has been uninstalled."
-    else
-        success "${APP_NAME} has been uninstalled."
+    if ! grep -qF "${USER_BIN}" "$zshrc" 2>/dev/null; then
+        printf "\n# Added by %s installer (%s)\n" "$APP_NAME" "$VERSION" >> "$zshrc"
+        printf '%s\n' "${path_line}" >> "$zshrc"
+        if [ "${JSON}" -eq 0 ]; then
+            out_plain "→ Added ${USER_BIN} to PATH for zsh"
+        fi
+        return 0
+    fi
+    return 1  # already present
+}
+
+# =============================================================================
+# path_add_fish() - Add ~/.local/bin to Fish config
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Creates ~/.config/fish directory if needed and appends the PATH setting
+# to config.fish only if not already present.
+#
+# Returns 0 if added (or was already present), 1 if failed.
+#
+# PRINTF EXCEPTION (class C – file I/O redirect):
+# printf … >> "$fish_config" writes shell config content to a file, not
+# product stdout/stderr. User-visible “→ Added …” lines use out_plain.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+
+path_add_fish() {
+    : "${HOME:=/tmp}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+    local fish_config="${HOME}/.config/fish/config.fish"
+    local path_line
+    path_line=$(printf 'set -gx PATH %s $PATH' "${USER_BIN}")
+
+    # Ensure directory exists
+    if [ ! -d "${HOME}/.config/fish" ] && ! mkdir -p "${HOME}/.config/fish" 2>/dev/null; then
+        return 1
+    fi
+
+    if [ -f "$fish_config" ] && grep -qF "${USER_BIN}" "$fish_config" 2>/dev/null; then
+        return 1  # already present
+    fi
+
+    printf "\n# Added by %s installer (%s)\n" "$APP_NAME" "$VERSION" >> "$fish_config"
+    printf '%s\n' "${path_line}" >> "$fish_config"
+
+    if [ "${JSON}" -eq 0 ]; then
+        out_plain "→ Added ${USER_BIN} to PATH for fish shell"
     fi
     return 0
 }
 
 # =============================================================================
-# in_path() - Check if a directory is in $PATH
+# path_add_shell() - Main orchestrator: Add USER_BIN to shell PATHs
 # =============================================================================
 #
 # GENERAL PURPOSE:
-# Returns 0 if the given directory (default: INSTALL_DIR) is already in $PATH.
-# POSIX-compatible using case statement (works in sh/dash/bash/zsh).
+# Adds ${USER_BIN} (default ${HOME}/.local/bin) to bash, zsh, and fish
+# configuration files if not already present. Thin orchestrator for path_add_*.
 #
-# !!! DO NOT MODIFY OR SIMPLIFY !!!
-# Designed to be reusable in other projects.
+# Respects --json mode (silent in JSON).
+#
+# Last reviewed: 29 April 2026
 # =============================================================================
 
-in_path() {
-    case ":${PATH}:" in
-        *:"${1:-$USER_BIN}":*) return 0 ;;
-        *) return 1 ;;
-    esac
-}
-
-# =============================================================================
-# add_to_shell_path() - Multi-shell PATH support (bash + zsh + fish)
-# =============================================================================
-#
-# GENERAL PURPOSE:
-# Adds ~/.local/bin to the user's shell configuration for bash, zsh, and fish.
-# Works even if the user is currently using a different shell.
-#
-# !!! DO NOT MODIFY OR SIMPLIFY !!!
-# Designed to be reusable in other projects.
-# =============================================================================
-
-add_to_shell_path() {
+path_add_shell() {
     local added=0
     local shell_config="N/A"
 
     # Bash
-    local bashrc="${HOME}/.bashrc"
-    if [ -f "$bashrc" ]; then
-        if [ "$shell_config" = "N/A" ]; then
-            shell_config="${bashrc}"
-        else
-            shell_config="${shell_config} ${bashrc}"
-        fi
-        if ! grep -qF 'export PATH="$HOME/.local/bin:$PATH"' "$bashrc" 2>/dev/null; then
-            printf "\n# Added by %s installer (%s)\n" "$APP_NAME" "$VERSION" >> "$bashrc"
-            printf 'export PATH="$HOME/.local/bin:$PATH"\n' >> "$bashrc"
-            added=1
-            if [ "${JSON}" -eq 0 ]; then
-                msg "→ Added ~/.local/bin to PATH for bash"
-            fi
-        fi
+    if path_add_bashrc; then
+        added=1
+        shell_config="${HOME}/.bashrc"
     fi
 
     # Zsh
-    local zshrc="${HOME}/.zshrc"
-    if [ -f "$zshrc" ]; then
+    if path_add_zshrc; then
+        added=1
         if [ "$shell_config" = "N/A" ]; then
-            shell_config="${zshrc}"
+            shell_config="${HOME}/.zshrc"
         else
-            shell_config="${shell_config} ${zshrc}"
-        fi
-        if ! grep -qF 'export PATH="$HOME/.local/bin:$PATH"' "$zshrc" 2>/dev/null; then
-            printf "\n# Added by %s installer (%s)\n" "$APP_NAME" "$VERSION" >> "$zshrc"
-            printf 'export PATH="$HOME/.local/bin:$PATH"\n' >> "$zshrc"
-            added=1
-            if [ "${JSON}" -eq 0 ]; then
-                msg "→ Added ~/.local/bin to PATH for zsh"
-            fi
+            shell_config="${shell_config} ${HOME}/.zshrc"
         fi
     fi
 
     # Fish
-    local fish_config="${HOME}/.config/fish/config.fish"
-    if [ -d "${HOME}/.config/fish" ] || mkdir -p "${HOME}/.config/fish" 2>/dev/null; then
+    if path_add_fish; then
+        added=1
         if [ "$shell_config" = "N/A" ]; then
-            shell_config="${fish_config}"
+            shell_config="${HOME}/.config/fish/config.fish"
         else
-            shell_config="${shell_config} ${fish_config}"
-        fi
-        if [ -f "$fish_config" ] && grep -qF 'set -gx PATH $HOME/.local/bin $PATH' "$fish_config" 2>/dev/null; then
-            : # already present
-        else
-            printf "\n# Added by %s installer (%s)\n" "$APP_NAME" "$VERSION" >> "$fish_config"
-            printf 'set -gx PATH $HOME/.local/bin $PATH\n' >> "$fish_config"
-            added=1
-            if [ "${JSON}" -eq 0 ]; then
-                msg "→ Added ~/.local/bin to PATH for fish shell"
-            fi
+            shell_config="${shell_config} ${HOME}/.config/fish/config.fish"
         fi
     fi
 
     if [ "$added" -eq 1 ] && [ "${JSON}" -eq 0 ]; then
-        msg "→ Restart your terminal or run: source ${shell_config}"
+        out_plain "→ Restart your terminal or run: source ${shell_config}"
     fi
 }
 
 # =============================================================================
-# perform_self_install() - Main self-installation logic
+# util_sha256_file() - SHA-256 hex digest of a file (portable tool chain)
 # =============================================================================
 #
 # GENERAL PURPOSE:
-# Downloads and installs the script to the correct location (global or user-local).
+# Print the SHA-256 hex digest of file $1 to stdout for capture.
+# Tries sha256sum (GNU/Linux) → shasum -a 256 (macOS) → openssl dgst.
+# Return 1 if no tool or file unreadable.
 #
-# Please don't modify this code for root-only installed
-# You can check [ "$(id -u)" -eq 0 ] before calling / executing 
-#   this function
-#
-# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
-# Designed to be reusable in other projects.
+# PRINTF/ECHO EXCEPTION (class B – return-via-stdout):
+# Digests are data returns for $(util_sha256_file …), not product UI.
 # =============================================================================
 
-perform_self_install() {
-    : "${GLOBAL_BIN:=/usr/local/bin}"
-    : "${USER_BIN:=${HOME}/.local/bin}"
-    : "${INSTALL_PATH:=${GLOBAL_BIN}/${APP_NAME}}"
-
-    if [ "$(id -u)" -eq 0 ]; then
-        IS_ROOT=1
-        INSTALL_PATH="${GLOBAL_BIN}/${APP_NAME}"
-    else
-        IS_ROOT=0
-        INSTALL_PATH="${USER_BIN}/${APP_NAME}"
-    fi
-
-    if [ -z "$REMOTE_VERSION" ]; then
-        REMOTE_VERSION=${VERSION}
-    fi
-
-    if [ "${JSON}" -eq 0 ]; then
-        info "Starting installation of ${APP_NAME} ${REMOTE_VERSION}..."
-    fi
-
-    if is_installed && [ "${FORCE_REINSTALL}" -eq 0 ]; then
-        if [ "${JSON}" -eq 1 ]; then
-            output_json "success" "message" "${APP_NAME} is already installed."
-        else
-            success "${APP_NAME} is already installed. Use --force to override."
-        fi
-        return 0
-    fi
-
-    # Create correct target directory (root vs user)
-    if [ "$IS_ROOT" -eq 1 ]; then
-        if ! mkdir -p "${GLOBAL_BIN}" 2>/dev/null; then
-            if [ "${JSON}" -eq 1 ]; then
-                output_json_error "Failed to create ${GLOBAL_BIN}" "io_error"
-            else
-                error "Failed to create ${GLOBAL_BIN}"
-            fi
-            return 1
-        fi
-    else
-        if ! mkdir -p "${USER_BIN}" 2>/dev/null; then
-            if [ "${JSON}" -eq 1 ]; then
-                output_json_error "Failed to create ${USER_BIN}" "io_error"
-            else
-                error "Failed to create ${USER_BIN}"
-            fi
-            return 1
-        fi
-    fi
-
-    local tmp_file
-    tmp_file=$(mktemp -t "${APP_NAME}.XXXXXX") || {
-        if [ "${JSON}" -eq 1 ]; then
-            output_json_error "Failed to create temporary file" "io_error"
-        else
-            error "Failed to create temporary file"
-        fi
-        return 1
-    }
-
-    if [ "${JSON}" -eq 0 ]; then
-        info "Downloading ${APP_NAME} from GitHub..."
-    fi
-
-    if command -v curl >/dev/null 2>&1; then
-        curl -fsSL "${SCRIPT_URL}" -o "${tmp_file}" || {
-            rm -f "${tmp_file}"
-            if [ "${JSON}" -eq 1 ]; then
-                output_json_error "Download failed (curl)" "network_error"
-            else
-                error "Download failed (curl)"
-            fi
-            return 1
-        }
-    elif command -v wget >/dev/null 2>&1; then
-        wget -qO "${tmp_file}" "${SCRIPT_URL}" || {
-            rm -f "${tmp_file}"
-            if [ "${JSON}" -eq 1 ]; then
-                output_json_error "Download failed (wget)" "network_error"
-            else
-                error "Download failed (wget)"
-            fi
-            return 1
-        }
-    else
-        rm -f "${tmp_file}"
-        if [ "${JSON}" -eq 1 ]; then
-            output_json_error "Neither curl nor wget found" "missing_dependency"
-        else
-            error "Neither curl nor wget found"
-        fi
+util_sha256_file() {
+    local file="${1-}" dig=""
+    if [ -z "${file}" ] || [ ! -f "${file}" ]; then
         return 1
     fi
-
-    chmod +x "${tmp_file}" 2>/dev/null || true
-
-    rm -f "${INSTALL_PATH}" 2>/dev/null
-    if ! mv "${tmp_file}" "${INSTALL_PATH}" 2>/dev/null; then
-        rm -f "${tmp_file}"
-        if [ "${JSON}" -eq 1 ]; then
-            output_json_error "Failed to move to ${INSTALL_PATH}" "io_error"
-        else
-            error "Failed to move to ${INSTALL_PATH}"
-        fi
+    if command -v sha256sum >/dev/null 2>&1; then
+        dig=$(sha256sum "${file}" 2>/dev/null | awk '{ print $1; exit }')
+    elif command -v shasum >/dev/null 2>&1; then
+        dig=$(shasum -a 256 "${file}" 2>/dev/null | awk '{ print $1; exit }')
+    elif command -v openssl >/dev/null 2>&1; then
+        # openssl dgst -sha256 → "SHA256(file)= hex" or "SHA2-256(file)= hex"
+        dig=$(openssl dgst -sha256 "${file}" 2>/dev/null | awk '{ print $NF; exit }')
+    else
         return 1
     fi
-
-    # Add ~/.local/bin to PATH for normal user installs
-    if [ "$IS_ROOT" -eq 0 ]; then
-        add_to_shell_path
+    if [ -z "${dig}" ]; then
+        return 1
     fi
-    
-    if [ "${JSON}" -eq 1 ]; then
-        output_json "success" "message" "${APP_NAME} ${REMOTE_VERSION} successfully installed to ${INSTALL_PATH}"
-    else
-        success "${APP_NAME} ${REMOTE_VERSION} successfully installed to ${INSTALL_PATH}"
-    fi
+    printf '%s\n' "${dig}"
     return 0
 }
 
 # =============================================================================
-# maybe_install() - Friendly installation prompt
+# util_fetch_remote_version() - Extract VERSION="…" from remote SCRIPT_URL body
 # =============================================================================
 #
-# Respects both --quiet and --json modes.
-# In JSON mode we skip the interactive prompt entirely.
-#
-# !!! DO NOT MODIFY OR SIMPLIFY !!!
-# Designed to be reusable in other projects.
+# GENERAL PURPOSE:
+# Download SCRIPT_URL with curl or wget and print the remote VERSION value.
+# Empty stdout on failure (caller fails loud). Class B return-via-stdout.
 # =============================================================================
 
-maybe_install() {
-    if is_installed && [ "${FORCE_REINSTALL}" -eq 0 ]; then
-        return 0
+util_fetch_remote_version() {
+    local url="${1-}"
+    local body=""
+    if [ -z "${url}" ]; then
+        return 1
     fi
-
-    # In JSON mode or quiet mode we do not show interactive prompts
-    if [ "${JSON}" -eq 1 ] || [ "${QUIET}" -eq 1 ]; then
-        return 0
-    fi
-
-    empty_line
-    msg "Note: '${APP_NAME}' is not installed yet."
-    msg "     Version: ${VERSION}"
-    empty_line
-    msg "Recommended installation command:"
-    empty_line
-
-    if [ "$IS_ROOT" -eq 1 ]; then
-        msg "     sudo curl -fsSL ${SCRIPT_URL} | sudo ${SH}"
+    if command -v curl >/dev/null 2>&1; then
+        body=$(curl -fsSL "${url}" 2>/dev/null) || body=""
+    elif command -v wget >/dev/null 2>&1; then
+        body=$(wget -qO- "${url}" 2>/dev/null) || body=""
     else
-        msg "     curl -fsSL ${SCRIPT_URL} | ${SH}"
+        return 1
     fi
-    empty_line
+    if [ -z "${body}" ]; then
+        return 1
+    fi
+    printf '%s\n' "${body}" | grep '^VERSION="' | head -n1 | cut -d'"' -f2
+    return 0
+}
 
-    local should_install=false
+# =============================================================================
+# util_get_install_bin_path() - Return the correct binary path to operate on
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Returns the full path to the ${APP_NAME} binary that should be used for
+# install/uninstall/update operations.
+#
+# Safe Variable Defaults
+#
+# Respects --force and --json.
+# Respects root vs non-root isolation, --force-user, --force-global.
+#
+# For non-root: prefers ~/.local/bin, falls back to /usr/local/bin if present.
+# For root: always uses /usr/local/bin.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# This is a minimal defensive helper to reduce repetition while preserving
+# the strict root/non-root separation that has been battle-field tested.
+#
+# CRITICAL: Any change here must maintain zero cross-contamination between
+# user and global installations.
+#
+# PRINTF EXCEPTION (class B – function return-via-stdout):
+# Final printf '%s' "${bin_path}" is a data return for $(…) capture — not
+# product UI. Warnings use out_warn. Callers must capture the path.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
 
-    if [ -t 0 ] && [ -t 1 ]; then
-        msg_n "     Install now? (y/N): "     # No newline at the end
-        read -r answer || true
-        case "$answer" in
-            [Yy]*|[Yy][Ee][Ss]*) should_install=true ;;
-            *) 
-                msg "Installation skipped by user."
-                return 0 
-                ;;
-        esac
+util_get_install_bin_path() {
+    # --- Safe Variable Defaults ----
+    # Defensive defaults - never assume globals are set
+    # HOME before any ${HOME}/… path (INC-20260713-001 / set -u order)
+    : "${APP_NAME:=app}"
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+    : "${FORCE_USER:=0}"
+    : "${FORCE_GLOBAL:=0}"
+    : "${GLOBAL_BIN:=/usr/local/bin}"
+    : "${HOME:=/tmp}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+
+    local bin_path=""
+
+    # Explicit force flags take precedence
+    if [ "${FORCE_USER}" -eq 1 ]; then
+        bin_path="${USER_BIN}/${APP_NAME}"
+    elif [ "${FORCE_GLOBAL}" -eq 1 ] || [ "$(id -u)" -eq 0 ]; then
+        bin_path="${GLOBAL_BIN}/${APP_NAME}"
     else
-        msg "Non-interactive mode detected → installing automatically..."
-        should_install=true
+        # Normal non-root behavior: prefer user-local, fallback to global
+        if [ -f "${USER_BIN}/${APP_NAME}" ]; then
+            bin_path="${USER_BIN}/${APP_NAME}"
+        elif [ -f "${GLOBAL_BIN}/${APP_NAME}" ]; then
+            bin_path="${GLOBAL_BIN}/${APP_NAME}"
+            if [ "${JSON}" -eq 0 ] && [ "${QUIET}" -eq 0 ]; then
+                out_warn "Global installation found. Operating on it (you may need sudo for uninstall)."
+            fi
+        else
+            bin_path="${USER_BIN}/${APP_NAME}"
+        fi
     fi
 
-    if [ "$should_install" = "true" ]; then
-        perform_self_install
-        exit 0
+    printf '%s' "${bin_path}"
+}
+
+# =============================================================================
+# util_backup() - Create dated backup before any modification
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Creates a dated backup of a file or directory before destructive or
+# modifying operations (rm -rf, sed, config changes).
+#
+# This implements CIAO Principle 10 (Right Backup & Restore Strategy).
+#
+# ────────────────────────────────────────────────
+# CIAO PRINCIPLES APPLIED (v2.9.1)
+# ────────────────────────────────────────────────
+# Principle 1  (Caution)               - Safe path validation
+# Principle 2  (Intentional Verbosity) - Full header + comments
+# Principle 3  (Anti-fragile)          - Survives missing files gracefully
+# Principle 7  (Reusable)              - Designed for reuse in other projects
+# Principle 9  (Safe Temporary Files)  - Uses mktemp where needed
+# Principle 10 (Backup Strategy)       - Dated backup with counter
+#
+# CRITICAL DEFENSIVE RULES:
+# - Never modify files without creating backup first.
+# - Refuse dangerous paths (/, $HOME, empty).
+# - Backup name format: <name>.YYYYMMDD-N.bak
+# - All messages go through out_text helpers only.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# This is the central backup mechanism. Any change must preserve dated backup
+# naming and safety checks to prevent accidental data loss.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+util_backup() {
+    # --- Safe Variable Defaults ---
+    : "${APP_NAME:=app}"
+    : "${HOME:=/tmp}"
+    : "${PROJECT_NAME:=${APP_NAME}-demo}"
+    : "${PROJECT_DIR:=${HOME}/${PROJECT_NAME}}"
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+
+    local target="${1-}"
+    local reason="${2:-pre-change}"
+
+    if [ -z "$target" ]; then
+        return 1
+    fi
+
+    # Safety check
+    if [ "$target" = "/" ] || [ "$target" = "${HOME}" ] || [ -z "$target" ]; then
+        out_warn "Refusing to backup dangerous path: $target"
+        return 1
+    fi
+
+    local timestamp
+    timestamp=$(date +%Y%m%d)
+    local counter=1
+    local backup_path
+
+    if [ -d "$target" ]; then
+        backup_path="${target}.${timestamp}-${counter}.bak"
+        while [ -e "$backup_path" ]; do
+            counter=$((counter + 1))
+            backup_path="${target}.${timestamp}-${counter}.bak"
+        done
+        cp -a "$target" "$backup_path" 2>/dev/null && \
+            out_info "Backup created: $backup_path (reason: $reason)" || \
+            out_warn "Failed to create backup of directory $target"
+    elif [ -f "$target" ]; then
+        backup_path="${target}.${timestamp}-${counter}.bak"
+        while [ -e "$backup_path" ]; do
+            counter=$((counter + 1))
+            backup_path="${target}.${timestamp}-${counter}.bak"
+        done
+        cp "$target" "$backup_path" 2>/dev/null && \
+            out_info "Backup created: $backup_path (reason: $reason)" || \
+            out_warn "Failed to create backup of file $target"
     fi
 }
 
 # =============================================================================
-# show_about() - Display diagnostic information about the current environment
+# util_resolve_storage() - Storage resolver
 # =============================================================================
 #
-# Shows installation status, versions (global/local), current shell, and TTY status.
-# Fully respects --quiet and --json modes.
+# GENERAL PURPOSE:
+# Returns the best available volatile storage directory for prompt files.
+# Prefers /dev/shm (fastest, in-memory) → /tmp → fallback to XDG_CACHE_HOME.
+# All paths include ${USERNAME} to isolate per-user storage.
 #
-# In JSON mode: outputs exactly ONE clean JSON object with accurate shell detection.
+# Safe Variable Defaults
+#
+# CIAO PRINCIPLES APPLIED:
+# - Caution: Must work correctly when the same computer is used by multiple
+#   different users (normal user, sudo, root, shared servers, containers).
+# - Intentionality: Never allow one user's files to be readable/writable by
+#   another user. Every directory creation must be ownership-aware.
+# - Anti-fragile: Survive permission conflicts and multi-user environments.
+#
+# CRITICAL WARNING - MULTI-USER PROBLEM AI FREQUENTLY OVERLOOKS:
+# Many good applications on a computer are run by different users over time
+# (e.g. normal user → sudo → another login account). 
+#
+# AI assistants often simply "add mkdir -p" when solving a storage task without
+# considering ownership and cross-user write privilege. This approach is
+# untested and problematic — it can create directories owned by one user that
+# another user cannot read/write, or allow unintended access between users.
+#
+# That is why we intentionally isolate folders per user (${APP_NAME}-${USERNAME})
+# and why any change to this function must preserve strict per-user isolation.
+# Rewriting this with a generic shared folder is forbidden and has caused
+# permission bugs in the past.
 #
 # !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other projects.
+#
+# ECHO EXCEPTION (class B – function return-via-stdout):
+# echo of storage paths is a data return for $(util_resolve_storage) capture,
+# not a product user message. Failures use out_die.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-07-13: STORAGE_DIR was bare/unset on third fallback (INC-20260713-001 P1).
+# 2026-07-14: Third fallback uses XDG_CACHE_HOME / HOME/.cache / /tmp with
+#             per-user ${APP_NAME}-${USERNAME} isolation under set -u.
+#
+# Last reviewed: 2026-07-14
+# =============================================================================
+util_resolve_storage() {
+    # --- Safe Variable Defaults ----
+    # Defensive defaults - never assume globals are set
+    : "${USERNAME:=unknown}"
+    : "${APP_NAME:=app}"
+    : "${HOME:=/tmp}"
+    : "${XDG_CACHE_HOME:=${HOME}/.cache}"
+
+    if [ -d "/dev/shm" ] && [ -w "/dev/shm" ]; then
+        echo "/dev/shm/${APP_NAME}-${USERNAME}"
+        return 0
+    fi
+    if [ -w "/tmp" ]; then
+        echo "/tmp/${APP_NAME}-${USERNAME}"
+        return 0
+    fi
+    # XDG-style per-user cache isolation (set -u safe)
+    : "${STORAGE_DIR:=${XDG_CACHE_HOME}/${APP_NAME}-${USERNAME}}"
+    if ! mkdir -p "${STORAGE_DIR}" 2>/dev/null; then
+        out_die "Cannot create storage directory ${STORAGE_DIR}"
+    fi
+    echo "${STORAGE_DIR}"
+    return 0
+}
+
+# =============================================================================
+# prompt_ask() - Defensive general-purpose interactive prompt with default
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Displays a message, shows current/default values if available, and waits
+# for user input. Returns the answer (or the default if user presses Enter).
+# Fully respects --quiet, --json, and non-TTY environments.
+# Uses the centralized output system (out_info / out_msg_n).
+#
+# This is the **Single Source of Truth** for all simple value prompts in the project.
+#
+# CIAO PRINCIPLES APPLIED:
+# - Caution (Principle 1): Multiple guards prevent prompting in non-interactive contexts.
+# - Intentional (Principle 2): Clear behavior for TTY vs non-TTY and quiet/JSON modes.
+# - Anti-fragile (Principle 3): Works reliably across different terminals and invocation methods.
+# - Over-protect (Principle 18): Trusts explicit INTERACTIVE=1 from caller when low-level TTY check is flaky.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Past AI assistants have repeatedly broken this by using raw printf/echo + read,
+# which violates the single output system, quiet/json handling, and TTY detection.
+#
+# PRINTF EXCEPTION (class B – function return-via-stdout only):
+# printf '%s' "${default|answer}" returns the chosen value for $(prompt_ask …)
+# capture. It is NOT the prompt UI. User-visible prompt text MUST stay on
+# out_info / out_msg_n. Do not replace those with raw printf + read.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# Last reviewed: 2026-07-12
 # =============================================================================
 
-show_about() {
-    if [ "${JSON}" -eq 1 ]; then
-        # === JSON MODE - Clean, machine-friendly output ===
-        local installed="false"
-        is_installed && installed="true"
+prompt_ask() {
+    # --- Safe Variable Defaults ---
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
 
-        local global_ver="not found"
-        if [ -x "${GLOBAL_BIN}/${APP_NAME}" ]; then
-            global_ver=$(grep '^VERSION="' "${GLOBAL_BIN}/${APP_NAME}" 2>/dev/null | cut -d'"' -f2 || echo "unknown")
-        fi
+    # set -u safe: missing args become empty defaults (INC-20260713-001 class)
+    local message="${1-}"
+    local default="${2-}"
+    local current="${3-}"
 
-        local local_ver="not found"
-        if [ -x "${USER_BIN}/${APP_NAME}" ]; then
-            local_ver=$(grep '^VERSION="' "${USER_BIN}/${APP_NAME}" 2>/dev/null | cut -d'"' -f2 || echo "unknown")
-        fi
-
-        # Improved shell detection: avoid showing "${APP_NAME}" as the shell
-        local current_shell="unknown"
-        current_shell=$(ps -p $$ -o comm= 2>/dev/null | tr -d '()' || echo "unknown")
-        
-        # If we see the script name itself (or generic sh/dash/ash), climb to parent shell
-        if [ "$current_shell" = "${APP_NAME}" ] || [ "$current_shell" = "sh" ] || \
-           [ "$current_shell" = "dash" ] || [ "$current_shell" = "ash" ]; then
-            local parent_pid
-            parent_pid=$(ps -p $$ -o ppid= 2>/dev/null | tr -d ' ')
-            if [ -n "$parent_pid" ]; then
-                current_shell=$(ps -p "$parent_pid" -o comm= 2>/dev/null | tr -d '()' || echo "$current_shell")
-            fi
-        fi
-
-        local interactive="false"
-        [ -t 1 ] && interactive="true"
-
-        # Clean JSON: no generic message, accurate shell name
-        output_json "about" "" \
-            "version" "${VERSION}" \
-            "installed" "${installed}" \
-            "global_version" "${global_ver}" \
-            "local_version" "${local_ver}" \
-            "shell" "${current_shell}" \
-            "interactive" "${interactive}" \
-            "user" "${USERNAME}"
-
+    # Never prompt in non-interactive modes
+    if [ "${JSON}" -eq 1 ] || [ "${QUIET}" -eq 1 ]; then
+        printf '%s' "${default}"
         return 0
     fi
 
-    # === Normal Human-readable Mode ===
-    [ "${QUIET}" -eq 1 ] && return 0
-
-    msg "=== ${APP_NAME} ${VERSION} - About / Diagnostics ==="
-    empty_line
-
-    # Installation status
-    if is_installed; then
-        success "${APP_NAME} is installed."
-    else
-        if [ -t 1 ]; then
-            warn "${APP_NAME} is NOT installed in your PATH."
-            msg "   Recommended: curl -fsSL ${SCRIPT_URL} | ${SH}"
-        else
-            warn "${APP_NAME} is NOT installed."
-            msg "   Recommended: curl -fsSL ${SCRIPT_URL} | ${SH}"
+    # Must have a real TTY (unless caller explicitly set INTERACTIVE=1)
+    if ! [ -t 0 ] || ! [ -t 1 ]; then
+        if [ "${INTERACTIVE:-0}" -ne 1 ]; then
+            printf '%s' "${default}"
+            return 0
         fi
     fi
 
-    empty_line
-
-    # Global installation
-    if [ -x "${GLOBAL_BIN}/${APP_NAME}" ]; then
-        global_ver=$(grep '^VERSION="' "${GLOBAL_BIN}/${APP_NAME}" 2>/dev/null | cut -d'"' -f2 || echo "unknown")
-        msg "Global install (${GLOBAL_BIN}/${APP_NAME}):  ${global_ver}"
-    else
-        msg "Global install (${GLOBAL_BIN}/${APP_NAME}):  not found"
+    # Show current value if present
+    if [ -n "${current}" ]; then
+        out_info "Current: ${current}"
     fi
 
-    # Local (user) installation
-    if [ -x "${USER_BIN}/${APP_NAME}" ]; then
-        local_ver=$(grep '^VERSION="' "${USER_BIN}/${APP_NAME}" 2>/dev/null | cut -d'"' -f2 || echo "unknown")
-        msg "Local install  (${USER_BIN}/${APP_NAME}):   ${local_ver}"
-    else
-        msg "Local install  (${USER_BIN}/${APP_NAME}):   not found"
+    # Show default
+    if [ -n "${default}" ]; then
+        out_info "Default: ${default}"
     fi
 
-    empty_line
+    out_msg_n "${message}: "
 
-    # === Improved Shell Detection (same logic as JSON mode) ===
-    local current_shell="unknown"
-    current_shell=$(ps -p $$ -o comm= 2>/dev/null | tr -d '()' || echo "unknown")
-    
-    # If we see the script name itself, try to get the real parent shell
-    if [ "$current_shell" = "${APP_NAME}" ] || [ "$current_shell" = "sh" ] || \
-       [ "$current_shell" = "dash" ] || [ "$current_shell" = "ash" ]; then
+    local answer=""
+    read -r answer || true
+
+    if [ -z "${answer}" ]; then
+        printf '%s' "${default}"
+    else
+        printf '%s' "${answer}"
+    fi
+}
+
+# =============================================================================
+# prompt_yes_no() - Defensive interactive yes/no confirmation prompt
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Displays a message and waits for (y/N) confirmation.
+# Returns 0 if user says yes, returns 1 (non-zero) if user says no or cancels.
+#
+# CRITICAL DEFENSIVE RULES (DO NOT VIOLATE):
+# 1. Must ALWAYS go through single source of truth (out_msg_n + out_text)
+# 2. Must respect --quiet and --json (never show prompt in those modes)
+# 3. Must NEVER use raw printf/echo for user-visible prompt text (product UI)
+#    (class-B return-via-stdout does not apply here — this helper uses exit status)
+# 4. Must work correctly in non-interactive / curl | sh environments
+# 5. Must preserve TTY detection and color handling via out_text
+# 6. This is the SINGLE SOURCE OF TRUTH for all yes/no confirmations in the project.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Past AI assistants have repeatedly replaced this kind of prompt with
+# raw printf + read, breaking consistency with out_text(), --quiet,
+# --json, TTY detection, and the overall defensive design.
+#
+# This helper exists specifically to prevent that regression and to enforce
+# CIAO-Lite principles of Caution, Intentionality, and Over-protect.
+#
+# Last reviewed: 29 April 2026
+# =============================================================================
+
+prompt_yes_no() {
+    # --- Safe Variable Defaults ----
+    # Defensive defaults - never assume globals are set
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+
+    local message="$1"
+
+    # Never show prompt in quiet or json mode
+    if [ "${JSON}" -eq 1 ] || [ "${QUIET}" -eq 1 ]; then
+        return 1   # treat as "no" in non-interactive modes
+    fi
+
+    # Must be interactive TTY
+    if ! [ -t 0 ] || ! [ -t 1 ]; then
+        return 1
+    fi
+
+    out_msg_n "${message} (y/N)? "
+
+    local answer=""
+    read -r answer || true
+
+    case "$answer" in
+        [Yy]*|[Yy][Ee][Ss]*)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+
+# =============================================================================
+# app_about() - Display diagnostic information about the current environment
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Shows detailed diagnostic information: version, installation status (global + local),
+# current shell, TTY/interactive status, user, and helpful next steps.
+#
+# Fully respects --quiet and --json modes.
+# In JSON mode: outputs exactly ONE clean, machine-readable JSON object.
+# In quiet mode: prints nothing.
+#
+# This function provides real value to users (unlike the previous overly simple version)
+# and should be kept in sync with the overall CIAO design and README.md.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Designed to be reusable in other CIAO projects.
+# Last reviewed: April 2026
+# =============================================================================
+
+# =============================================================================
+# util_get_current_shell() - Detect current / parent shell name
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Returns a best-effort shell command name for diagnostics (about).
+# Prefer parent shell when the current process is sh/dash/ash/the app itself.
+#
+# PRINTF EXCEPTION (class B – function return-via-stdout):
+# Final printf '%s' "$shell" (and echo fallbacks inside $(…)) are data
+# returns for capture by app_about — not product messages. Display uses out_*.
+# See requirement-shell-output-requirements.md §2.1.1.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# Nested functions are not portable POSIX; this must stay top-level.
+#
+# Last reviewed: 2026-07-12
+# =============================================================================
+util_get_current_shell() {
+    local shell="unknown"
+    shell=$(ps -p $$ -o comm= 2>/dev/null | tr -d '()' || echo "unknown")
+
+    if [ "$shell" = "${APP_NAME}" ] || [ "$shell" = "sh" ] || \
+       [ "$shell" = "dash" ] || [ "$shell" = "ash" ]; then
         local parent_pid
         parent_pid=$(ps -p $$ -o ppid= 2>/dev/null | tr -d ' ')
         if [ -n "$parent_pid" ]; then
-            current_shell=$(ps -p "$parent_pid" -o comm= 2>/dev/null | tr -d '()' || echo "$current_shell")
+            shell=$(ps -p "$parent_pid" -o comm= 2>/dev/null | tr -d '()' || echo "$shell")
         fi
     fi
-    msg "Current shell:   ${current_shell}"
-
-    # TTY status
-    if [ -t 1 ]; then
-        msg "TTY / Interactive: yes"
-    else
-        msg "TTY / Interactive: no (non-interactive mode)"
-    fi
-
-    empty_line
-    msg "Use '${APP_NAME} about' to see this information again."
+    printf '%s' "$shell"
 }
 
-show_timer_help() {
-    if [ "${JSON}" -eq 1 ]; then
-        output_json "success" "Help text available in human mode. Run without --json."
-        return 0
-    fi
-
-    [ "${QUIET}" -eq 1 ] && return 0
-
-    cat << EOF
-${APP_NAME} – version ${VERSION} - Lightweight per-user named timers (volatile or persistent)
-
-Usage:
-  ${APP_NAME} start [--persist] [name]   Start a timer
-  ${APP_NAME} stop [name]                Stop and show elapsed time
-  ${APP_NAME} kill|reset [name]          Discard or reset timer
-  ${APP_NAME} status [name]              Show elapsed time without stopping
-  ${APP_NAME} list [--persist]           List all running timers
-
-  ${APP_NAME} about                      Show diagnostic info (shell, install status, versions...)
-  ${APP_NAME} version                    Show version
-  ${APP_NAME} version-check              Compare with latest
-  ${APP_NAME} self-update                Update to latest version
-  ${APP_NAME} self-uninstall             Remove timer from the system
-  ${APP_NAME} reinstall                  Force reinstall
-  ${APP_NAME} help                       This help
-
-Options:
-  --persist           Store in persistent storage (survives reboot)
-  --quiet, -q         Suppress non-error output
-  --json              Output in machine-readable JSON format (implies --quiet)
-
-New in 2.8.4:
-  • Full JSON output support for all commands
-  • Improved argument parsing
-  • Robust timer name sanitization
-EOF
-}
 
 # =============================================================================
-# resolve_app_base_dir() - Central storage resolver with full fallback
+# DOMAIN: timer storage + commands (product specialization of selfmanaged bootstrap)
 # =============================================================================
 #
-# SINGLE SOURCE OF TRUTH for all ${APP_NAME} storage decisions.
-# Handles missing /dev/shm, missing $HOME, and ensures we always have
-# a writable location or die() with clear message.
+# GENERAL PURPOSE:
+# Per-user named timers (volatile /dev/shm or persistent cache). All output goes
+# through out_* SSOT. Architecture and lifecycle stay on inst_*/app_* from bootstrap.
 #
-# Priority for volatile mode:
-#   1. /dev/shm          (fastest, RAM)
-#   2. /tmp              (standard fallback, almost always available)
-#   3. /tmp/${APP_NAME}_${USERNAME}  (safe per-user subdir when $HOME is missing)
-#
-# For persistent mode: always tries XDG_CACHE_HOME → ~/.cache → /tmp/${APP_NAME}_${USERNAME}
-#
-# !!! DO NOT MODIFY OR DUPLICATE THIS LOGIC !!!
-# All ${APP_NAME} functions must use this helper (via get_app_file or directly)
-# to keep behavior 100% consistent.
+# !!! DO NOT SIMPLIFY fallback chains or name sanitization !!!
 # =============================================================================
 
-resolve_app_base_dir() {
-    local requested_mode="$1"
+timer_resolve_base_dir() {
+    # --- Safe Variable Defaults ---
+    local requested_mode="${1-volatile}"
     local actual_mode="$requested_mode"
     local base_dir
+    : "${VOLATILE_DIR:=/dev/shm}"
+    : "${APP_NAME:=timer}"
+    : "${USERNAME:=unknown}"
+    : "${HOME:=/tmp}"
+    : "${QUIET:=0}"
+    : "${JSON:=0}"
+    : "${PERSISTENT_DIR:=${XDG_CACHE_HOME:-${HOME}/.cache}/${APP_NAME}}"
 
-    # === Volatile mode fallback chain ===
     if [ "$requested_mode" = "volatile" ]; then
         if [ -d "$VOLATILE_DIR" ] && [ -w "$VOLATILE_DIR" ]; then
             base_dir="$VOLATILE_DIR"
@@ -1142,160 +2253,124 @@ resolve_app_base_dir() {
             actual_mode="fallback"
             base_dir="/tmp"
             if [ "${QUIET}" -eq 0 ] && [ "${JSON}" -eq 0 ]; then
-                warn "Volatile storage (/dev/shm) not available. Falling back to /tmp."
+                out_warn "Volatile storage (/dev/shm) not available. Falling back to /tmp."
             fi
         else
-            # Last resort: create a per-user subdirectory under /tmp
             base_dir="/tmp/${APP_NAME}_${USERNAME}"
             if ! mkdir -p "$base_dir" 2>/dev/null || [ ! -w "$base_dir" ]; then
-                die "No writable temporary storage available (/dev/shm, /tmp). ${APP_NAME} cannot start."
+                out_die "No writable temporary storage available (/dev/shm, /tmp). ${APP_NAME} cannot start."
             fi
             actual_mode="fallback"
             if [ "${QUIET}" -eq 0 ] && [ "${JSON}" -eq 0 ]; then
-                warn "Volatile storage unavailable. Using fallback directory: $base_dir"
+                out_warn "Volatile storage unavailable. Using fallback directory: $base_dir"
             fi
         fi
     else
-        # === Persistent mode ===
-        if [ -n "${HOME:-}" ] && [ -d "${HOME}" ] && [ -w "${HOME}" ]; then
+        if [ -n "${HOME-}" ] && [ -d "${HOME}" ] && [ -w "${HOME}" ]; then
             base_dir="${PERSISTENT_DIR}"
             mkdir -p "$base_dir" 2>/dev/null || true
         else
-            # No usable $HOME → fallback to /tmp per-user directory
             base_dir="/tmp/${APP_NAME}_${USERNAME}_persistent"
             if ! mkdir -p "$base_dir" 2>/dev/null || [ ! -w "$base_dir" ]; then
-                die "No writable location for persistent storage (no usable \$HOME and cannot write to /tmp). ${APP_NAME} cannot continue."
+                out_die "No writable location for persistent storage (no usable \$HOME and cannot write to /tmp). ${APP_NAME} cannot continue."
             fi
             if [ "${QUIET}" -eq 0 ] && [ "${JSON}" -eq 0 ]; then
-                warn "No usable \$HOME detected. Persistent timers will use fallback directory: $base_dir"
+                out_warn "No usable \$HOME detected. Persistent timers will use fallback directory: $base_dir"
             fi
         fi
     fi
 
-    echo "$base_dir"
+    printf '%s\n' "$base_dir"
 }
 
-# =============================================================================
-# get_app_file() - Return full path to timer file
-# =============================================================================
-#
-# Uses the central resolve_app_base_dir() helper to guarantee consistent
-# fallback behavior and warning across the entire script.
-#
-# Uses the same storage resolver logic (volatile + persistent with fallbacks).
-# - volatile  → /dev/shm (fast, lost on reboot)
-# - persistent → ~/.cache/timer (survives reboot)
-#
-# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
-# It must remain a thin wrapper around the central resolver.
-# =============================================================================
-
-get_app_file() {
-    local name="$1"
-    local requested_mode="$2"
+timer_get_file() {
+    local name="${1-default}"
+    local requested_mode="${2-volatile}"
     local base_dir
-
-    base_dir=$(resolve_app_base_dir "$requested_mode")
-
-    # App filename format guarantees per-user isolation
-    echo "${base_dir}/${APP_NAME}_${USERNAME}_${name}"
+    : "${APP_NAME:=timer}"
+    : "${USERNAME:=unknown}"
+    base_dir=$(timer_resolve_base_dir "$requested_mode")
+    printf '%s\n' "${base_dir}/${APP_NAME}_${USERNAME}_${name}"
 }
 
-# =============================================================================
-# sanitize_name() - Prevent dangerous characters in timer names
-# =============================================================================
-#
-# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
-# Security / robustness measure for filename safety.
-# =============================================================================
-
-sanitize_name() {
-    case "$NAME" in
-        *[/\\:*?"<>|'\''"\`\$]*|*..*|*\$\(*|*${IFS}*)
-            if [ "${JSON}" -eq 1 ]; then
-                output_json_error "Invalid timer name: contains forbidden characters" "invalid_name"
+timer_sanitize_name() {
+    # Mutates global TIMER_NAME (set by app_main). Empty → default.
+    # Filename-safe names only: reject path separators and shell metacharacters.
+    # Note: complex bracket classes with nested quotes are unreliable across dash/ash —
+    # use explicit glob arms (CIAO Caution / anti-fragile).
+    : "${TIMER_NAME:=default}"
+    case "$TIMER_NAME" in
+        "")
+            TIMER_NAME="default"
+            ;;
+        *..*|*'/'*|*'\\'*|*':'*|*'*'*|*'?'*|*'"'*|*"'"*|*'<'*|*'>'*|*'|'*|*'`'*|*'$'*|*' '*|*$(printf '\t')*)
+            if [ "${JSON:-0}" -eq 1 ]; then
+                out_json_error "Invalid timer name: contains forbidden characters" "invalid_name"
             else
-                error "Invalid timer name '${NAME}' (contains forbidden characters)"
+                out_error "Invalid timer name '${TIMER_NAME}' (contains forbidden characters)"
             fi
             exit 1
-            ;;
-        "")
-            NAME="default"
             ;;
     esac
 }
 
-# =============================================================================
-# timer_start() - Start a new timer
-# =============================================================================
-#
-# Uses atomic creation + proper existence check to avoid resetting running timers.
-# Now correctly detects "already running" in both normal and --json mode.
-#
-# !!! DO NOT SIMPLIFY THIS LOGIC !!!
-# =============================================================================
+timer_domain_fail() {
+    # $1=human message  $2=json code  [exit 1]
+    local msg="${1-error}"
+    local code="${2:-error}"
+    if [ "${JSON:-0}" -eq 1 ]; then
+        out_json_error "$msg" "$code"
+    else
+        out_warn "$msg"
+    fi
+    exit 1
+}
 
 timer_start() {
     local mode="volatile"
-    [ "$PERSIST" -eq 1 ] && mode="persistent"
+    [ "${TIMER_PERSIST:-0}" -eq 1 ] && mode="persistent"
+    : "${TIMER_FILE:=}"
+    : "${TIMER_NAME:=default}"
 
-    if [ -f "$APP_FILE" ]; then
-        # Timer is already running
+    if [ -f "$TIMER_FILE" ]; then
         if [ "${JSON}" -eq 1 ]; then
-            output_json "error" "Timer '${NAME}' is already running." \
+            out_json "error" "Timer '${TIMER_NAME}' is already running." \
                 "code" "already_running" \
-                "name" "$NAME" \
+                "name" "$TIMER_NAME" \
                 "mode" "$mode"
         else
-            warn "Timer '${NAME}' is already running."
+            out_warn "Timer '${TIMER_NAME}' is already running."
         fi
         exit 1
     fi
 
-    # Create the timer file atomically (only if it doesn't exist)
-    if ! date +%s > "$APP_FILE" 2>/dev/null; then
-        if [ "${JSON}" -eq 1 ]; then
-            output_json_error "Cannot create timer file" "io_error"
-        else
-            error "Cannot create timer file."
-        fi
-        exit 1
+    if ! date +%s > "$TIMER_FILE" 2>/dev/null; then
+        timer_domain_fail "Cannot create timer file" "io_error"
     fi
 
-    # Success
     if [ "${JSON}" -eq 1 ]; then
-        output_json "success" "Timer '${NAME}' started." \
-            "name" "$NAME" \
+        out_json "success" "Timer '${TIMER_NAME}' started." \
+            "name" "$TIMER_NAME" \
             "mode" "$mode"
     else
-        success "Timer '${NAME}' started."
-        [ "$PERSIST" -eq 1 ] && info "  (persistent mode)"
+        out_success "Timer '${TIMER_NAME}' started."
+        if [ "${TIMER_PERSIST}" -eq 1 ]; then
+            out_info "  (persistent mode)"
+        fi
     fi
+    return 0
 }
-
-# =============================================================================
-# timer_stop() - Stop a timer and show elapsed time
-# =============================================================================
-#
-# Uses APP_FILE (which was resolved via get_app_file → central fallback).
-# No additional fallback code needed here.
-#
-# !!! DO NOT MODIFY OR SIMPLIFY !!!
-# =============================================================================
 
 timer_stop() {
-    if [ ! -f "$APP_FILE" ]; then
-        if [ "${JSON}" -eq 1 ]; then
-            output_json_error "No timer '${NAME}' running." "no_timer"
-        else
-            warn "No timer '${NAME}' running."
-        fi
-        exit 1
+    : "${TIMER_FILE:=}"
+    : "${TIMER_NAME:=default}"
+    if [ ! -f "$TIMER_FILE" ]; then
+        timer_domain_fail "No timer '${TIMER_NAME}' running." "no_timer"
     fi
 
     local start_time current_time elapsed minutes seconds
-    start_time=$(cat "$APP_FILE" 2>/dev/null)
-    rm -f "$APP_FILE"
+    start_time=$(cat "$TIMER_FILE" 2>/dev/null)
+    rm -f "$TIMER_FILE"
 
     current_time=$(date +%s)
     elapsed=$((current_time - start_time))
@@ -1303,81 +2378,87 @@ timer_stop() {
     seconds=$((elapsed % 60))
 
     if [ "${JSON}" -eq 1 ]; then
-        output_json "success" "Timer '${NAME}' stopped after ${minutes} min ${seconds} sec." \
-            "name" "$NAME" \
+        out_json "success" "Timer '${TIMER_NAME}' stopped after ${minutes} min ${seconds} sec." \
+            "name" "$TIMER_NAME" \
             "minutes" "$minutes" \
             "seconds" "$seconds" \
             "elapsed" "$elapsed"
     else
-        success "Timer '${NAME}' stopped after ${minutes} min ${seconds} sec."
+        out_success "Timer '${TIMER_NAME}' stopped after ${minutes} min ${seconds} sec."
     fi
 }
-
-# =============================================================================
-# timer_status() - Show current elapsed time without stopping the timer
-# =============================================================================
-#
-# Uses APP_FILE (resolved via central fallback logic).
-#
-# !!! DO NOT MODIFY OR SIMPLIFY !!!
-# =============================================================================
 
 timer_status() {
-    if [ ! -f "$APP_FILE" ]; then
-        if [ "${JSON}" -eq 1 ]; then
-            output_json_error "No timer '${NAME}' running." "no_timer"
-        else
-            warn "No timer '${NAME}' running."
-        fi
-        exit 1
+    : "${TIMER_FILE:=}"
+    : "${TIMER_NAME:=default}"
+    if [ ! -f "$TIMER_FILE" ]; then
+        timer_domain_fail "No timer '${TIMER_NAME}' running." "no_timer"
     fi
 
     local start_time current_time elapsed minutes seconds
-    start_time=$(cat "$APP_FILE" 2>/dev/null)
+    start_time=$(cat "$TIMER_FILE" 2>/dev/null)
     current_time=$(date +%s)
     elapsed=$((current_time - start_time))
     minutes=$((elapsed / 60))
     seconds=$((elapsed % 60))
 
     if [ "${JSON}" -eq 1 ]; then
-        output_json "status" "Timer '${NAME}' running." \
-            "name" "$NAME" \
+        out_json "status" "Timer '${TIMER_NAME}' running." \
+            "name" "$TIMER_NAME" \
             "minutes" "$minutes" \
             "seconds" "$seconds" \
             "elapsed" "$elapsed"
     else
-        msg "Timer '${NAME}': ${minutes} min ${seconds} sec"
+        out_plain "Timer '${TIMER_NAME}': ${minutes} min ${seconds} sec"
     fi
 }
 
-# =============================================================================
-# list_timers() - List all running timers for current user
-# =============================================================================
-#
-# Now uses the central resolve_app_base_dir() helper so it respects the
-# exact same /dev/shm fallback as every other timer command.
-# Only one "No running timers found." message is ever shown.
-#
-# !!! DO NOT MODIFY OR SIMPLIFY !!!
-# =============================================================================
+timer_kill_or_reset() {
+    # $1 = kill | reset
+    local action="${1-kill}"
+    : "${TIMER_FILE:=}"
+    : "${TIMER_NAME:=default}"
+    if [ ! -f "$TIMER_FILE" ]; then
+        timer_domain_fail "No timer '${TIMER_NAME}' running." "no_timer"
+    fi
+    rm -f "$TIMER_FILE"
+    if [ "$action" = "reset" ]; then
+        if [ "${JSON}" -eq 1 ]; then
+            out_json "success" "Timer '${TIMER_NAME}' has been reset." "name" "$TIMER_NAME"
+        else
+            out_success "Timer '${TIMER_NAME}' has been reset."
+        fi
+    else
+        if [ "${JSON}" -eq 1 ]; then
+            out_json "success" "Timer '${TIMER_NAME}' discarded." "name" "$TIMER_NAME"
+        else
+            out_warn "Timer '${TIMER_NAME}' discarded."
+        fi
+    fi
+}
 
-list_timers() {
-    local requested_mode="$1"
-    local base_dir timers_json count=0 file name start_time current_time elapsed minutes seconds
+timer_list() {
+    local requested_mode="${1-volatile}"
+    local base_dir count=0 file name start_time current_time elapsed minutes seconds
+    local timers_json first
+    : "${APP_NAME:=timer}"
+    : "${USERNAME:=unknown}"
+    : "${JSON:=0}"
 
-    base_dir=$(resolve_app_base_dir "$requested_mode")
+    base_dir=$(timer_resolve_base_dir "$requested_mode")
 
     if [ ! -d "$base_dir" ]; then
         if [ "${JSON}" -eq 1 ]; then
-            output_json "list" "" "mode" "$requested_mode" "count" "0" "timers" "[]"
+            out_json "list" "" "mode" "$requested_mode" "count" "0" "timers" "[]"
         else
-            msg "No running timers found."
+            out_plain "No running timers found."
         fi
         return 0
     fi
 
     timers_json="["
-    local first=true
+    first=1
+    count=0
 
     for file in "${base_dir}"/${APP_NAME}_"${USERNAME}"_*; do
         [ -f "$file" ] || continue
@@ -1393,23 +2474,24 @@ list_timers() {
         minutes=$((elapsed / 60))
         seconds=$((elapsed % 60))
 
-        if [ "$count" -gt 0 ]; then
+        if [ "$first" -eq 0 ]; then
             timers_json="${timers_json},"
         fi
-
+        first=0
         timers_json="${timers_json}{\"name\":\"${name}\",\"minutes\":${minutes},\"seconds\":${seconds},\"elapsed\":${elapsed}}"
         count=$((count + 1))
     done
     timers_json="${timers_json}]"
 
     if [ "${JSON}" -eq 1 ]; then
-        output_json "list" "" \
+        # out_json stringifies values (bootstrap SSOT); timers payload is a JSON-text field
+        out_json "list" "" \
             "mode" "$requested_mode" \
             "count" "$count" \
             "timers" "$timers_json"
     else
         if [ "$count" -eq 0 ]; then
-            msg "No running timers found."
+            out_plain "No running timers found."
         else
             for file in "${base_dir}"/${APP_NAME}_"${USERNAME}"_*; do
                 [ -f "$file" ] || continue
@@ -1419,194 +2501,392 @@ list_timers() {
                 elapsed=$((current_time - start_time))
                 minutes=$((elapsed / 60))
                 seconds=$((elapsed % 60))
-                msg "${name} running for ${minutes} min ${seconds} sec"
+                out_plain "${name} running for ${minutes} min ${seconds} sec"
             done
         fi
     fi
 }
 
-# =============================================================================
-# Main script starts here
-# =============================================================================
-#
-# IMPORTANT:
-# This main() function is intentionally kept as the single entry point and
-# command dispatcher. All business logic lives in dedicated functions
-# (timer_start, timer_stop, timer_status, list_timers, resolve_app_base_dir,
-# show_about, etc.).
-#
-# This design allows us to focus on refactoring or adding features in one
-# isolated place instead of hunting through the whole script.
-#
-# !!! DO NOT REMOVE OR SIMPLIFY THIS COMMENT !!!
-# It serves as a strong reminder for future maintenance (including when AI
-# assistants try to "clean up" the code).
-# =============================================================================
+app_about() {
+    # --- Safe Variable Defaults ---
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+    : "${APP_NAME:=timer}"
+    # Version comes from global SSOT (VERSION="1.0.0" near top); default only if unset
+    : "${VERSION:=2.9.0}"
+    : "${GLOBAL_BIN:=/usr/local/bin}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+    : "${SCRIPT_URL:=}"
 
-main_timer() {
-    local cmd="help"
-    local NAME="default"
-    local PERSIST=0
+    if [ "${JSON}" -eq 1 ]; then
+        # === JSON MODE - Clean, machine-friendly output ===
+        local installed="false"
+        inst_is_installed && installed="true"
 
-    # === AUTO-INSTALL FOR ONE-LINER (curl | sh) ===
-    # This block MUST stay at the very top, before any argument parsing.
-    # It ensures that `curl ... | sh` actually installs the tool instead of
-    # just showing help and exiting with "command not found".
-    #
-    # perform_self_install / maybe_install is important here EVEN THOUGH
-    # a subcommand may be present later, because the main real-world usage
-    # of this script is the one-liner installer. Installing first is the
-    # expected behavior in that context.
-    if ! is_installed && [ $# -eq 0 ]; then
-        if [ "${JSON}" -eq 1 ] || [ "${QUIET}" -eq 1 ]; then
-            # Non-interactive / JSON mode → install silently
-            perform_self_install
-        else
-            maybe_install
+        local global_ver="not found"
+        if [ -x "${GLOBAL_BIN}/${APP_NAME}" ]; then
+            global_ver=$(grep '^VERSION="' "${GLOBAL_BIN}/${APP_NAME}" 2>/dev/null | cut -d'"' -f2 || echo "unknown")
         fi
-        exit 0
+
+        local local_ver="not found"
+        if [ -x "${USER_BIN}/${APP_NAME}" ]; then
+            local_ver=$(grep '^VERSION="' "${USER_BIN}/${APP_NAME}" 2>/dev/null | cut -d'"' -f2 || echo "unknown")
+        fi
+
+        local current_shell
+        current_shell=$(util_get_current_shell)
+
+        local interactive="false"
+        [ -t 1 ] && interactive="true"
+
+        local current_user
+        current_user="$(id -un 2>/dev/null || echo "unknown")"
+
+        out_json "about" "" \
+            "app" "${APP_NAME}" \
+            "version" "${VERSION}" \
+            "installed" "${installed}" \
+            "global_version" "${global_ver}" \
+            "local_version" "${local_ver}" \
+            "shell" "${current_shell}" \
+            "interactive" "${interactive}" \
+            "user" "${current_user}"
+        return 0
     fi
 
-    # === Phase 1: Parse all arguments (flags first, then command + name) ===
+    # === Normal Human-readable Mode ===
+    [ "${QUIET}" -eq 1 ] && return 0
+
+    out_info "=== ${APP_NAME} ${VERSION} - About / Diagnostics ==="
+    out_empty_line
+
+    # Installation status
+    if inst_is_installed; then
+        out_success "${APP_NAME} is properly installed."
+    else
+        out_warn "${APP_NAME} is NOT installed in your PATH."
+        if [ -n "${SCRIPT_URL}" ]; then
+            out_info "   Recommended: curl -fsSL ${SCRIPT_URL} | sh"
+        else
+            out_info "   Set SCRIPT_URL to the install script URL, then: curl -fsSL \"\${SCRIPT_URL}\" | sh"
+        fi
+    fi
+
+    out_empty_line
+
+    # Global vs Local installation details
+    if [ -x "${GLOBAL_BIN}/${APP_NAME}" ]; then
+        global_ver=$(grep '^VERSION="' "${GLOBAL_BIN}/${APP_NAME}" 2>/dev/null | cut -d'"' -f2 || echo "unknown")
+        out_info "Global install  (${GLOBAL_BIN}/${APP_NAME}):   ${global_ver}"
+    else
+        out_info "Global install  (${GLOBAL_BIN}/${APP_NAME}):   not found"
+    fi
+
+    if [ -x "${USER_BIN}/${APP_NAME}" ]; then
+        local_ver=$(grep '^VERSION="' "${USER_BIN}/${APP_NAME}" 2>/dev/null | cut -d'"' -f2 || echo "unknown")
+        out_info "Local install   (${USER_BIN}/${APP_NAME}):    ${local_ver}"
+    else
+        out_info "Local install   (${USER_BIN}/${APP_NAME}):    not found"
+    fi
+
+    out_empty_line
+
+    local current_user
+    current_user="$(id -un 2>/dev/null || echo "unknown")"
+    out_info "Current user:      ${current_user}"
+
+    if [ "$(id -u)" -eq 0 ]; then
+        out_success "Execution context: root (global install path available)"
+    else
+        out_info "Execution context: normal user (Type 0 CLI self-management)"
+    fi
+
+    out_empty_line
+
+    local current_shell
+    current_shell=$(util_get_current_shell)
+
+    out_info "Current shell:     ${current_shell}"
+
+    if [ -t 1 ]; then
+        out_info "TTY / Interactive: yes"
+    else
+        out_info "TTY / Interactive: no (non-interactive / scripted mode)"
+    fi
+
+    out_empty_line
+    out_info "Useful commands:"
+    out_info "   ${APP_NAME} start [name]   → Start a timer"
+    out_info "   ${APP_NAME} stop [name]    → Stop and show elapsed"
+    out_info "   ${APP_NAME} list           → List running timers"
+    out_info "   ${APP_NAME} help           → Full usage"
+    out_info "   ${APP_NAME} self-update    → Update to latest version"
+    out_info "   ${APP_NAME} self-uninstall → Clean removal from system"
+    out_info "   ${APP_NAME} --json         → Machine-readable output"
+
+    out_empty_line
+    out_info "Run '${APP_NAME} help' for complete usage information."
+}
+
+app_version() {
+    : "${APP_NAME:=timer}"
+    : "${VERSION:=2.9.0}"
+    : "${JSON:=0}"
+    if [ "${JSON}" -eq 1 ]; then
+        # Same machine contract as historical app_main inline path
+        out_json "version" "" "app" "${APP_NAME}" "version" "${VERSION}"
+    else
+        out_info "${APP_NAME} version ${VERSION}"
+    fi
+}
+
+# =============================================================================
+# app_help() - Display help for timer
+# =============================================================================
+#
+# Shows usage, available commands, and global flags.
+# Fully respects --quiet and --json modes.
+#
+# In --json mode: returns a minimal success object instead of long text.
+# In --quiet mode: prints nothing (silent).
+#
+# Keep in sync with requirement-shell-cli-interface.md command table.
+# =============================================================================
+
+app_help() {
+    : "${SHORT_DESCRIPTION:=${APP_DESC:-Lightweight per-user named timers (volatile or persistent)}}"
+    : "${DESCRIPTION:=POSIX /bin/sh Type 0 CLI: install, version-check, self-update, self-uninstall, about, plus timer start/stop/status/list.}"
+
+    if [ "${JSON}" -eq 1 ]; then
+        out_json "success" "Help text available in human-readable mode. Run without --json." \
+            "command" "help" \
+            "note" "Use --json with version, about, version-check, install, self-update, self-uninstall."
+        return 0
+    fi
+
+    if [ "${QUIET}" -eq 1 ]; then
+        return 0
+    fi
+
+    out_info "${APP_NAME} — ${SHORT_DESCRIPTION}"
+    out_plain "${DESCRIPTION}"
+    out_empty_line
+
+    out_info "Usage:"
+    out_plain "  ${APP_NAME} [command] [options]"
+    out_empty_line
+
+    out_info "Timer commands:"
+    out_plain "  start [--persist] [name]  Start a named timer (default name: default)"
+    out_plain "  stop [name]               Stop timer and show elapsed time"
+    out_plain "  status [name]             Show elapsed time without stopping"
+    out_plain "  list [--persist]          List running timers (volatile or persistent)"
+    out_plain "  kill [name]               Discard a running timer without elapsed report"
+    out_plain "  reset [name]              Reset (discard) a running timer"
+    out_empty_line
+
+    out_info "Self-Management (Type 0 - any user):"
+    out_plain "  install              Install ${APP_NAME} (root→global, user→~/.local/bin)"
+    out_plain "  version              Show current version"
+    out_plain "  about                Show detailed diagnostics"
+    out_plain "  version-check        Compare local vs remote version (needs SCRIPT_URL)"
+    out_plain "  self-update          Update ${APP_NAME} to a newer remote version"
+    out_plain "  self-uninstall       Remove ${APP_NAME} (safe PATH cleanup)"
+    out_plain "  help                 Show this help"
+    out_empty_line
+
+    out_info "Global Options:"
+    out_plain "  --persist            Use persistent storage (survives reboot) for timer ops"
+    out_plain "  --quiet, -q          Suppress info/success (errors and warnings still shown)"
+    out_plain "  --json               Machine-readable JSON (implies --quiet)"
+    out_plain "  --force              Force reinstall / skip uninstall confirm / allow downgrade"
+    out_plain "  --debug              Debug diagnostics on stderr"
+    out_empty_line
+
+    # Effective channel values (Config SSOT / env override) so help is actionable.
+    # CHECKSUM is an install-path runtime pin only — never listed here (requirement-shell-automatic-checksum).
+    : "${REPO_USER:=Wilgat}"
+    : "${REPO_NAME:=timer}"
+    : "${SCRIPT_URL:=}"
+
+    out_info "Environment:"
+    out_plain "  REPO_USER            ${REPO_USER}"
+    out_plain "                       GitHub owner used to compose default SCRIPT_URL"
+    out_plain "  REPO_NAME            ${REPO_NAME}"
+    out_plain "                       GitHub repo used to compose default SCRIPT_URL"
+    if [ -n "${SCRIPT_URL}" ]; then
+        out_plain "  SCRIPT_URL           ${SCRIPT_URL}"
+    else
+        out_plain "  SCRIPT_URL           (not set)"
+    fi
+    out_plain "                       Canonical install channel (override via env; needed for version-check/self-update)"
+    out_empty_line
+}
+
+
+# =============================================================================
+# app_main() - Main entrypoint and command dispatcher
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Thin dispatcher for the timer CLI (selfmanaged Type 0 + timer domain).
+# Handles:
+#   - Auto-install behavior for classic `curl | sh` one-liner (zero arguments)
+#   - Global flag parsing (--quiet, --json, --debug, --force)
+#   - Command routing for all Type 0 self-management commands
+#
+# This is the single entry point when the script is executed directly.
+#
+# CIAO PRINCIPLES APPLIED:
+# - Caution (Principle 1): Never call undefined functions. Always use inst_is_installed.
+#   Auto-install block is kept at the very top as required by existing comments.
+# - Intentional (Principle 2): All supported commands from
+#   requirement-shell-cli-interface.md and app_help() are recognized and routed.
+# - Anti-fragile (Principle 3): Works correctly in interactive TTY, quiet, JSON,
+#   and non-interactive `curl | sh` environments.
+# - Over-protect (Principle 18): Explicit if/then logic, safe defaults, and centralized
+#   output via out_die for unknown commands.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+# This is the central command dispatcher. Changes here affect every execution path.
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-06-26:
+#   - Original version called non-existent functions and only recognized
+#     version/about/help; expanded routing and safe defaults.
+# 2026-07-12:
+#   - Wired --force → FORCE=1 and FORCE_REINSTALL=1 (requirement-shell-cli-interface).
+# 2026-07-14:
+#   - version routes through app_version (no dual inline path).
+#   - zero-arg install propagates failure exit status.
+#   - Type O empty argv: always install-ensure (not help when already installed).
+#     Cases A/B/C (not installed / local / global). --force only for deliberate
+#     re-download/replace — not required for a second one-liner run.
+#     SSOT: requirement-shell-cli-zero-arguments.md (selfmanaged = Type O).
+#
+# Last reviewed: 2026-07-14
+# =============================================================================
+
+app_main() {
+    # --- Safe Variable Defaults ---
+    : "${COMMAND:=help}"
+    : "${QUIET:=0}"
+    : "${JSON:=0}"
+    : "${DEBUG:=0}"
+    : "${FORCE:=0}"
+    : "${FORCE_REINSTALL:=0}"
+
+    # === ZERO-ARG = Type O install-ensure (curl | sh contract) ===
+    # Product type: Type O (online-install) — not Type N help-default.
+    # Empty argv always means "ensure installed", never help.
+    # Cases: not installed | installed local | installed global
+    # - not installed → install (TTY prompt via inst_maybe_install; non-TTY auto)
+    # - already installed → success no-op (inst_perform_install); no --force required
+    # - --force / FORCE_REINSTALL only for deliberate re-download/replace
+    # Exit status must reflect install outcome (failed download/checksum → non-zero).
+    # SSOT: docs/requirements/requirement-shell-cli-zero-arguments.md
+    if [ $# -eq 0 ]; then
+        if [ "${JSON}" -eq 1 ] || [ "${QUIET}" -eq 1 ]; then
+            inst_perform_install
+            exit $?
+        elif inst_is_installed; then
+            inst_perform_install
+            exit $?
+        else
+            inst_maybe_install
+            exit $?
+        fi
+    fi
+
+    # Domain state for timer commands (safe defaults under set -u)
+    : "${TIMER_NAME:=default}"
+    : "${TIMER_PERSIST:=0}"
+    : "${TIMER_FILE:=}"
+    : "${STORAGE_MODE:=volatile}"
+
+    # === Argument parsing: flags and commands (order-independent) ===
+    # Timer name is a free token after a domain command is selected.
     while [ $# -gt 0 ]; do
         case "$1" in
-            --persist)
-                PERSIST=1
-                ;;
-            --quiet|-q)
-                QUIET=1
-                ;;
-            --json)
-                JSON=1
-                QUIET=1
-                ;;
-            help|version|--version|-v|version-check|--version-check|self-update|--self-update)
-                cmd="${1#--}"
-                ;;
-            self-uninstall|--self-uninstall)
-                cmd="self-uninstall"
-                ;;
-            reinstall|--reinstall|--force)
-                FORCE_REINSTALL=1
-                ;;
-            about)
-                cmd="about"
+            --quiet|-q) QUIET=1 ;;
+            --json)     JSON=1; QUIET=1 ;;
+            --debug)    DEBUG=1 ;;
+            --force)    FORCE=1; FORCE_REINSTALL=1 ;;
+            --persist)  TIMER_PERSIST=1 ;;
+            version|about|help|version-check|self-update|self-uninstall|install)
+                COMMAND="$1"
                 ;;
             start|stop|status|list|kill|reset)
-                cmd="$1"
+                COMMAND="$1"
                 ;;
             *)
-                # Everything else is treated as timer name (only for timer commands)
-                if [ "$cmd" = "start" ] || [ "$cmd" = "stop" ] || \
-                   [ "$cmd" = "status" ] || [ "$cmd" = "kill" ] || [ "$cmd" = "reset" ] || \
-                   [ "$cmd" = "list" ]; then
-                    NAME="$1"
-                else
-                    if [ "${JSON}" -eq 1 ]; then
-                        output_json_error "Unknown argument: $1" "bad_argument"
-                    else
-                        error "Unknown argument: $1"
-                        msg "Use '${APP_NAME} help' for available commands."
-                    fi
-                    exit 1
-                fi
+                # Free token: timer name when a domain command is active
+                case "${COMMAND}" in
+                    start|stop|status|list|kill|reset)
+                        TIMER_NAME="$1"
+                        ;;
+                    *)
+                        out_die "Unknown command or flag: $1. See '${APP_NAME} help'."
+                        ;;
+                esac
                 ;;
         esac
         shift
     done
 
-    # === Sanitize timer NAME (only if it's a timer operation) ===
-    if [ "$cmd" = "start" ] || [ "$cmd" = "stop" ] || [ "$cmd" = "status" ] || \
-       [ "$cmd" = "kill" ] || [ "$cmd" = "reset" ] || [ "$cmd" = "list" ] ; then
-        sanitize_name
-    fi
+    # Export force into install/uninstall paths via globals already set
+    out_debug "dispatch command=${COMMAND} quiet=${QUIET} json=${JSON} force=${FORCE} persist=${TIMER_PERSIST}"
 
-    # Determine storage mode and timer file path
-    local STORAGE_MODE APP_FILE
-    STORAGE_MODE=$([ "$PERSIST" -eq 1 ] && echo "persistent" || echo "volatile")
-    APP_FILE=$(get_app_file "$NAME" "$STORAGE_MODE")
-
-    # === Dispatch commands ===
-    case "$cmd" in
+    case "${COMMAND}" in
         version)
-            if [ "${JSON}" -eq 1 ]; then
-                output_json "version" "app" "${APP_NAME}" "version" "${VERSION}"
-            else
-                msg "${APP_NAME} version ${VERSION}"
-            fi
+            app_version
             ;;
-
-        version-check)
-            version_check
-            exit 0 ;;
-
-        self-update)
-            self_update
-            exit 0 ;;
-
-        self-uninstall)
-            self_uninstall
-            exit 0 ;;
-
-        help)
-            show_timer_help
-            exit 0 ;;
-
         about)
-            show_about
-            exit 0 ;;
-
-        start)
-            timer_start
+            app_about
             ;;
-
-        stop)
-            timer_stop
+        version-check)
+            ver_check
             ;;
-
-        status)
-            timer_status
+        self-update)
+            inst_self_update
             ;;
-
-        kill|reset)
-            if [ ! -f "$APP_FILE" ]; then
-                if [ "${JSON}" -eq 1 ]; then
-                    output_json_error "No timer '${NAME}' running." "no_timer"
-                else
-                    warn "No timer '${NAME}' running."
-                fi
-                exit 1
-            fi
-            rm -f "$APP_FILE"
-            if [ "$cmd" = "reset" ]; then
-                if [ "${JSON}" -eq 1 ]; then
-                    output_json "success" "Timer '${NAME}' has been reset." "name" "$NAME"
-                else
-                    success "Timer '${NAME}' has been reset."
-                fi
-            else
-                if [ "${JSON}" -eq 1 ]; then
-                    output_json "success" "Timer '${NAME}' discarded." "name" "$NAME"
-                else
-                    warn "Timer '${NAME}' discarded."
-                fi
-            fi
+        self-uninstall)
+            inst_self_uninstall
             ;;
-
-        list)
-            list_timers "$STORAGE_MODE"
+        install)
+            inst_perform_install
             ;;
-
-        *)
-            if [ "${JSON}" -eq 1 ]; then
-                output_json_error "Unknown command: ${cmd}" "unknown_command"
-            else
-                error "Unknown command: ${cmd}"
-                msg "Use '${APP_NAME} help' for available commands."
-            fi
-            exit 1
+        start|stop|status|list|kill|reset)
+            timer_sanitize_name
+            STORAGE_MODE="volatile"
+            [ "${TIMER_PERSIST}" -eq 1 ] && STORAGE_MODE="persistent"
+            TIMER_FILE=$(timer_get_file "$TIMER_NAME" "$STORAGE_MODE")
+            case "${COMMAND}" in
+                start)  timer_start ;;
+                stop)   timer_stop ;;
+                status) timer_status ;;
+                list)   timer_list "$STORAGE_MODE" ;;
+                kill)   timer_kill_or_reset kill ;;
+                reset)  timer_kill_or_reset reset ;;
+            esac
+            ;;
+        help|*)
+            app_help
             ;;
     esac
 }
 
-main_timer "$@"
+# =============================================================================
+# BOOTSTRAP
+# =============================================================================
+#
+# Always invoke the single dispatcher. Do NOT gate on ${0##*/} matching APP_NAME:
+# under curl | sh / stdin pipe, $0 is the shell (sh/bash/…), not the product
+# filename — a basename gate causes silent no-op and breaks one-liner install.
+# See docs/terminologies/shell-cli-bootstrap.md and INC-20260712-001.
+#
+# Single-file install CLI: source-as-library is unsupported; main always runs.
+# =============================================================================
+app_main "$@"
+
+# End of timer - selfmanaged Type 0 bootstrap + timer domain (CIAO-compliant)
