@@ -2,7 +2,7 @@
 
 Authoritative product and engineering requirements for this project live here.
 
-**Current state (2026-07-14 — selfmanaged specialization):** **Eight** live `requirement-shell-*.md` files (automatic-checksum, CLI interface, CLI zero-arguments, idempotency, interactive vs noninteractive, modular design, output, self-management). Status **Active**; versions per file header (most v1.0.0; `requirement-shell-cli-zero-arguments` **v1.1.0** Type O). Registry: `index.md` (must stay in sync). This set is **sufficient product law** for the current Type 0 self-install/self-maintenance surface (no Type 1/2); online-install behavior is covered by composition (zero-arguments + CLI + checksum + self-management + interactive + idempotency), not a ninth umbrella file. Do **not** invent additional requirement paths without a real ownership gap — verify on disk and register new files in `index.md` in the same change.
+**Current state (2026-07-14 — timer specialization):** **Eight** live `requirement-shell-*.md` files (automatic-checksum, CLI interface, CLI zero-arguments, idempotency, interactive vs noninteractive, modular design, output, self-management). Status **Active**; versions per file header (most v1.0.0; `requirement-shell-cli-zero-arguments` **v1.1.0** Type O). Registry: `index.md` (must stay in sync). This set is **sufficient product law** for the current Type 0 self-install/self-maintenance surface (no Type 1/2); online-install behavior is covered by composition (zero-arguments + CLI + checksum + self-management + interactive + idempotency), not a ninth umbrella file. Do **not** invent additional requirement paths without a real ownership gap — verify on disk and register new files in `index.md` in the same change.
 
 ## Purpose
 
@@ -51,7 +51,7 @@ When planning non-trivial work:
 
 - Every non-trivial PR/change set cites one or more REQ-IDs in commit/PR/summary when requirements exist.
 - Do not invent requirements only in code comments; promote durable intent here.
-- **No placeholders** in requirement files: no `TBD`/`TODO` acceptance criteria, hollow sections, or stub “later” text. See `AGENTS.md` → **No-placeholder policy**.
+- **No placeholders** in requirement files: no `TBD`/`TODO` acceptance criteria, hollow sections, or stub “later” text (no-placeholder / dual-policy hygiene; deliver complete criteria or explicit deferred ownership).
 - Product source comments cite only **live** `requirement-*.md` files (never invent basenames).
 
 ## Review rules

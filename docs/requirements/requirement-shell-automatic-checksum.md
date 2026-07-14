@@ -4,12 +4,12 @@
 
 ## 1. Purpose
 
-This requirement is the **project Single Source of Truth** for **automatic companion-digest integrity** of the selfmanaged POSIX shell tool: downloading a SHA-256 sidecar next to the install channel, verifying install/self-update downloads, and reporting the process **transparently** (companion **link**, expected **value**, and verification **result**).
+This requirement is the **project Single Source of Truth** for **automatic companion-digest integrity** of the timer POSIX shell tool: downloading a SHA-256 sidecar next to the install channel, verifying install/self-update downloads, and reporting the process **transparently** (companion **link**, expected **value**, and verification **result**).
 
 **Scope:** Automatic `${SCRIPT_URL}.sha256` path; transparency of integrity messaging; publisher companion file; relationship to optional env pin; product README primary integrity story.  
 **Out of scope (cited, not re-owned):** Full install one-liner / bootstrap (`requirement-shell-cli-interface.md`, online-install patterns in self-management); full self-update semver gates (`requirement-shell-self-management.md`); full `out_*` catalog (`requirement-shell-output-requirements.md`); package-manager signatures / cosign (not claimed here).
 
-**Must not confuse with:** Embedding a hash of `./selfmanaged` *inside* `./selfmanaged`; requiring operators to set `CHECKSUM` for every install; claiming independent host authenticity from same-channel SHA-256 alone.
+**Must not confuse with:** Embedding a hash of `./timer` *inside* `./timer`; requiring operators to set `CHECKSUM` for every install; claiming independent host authenticity from same-channel SHA-256 alone.
 
 ---
 
@@ -22,8 +22,8 @@ This requirement is the **project Single Source of Truth** for **automatic compa
 | **Default path** | When `CHECKSUM` is **unset** / empty, install and self-update download paths **MUST** use automatic companion verification (not “no integrity”). |
 | **No operator pin required** | Primary online install and self-update **MUST** work without exporting `CHECKSUM`. |
 | **Companion URL** | Companion is **`${SCRIPT_URL}.sha256`** (same scheme/host/path as channel + `.sha256` suffix). |
-| **In-repo publisher SSOT** | Companion file **`selfmanaged.sha256`** (bare SHA-256 hex of `./selfmanaged`) **MUST** ship next to the installable script for the release channel. |
-| **Regenerate on change** | After every edit to `./selfmanaged` that is published, regenerate `selfmanaged.sha256` so automatic mode can match. |
+| **In-repo publisher SSOT** | Companion file **`timer.sha256`** (bare SHA-256 hex of `./timer`) **MUST** ship next to the installable script for the release channel. |
+| **Regenerate on change** | After every edit to `./timer` that is published, regenerate `timer.sha256` so automatic mode can match. |
 | **Shared orchestrator** | Automatic verify **MUST** run on the shared install download path used by first install and self-update (no parallel unverified curl-to-final-path). |
 
 ### 2.2 Transparency (sacred emphasis)
@@ -77,7 +77,7 @@ Automatic integrity **MUST NOT** be silent magic. In **human / normal** mode, th
 |-------------|---------|
 | **Runtime / install-path variable** | `CHECKSUM` is an **optional** shell/env variable read **only** by the install/download verify path (e.g. `inst_perform_install*`). Empty default. |
 | **When set** | Download must match the pin exactly; mismatch aborts. |
-| **Outside payload** | Pin is env/operator/CI for that process — **MUST NOT** be embedded inside `./selfmanaged` as a self-hash of that file. |
+| **Outside payload** | Pin is env/operator/CI for that process — **MUST NOT** be embedded inside `./timer` as a self-hash of that file. |
 | **Not a help/about surface** | **`help` and `about` MUST NOT list, print, or advertise `CHECKSUM`** (name, value, or “optional pin” line). Avoids operators treating it as a required public setting. |
 | **Not primary UX** | Product README **MUST NOT** present `CHECKSUM` as the main or required integrity method when automatic mode exists. |
 | **Not higher same-origin assurance** | Fetching the sidecar from the same origin into `CHECKSUM` then installing is **not** stronger than automatic mode and **MUST NOT** be documented as “highest assurance.” |
@@ -85,7 +85,7 @@ Automatic integrity **MUST NOT** be silent magic. In **human / normal** mode, th
 
 ### 2.5 Forbidden patterns
 
-1. Hash of `./selfmanaged` stored **inside** `./selfmanaged` as the verify target.  
+1. Hash of `./timer` stored **inside** `./timer` as the verify target.  
 2. Primary docs that force newcomers to set external `CHECKSUM` when automatic companion fetch exists.  
 3. **Displaying `CHECKSUM` in `help` or `about`** (human or JSON fields).  
 4. Silent skip of companion fetch with no link/value/result messaging in human mode.  
@@ -97,7 +97,7 @@ Automatic integrity **MUST NOT** be silent magic. In **human / normal** mode, th
 
 When this requirement is **Active** for the product:
 
-1. Product root **`README.md` MUST** explain **automatic** checksum as the default: algorithm (SHA-256), companion URL pattern, in-repo `selfmanaged.sha256`, match / mismatch / missing outcomes.  
+1. Product root **`README.md` MUST** explain **automatic** checksum as the default: algorithm (SHA-256), companion URL pattern, in-repo `timer.sha256`, match / mismatch / missing outcomes.  
 2. README **MUST** state that the program **downloads** the companion itself and is designed to show **link**, **value**, and **result** (human mode).  
 3. README **MUST NOT** push hardcoding or env-first external pin as the primary install integrity path.  
 4. Optional process-env pin — if documented at all — lives under Advanced / automation only, with honest same-channel vs out-of-band trust language; **not** in `help` / `about`.  
@@ -106,17 +106,17 @@ When this requirement is **Active** for the product:
 
 ### 2.7 Implementation Notes (this project)
 
-| Item | Value for selfmanaged |
+| Item | Value for timer |
 |------|------------------------|
-| **Product / binary** | `selfmanaged` (`APP_NAME`) |
-| **Implementation file** | Repo root `./selfmanaged` |
+| **Product / binary** | `timer` (`APP_NAME`) |
+| **Implementation file** | Repo root `./timer` |
 | **Orchestrator** | `inst_perform_install` |
 | **Automatic download helper** | `inst_perform_install_download_without_checksum` (name = without **env** pin; still performs companion verify) |
 | **Strict pin helper** | `inst_perform_install_download_with_checksum` when runtime `CHECKSUM` non-empty (not shown in help/about) |
 | **Atomic install** | `inst_perform_install_atomic_install` |
-| **Channel SSOT** | `SCRIPT_URL` default `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${APP_NAME}` → `https://raw.githubusercontent.com/cloudgen/selfmanaged/main/selfmanaged` |
-| **Companion URL** | `${SCRIPT_URL}.sha256` → `https://raw.githubusercontent.com/cloudgen/selfmanaged/main/selfmanaged.sha256` |
-| **In-repo companion** | `selfmanaged.sha256` (bare 64-char hex) |
+| **Channel SSOT** | `SCRIPT_URL` default `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${APP_NAME}` → `https://raw.githubusercontent.com/Wilgat/timer/main/timer` |
+| **Companion URL** | `${SCRIPT_URL}.sha256` → `https://raw.githubusercontent.com/Wilgat/timer/main/timer.sha256` |
+| **In-repo companion** | `timer.sha256` (bare 64-char hex) |
 | **Algorithm** | SHA-256 via `sha256sum` |
 | **Missing sidecar policy** | Warn + continue (best-effort) |
 | **Mismatch policy** | Abort (human `out_die` / JSON `checksum_mismatch`) |
@@ -172,10 +172,10 @@ When this requirement is **Active** for the product:
 **Future AI assistants, Grok, or maintainers MUST NOT**:
 
 1. Remove automatic `${SCRIPT_URL}.sha256` fetch while this requirement is Active.  
-2. Embed the expected SHA-256 of `./selfmanaged` **inside** `./selfmanaged` as verification.  
+2. Embed the expected SHA-256 of `./timer` **inside** `./timer` as verification.  
 3. Require or **primary-document** external `CHECKSUM` for normal online install when automatic mode exists.  
 4. **List or print `CHECKSUM` in `help` or `about`** (human Environment block, diagnostics, or JSON about fields).  
-5. Document same-origin `CHECKSUM=$(curl …/selfmanaged.sha256)` as higher assurance than automatic companion verification.  
+5. Document same-origin `CHECKSUM=$(curl …/timer.sha256)` as higher assurance than automatic companion verification.  
 6. Drop human-mode transparency of companion **link**, expected **value**, and verification **result** without an explicit redesign of this requirement.  
 7. Claim always-verified when missing-sidecar continues with a warning.  
 8. Add a self-update download path that skips this integrity model.  
@@ -193,8 +193,8 @@ Violating this rule is a requirements failure and must be recorded (incident or 
 | `requirement-shell-output-requirements.md` | `out_*` / JSON error channel for integrity messages |
 | `requirement-shell-cli-interface.md` | Install command surface / modes |
 | `requirement-shell-interactive-vs-noninteractive.md` | Quiet/json/pipe mode interaction with messaging |
-| `./selfmanaged` | Ship unit implementation |
-| `selfmanaged.sha256` | In-repo companion digest |
+| `./timer` | Ship unit implementation |
+| `timer.sha256` | In-repo companion digest |
 | Product root `README.md` | User-facing automatic integrity story |
 
 ---

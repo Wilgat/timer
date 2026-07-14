@@ -4,7 +4,7 @@
 
 ## 1. Purpose
 
-This requirement is the **project Single Source of Truth** for **idempotency (re-run safety)** of state-changing operations in the **POSIX shell CLI** for selfmanaged.
+This requirement is the **project Single Source of Truth** for **idempotency (re-run safety)** of state-changing operations in the **POSIX shell CLI** for timer.
 
 It defines re-run safety for ensure-style shell lifecycle commands (install, PATH integration, self-update, self-uninstall, and related helpers). Read-only commands remain outside the “ensure-X” contract except where they must stay safe under repeat invocation.
 
@@ -63,10 +63,10 @@ Force **MUST NOT** be used as a silent way to skip integrity verification.
 
 ### 2.5 Implementation Notes (this project)
 
-| Item | Value for selfmanaged |
+| Item | Value for timer |
 |------|------------------------|
-| **Product / binary** | `selfmanaged` (`APP_NAME`) |
-| **Implementation file** | Repo root `./selfmanaged` |
+| **Product / binary** | `timer` (`APP_NAME`) |
+| **Implementation file** | Repo root `./timer` |
 | **Install detect SSOT** | `inst_is_installed` / `inst_get_version` |
 | **Install ensure SSOT** | `inst_perform_install` (+ download/atomic helpers) |
 | **Force reinstall var** | `FORCE_REINSTALL` (default `0`); CLI `--force` must set this per `requirement-shell-cli-interface.md` |
@@ -145,7 +145,7 @@ Force **MUST NOT** be used as a silent way to skip integrity verification.
 
 ## 5. Definition of done (shell idempotency)
 
-A state-changing shell change for selfmanaged is **not done** if any of the following fail:
+A state-changing shell change for timer is **not done** if any of the following fail:
 
 1. Second `install` with healthy install and force off exits success without reinstall.  
 2. Second `self-update` when local equals remote and force off exits success without reinstall.  
@@ -167,10 +167,10 @@ A state-changing shell change for selfmanaged is **not done** if any of the foll
 | `docs/requirements/requirement-shell-self-management.md` | Lifecycle commands; integrity + downgrade policy |
 | `docs/requirements/requirement-shell-output-requirements.md` | Messages on no-op / already-done paths |
 | `docs/requirements/index.md` | Registry SSOT |
-| `./selfmanaged` | Implementation under test |
+| `./timer` | Implementation under test |
 
 ---
 
 **Last Updated**: 2026-07-14
-**Owner**: selfmanaged project maintainers  
+**Owner**: timer project maintainers  
 **Alignment**: Registry `docs/requirements/index.md`; peer live requirements in §6; CIAO Principles 1, 2, 3, 4, 11, 12, 20 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).

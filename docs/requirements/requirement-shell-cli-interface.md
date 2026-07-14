@@ -4,7 +4,7 @@
 
 ## 1. Purpose
 
-This requirement is the **project Single Source of Truth** for the **POSIX shell CLI interface** of the selfmanaged tool: command surface, privilege typing, global flags, dispatcher behavior, output modes, and interactive vs non-interactive rules.
+This requirement is the **project Single Source of Truth** for the **POSIX shell CLI interface** of the timer tool: command surface, privilege typing, global flags, dispatcher behavior, output modes, and interactive vs non-interactive rules.
 
 It defines a **Type 0–centric self-managed shell CLI** (install / update / uninstall of the tool itself). It does **not** invent Type 1 host-bootstrap or Type 2 system-user app-ops commands unless a future requirement adds them.
 
@@ -76,15 +76,15 @@ In JSON mode, help **MUST NOT** dump long human text; return a short structured 
 
 ### 2.6 Implementation Notes (this project)
 
-| Item | Value for selfmanaged |
+| Item | Value for timer |
 |------|------------------------|
-| **Product / binary name** | `selfmanaged` (`APP_NAME`, default `selfmanaged`) |
-| **Primary executable** | Repo root `./selfmanaged` (POSIX `/bin/sh`, single-file for `curl \| sh`) |
+| **Product / binary name** | `timer` (`APP_NAME`, default `timer`) |
+| **Primary executable** | Repo root `./timer` (POSIX `/bin/sh`, single-file for `curl \| sh`) |
 | **Dispatcher** | `app_main` (always invoked at end of script: `app_main "$@"` — no `${0##*/}` / APP_NAME basename gate; required for `curl \| sh`) |
 | **Output SSOT** | `out_text` + wrappers (`out_info`, `out_success`, `out_warn`, `out_error`, `out_die`, `out_plain`, `out_json`, …) |
-| **Version SSOT** | `VERSION` default `1.0.0` (script header / config block: `VERSION="1.0.0"`) |
+| **Version SSOT** | `VERSION` in script config block (product SSOT; currently `VERSION="2.9.0"`) |
 | **Install paths** | Global: `GLOBAL_BIN` default `/usr/local/bin`; User: `USER_BIN` default `${HOME}/.local/bin` |
-| **Remote channel env (help surface)** | `REPO_USER` / `REPO_NAME` (defaults `cloudgen` / `selfmanaged`); `SCRIPT_URL` composed default `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${APP_NAME}` (literal product default: `https://raw.githubusercontent.com/cloudgen/selfmanaged/main/selfmanaged`; override via env). **`help` / `about` MUST list these operator channel vars as designed — MUST NOT list `CHECKSUM`** (install-path runtime pin only; see `requirement-shell-automatic-checksum.md`) |
+| **Remote channel env (help surface)** | `REPO_USER` / `REPO_NAME` (defaults `Wilgat` / `timer`); `SCRIPT_URL` composed default `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${APP_NAME}` (literal product default: `https://raw.githubusercontent.com/Wilgat/timer/main/timer`; override via env). **`help` / `about` MUST list these operator channel vars as designed — MUST NOT list `CHECKSUM`** (install-path runtime pin only; see `requirement-shell-automatic-checksum.md`) |
 | **Type 1 / Type 2 commands** | **None** on current surface — this tool is CLI lifecycle only |
 | **Dedicated system user** | **Not required** for Type 0 CLI self-management |
 
@@ -112,7 +112,7 @@ In JSON mode, help **MUST NOT** dump long human text; return a short structured 
 
 #### Dispatcher acceptance criteria (this project)
 
-1. Unknown token after flag parse → `out_die` with pointer to `selfmanaged help`.  
+1. Unknown token after flag parse → `out_die` with pointer to `timer help`.  
 2. Zero-arg → install-ensure: not installed → install; already installed (local or global) → already-installed success (not help); failures non-zero.  
 3. Command routing table in `app_main` **must** include every row in the command table above.  
 4. Help text **must** stay aligned with that table (no orphan commands, no listed-but-unrouted commands).  
@@ -169,7 +169,7 @@ In JSON mode, help **MUST NOT** dump long human text; return a short structured 
 
 ## 5. Definition of done (CLI interface)
 
-This requirement is satisfied for the selfmanaged shell CLI when all of the following hold:
+This requirement is satisfied for the timer shell CLI when all of the following hold:
 
 1. Every command in §2.6 is routed and documented.  
 2. Global flags in §2.6 are parsed and honored.  
@@ -192,10 +192,10 @@ This requirement is satisfied for the selfmanaged shell CLI when all of the foll
 | `docs/requirements/requirement-shell-idempotency.md` | Re-run safety for ensure ops |
 | `docs/requirements/requirement-shell-modular-function-design.md` | Prefix ownership (`app_`, `inst_`, `out_*`) |
 | `docs/requirements/index.md` | Registry SSOT |
-| `./selfmanaged` | Implementation under test |
+| `./timer` | Implementation under test |
 
 ---
 
 **Last Updated**: 2026-07-14
-**Owner**: selfmanaged project maintainers  
+**Owner**: timer project maintainers  
 **Alignment**: Registry `docs/requirements/index.md`; peer live requirements in §6; CIAO Principles 1, 2, 3, 4, 6, 9, 10, 16, 20 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).

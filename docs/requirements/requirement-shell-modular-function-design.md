@@ -4,7 +4,7 @@
 
 ## 1. Purpose
 
-This requirement is the **project Single Source of Truth** for **modular function organization** of the selfmanaged POSIX shell CLI.
+This requirement is the **project Single Source of Truth** for **modular function organization** of the timer POSIX shell CLI.
 
 It defines modular function organization for a **monolithic yet modular** single-file shell tool that remains `curl | sh` compatible.
 
@@ -28,7 +28,7 @@ CIAO-Lite shell CLIs distributed as one-liners **MUST** use:
 | **Documented units** | Every public helper carries a defensive header and safe defaults |
 | **Requirements extract policy** | Durable rules live in `requirement-*.md`; code comments encode intent and Protection Zones |
 
-Optional multi-file layout under `src/` for future authoring **MAY** exist only if a build or pack step still produces **one** installable artifact and this requirement is updated. Until then, `./selfmanaged` remains the single shipped script.
+Optional multi-file layout under `src/` for future authoring **MAY** exist only if a build or pack step still produces **one** installable artifact and this requirement is updated. Until then, `./timer` remains the single shipped script.
 
 ### 2.2 Official function prefix table (mandatory)
 
@@ -66,7 +66,7 @@ Every non-trivial function **MUST** include a defensive header of this shape (tr
 
 #### 2.3.1 Product-source documentation authority
 
-Optional `ALIGNMENT` / `See` / “fully synchronized with” lines in **product source** (`./selfmanaged`) **MUST** cite only **live** `docs/requirements/requirement-*.md` paths that exist on disk and appear in `docs/requirements/index.md`.
+Optional `ALIGNMENT` / `See` / “fully synchronized with” lines in **product source** (`./timer`) **MUST** cite only **live** `docs/requirements/requirement-*.md` paths that exist on disk and appear in `docs/requirements/index.md`.
 
 | Allowed in product source comments | Forbidden in product source comments |
 |------------------------------------|--------------------------------------|
@@ -140,17 +140,17 @@ function_name() {
 
 ### 2.6 Implementation Notes (this project)
 
-| Item | Value for selfmanaged |
+| Item | Value for timer |
 |------|------------------------|
-| **Product / binary** | `selfmanaged` (`APP_NAME`) |
-| **Single shipped script** | Repo root `./selfmanaged` (~2k lines, `#!/bin/sh`) |
-| **`src/` directory** | Present but empty — **not** a multi-file runtime layout yet |
-| **Domain prefix `selfmanaged_*`** | **Not used** today (Type 0 lifecycle only; no product domain ops) |
-| **Bootstrap** | Direct execution when `${0##*/}` is `selfmanaged` or `selfmanaged.sh` → `app_main "$@"` |
+| **Product / binary** | `timer` (`APP_NAME`) |
+| **Single shipped script** | Repo root `./timer` (~2.9k lines, `#!/bin/sh`) |
+| **`src/` directory** | **Not used** for runtime — single-file ship unit only |
+| **Domain prefix `timer_*`** | **In use** — named-timer domain ops (`start` / `stop` / `status` / `list` / kill-or-reset helpers) |
+| **Bootstrap** | Always `app_main "$@"` at end of script — **no** `${0##*/}` / `APP_NAME` basename gate (required for `curl \| sh`; INC-20260712-001) |
 
 #### Live prefix inventory (authoritative categories)
 
-| Prefix | Live examples in `./selfmanaged` |
+| Prefix | Live examples in `./timer` |
 |--------|----------------------------------|
 | `out_` | `out_text`, `out_success`, `out_info`, `out_warn`, `out_error`, `out_die`, `out_plain`, `out_msg_n`, `out_empty_line`, `out_double_line`, `out_json`, `out_json_error` |
 | `inst_` | `inst_perform_install`, `inst_perform_install_prepare_target`, `inst_perform_install_download_with_checksum`, `inst_perform_install_download_without_checksum`, `inst_perform_install_atomic_install`, `inst_maybe_install`, `inst_self_update`, `inst_self_uninstall` (+ determine_bin / confirm_and_remove / cleanup_path), `inst_is_installed`, `inst_get_version` |
@@ -158,6 +158,7 @@ function_name() {
 | `path_` | `path_add_bashrc`, `path_add_zshrc`, `path_add_fish`, `path_add_shell` |
 | `util_` | `util_json_escape`, `util_sha256_file`, `util_fetch_remote_version`, `util_get_install_bin_path`, `util_backup`, `util_resolve_storage`, `util_get_current_shell` |
 | `prompt_` | `prompt_ask`, `prompt_yes_no` |
+| `timer_` | `timer_resolve_base_dir`, `timer_get_file`, `timer_sanitize_name`, `timer_domain_fail`, `timer_start`, `timer_stop`, `timer_status`, `timer_kill_or_reset`, `timer_list` |
 | `app_` | `app_about`, `app_version` (dispatcher routes `version` here), `app_help`, `app_main` |
 
 #### Structural notes (implementation status)
@@ -171,7 +172,7 @@ function_name() {
 
 #### New function checklist (this project)
 
-When adding a function to `./selfmanaged`:
+When adding a function to `./timer`:
 
 1. Choose the correct prefix from §2.2 / this inventory.  
 2. Add the defensive header (full for non-trivial logic).  
@@ -226,7 +227,7 @@ When adding a function to `./selfmanaged`:
 
 ## 5. Definition of done (shell modular function design)
 
-A modular-structure change for selfmanaged is **not done** if any of the following fail:
+A modular-structure change for timer is **not done** if any of the following fail:
 
 1. Every new function uses an approved prefix from this requirement.  
 2. Critical helpers retain defensive headers and Protection intent.  
@@ -249,10 +250,10 @@ A modular-structure change for selfmanaged is **not done** if any of the followi
 | `docs/requirements/requirement-shell-idempotency.md` | Re-run safety inside ensure helpers |
 | `docs/requirements/requirement-shell-output-requirements.md` | `out_*` ownership |
 | `docs/requirements/index.md` | Registry SSOT |
-| `./selfmanaged` | Implementation under modular design rules |
+| `./timer` | Implementation under modular design rules |
 
 ---
 
 **Last Updated**: 2026-07-14
-**Owner**: selfmanaged project maintainers  
+**Owner**: timer project maintainers  
 **Alignment**: Registry `docs/requirements/index.md`; CIAO Principles 1, 2, 3, 4, 6, 7, 8, 20 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).

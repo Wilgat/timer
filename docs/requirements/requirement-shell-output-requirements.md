@@ -4,7 +4,7 @@
 
 ## 1. Purpose
 
-This requirement is the **project Single Source of Truth** for **all CLI output** of the selfmanaged POSIX shell tool: human messages, machine JSON, channel split (stdout vs stderr), and mode behavior (normal / quiet / JSON / debug).
+This requirement is the **project Single Source of Truth** for **all CLI output** of the timer POSIX shell tool: human messages, machine JSON, channel split (stdout vs stderr), and mode behavior (normal / quiet / JSON / debug).
 
 It implements **CIAO Principle 5 — Single Source of Output** (cloudgen/ciao **v2.10.2**): one Output module owns all **product** emission and mode rules.
 
@@ -39,7 +39,7 @@ It implements **CIAO Principle 5 — Single Source of Output** (cloudgen/ciao **
 
 ### 2.1.1 Allowed `printf` / `echo` exceptions (this project)
 
-| Exception class | Rule | Live examples in `./selfmanaged` |
+| Exception class | Rule | Live examples in `./timer` |
 |-----------------|------|-----------------------------------|
 | **A. Inside output SSOT** | Only `out_text`, `out_json`, and `out_json_error` may `printf` to fd 1/2 for **product** human or JSON lines. Nested `printf … \| sed` used only to escape strings for those emitters is part of the same SSOT. | `out_text` level cases; `out_json` / `out_json_error` body builders |
 | **B. Function return-via-stdout** | A helper may `printf '%s' "$value"` **solely** so callers capture it with `$(…)`. Prefer `printf` over `echo`. Callers must capture; bare top-level invocation must not be used as the user-facing message path. | `inst_self_uninstall_determine_bin`, `util_get_install_bin_path`, `inst_get_version`, `util_resolve_storage`, `util_get_current_shell`, `prompt_ask` (answer/default return only; prompt text still via `out_*`) |
@@ -89,7 +89,7 @@ Align with SSOT-of-stdout and SSOT-of-stderr terms:
 1. **Errors never as the primary success payload on stdout** in a way that corrupts JSON pipes — fatal paths use `out_die` / `out_json_error`.  
 2. **JSON purity:** In JSON mode, stdout is reserved for the structured result; no colors, banners, or progress mixed in.  
 3. **Capture pattern for agents/CI:**  
-   `selfmanaged --json <cmd> 2>err.log` → stdout = JSON; stderr = diagnostics as mode allows.  
+   `timer --json <cmd> 2>err.log` → stdout = JSON; stderr = diagnostics as mode allows.  
 4. **No secrets** on either channel (tokens, passwords, private keys).
 
 ### 2.4 Mode behavior (portable)
@@ -132,10 +132,10 @@ Align with SSOT-of-stdout and SSOT-of-stderr terms:
 
 ### 2.6 Implementation Notes (this project)
 
-| Item | Value for selfmanaged |
+| Item | Value for timer |
 |------|------------------------|
-| **Product / binary** | `selfmanaged` (`APP_NAME`) |
-| **Implementation file** | Repo root `./selfmanaged` |
+| **Product / binary** | `timer` (`APP_NAME`) |
+| **Implementation file** | Repo root `./timer` |
 | **Human SSOT** | `out_text` |
 | **JSON SSOT** | `out_json` / `out_json_error` |
 | **Mode flags** | `QUIET`, `JSON`, `DEBUG`, `TTY` (defaults `0` except TTY when stdin/stdout are TTYs) |
@@ -145,7 +145,7 @@ Align with SSOT-of-stdout and SSOT-of-stderr terms:
 
 #### Live `out_*` inventory
 
-| Function | Role in `./selfmanaged` |
+| Function | Role in `./timer` |
 |----------|-------------------------|
 | `out_text` | Human SSOT; JSON short-circuit; quiet filter; channel by level |
 | `out_success` / `out_info` / `out_warn` / `out_error` | Level wrappers |
@@ -221,7 +221,7 @@ Align with SSOT-of-stdout and SSOT-of-stderr terms:
 
 1. Add raw `echo`, `printf`, or direct fd writes for **product** user/machine messages outside the central output functions (do not “ban” legitimate §2.1.1 exceptions).  
 2. Misuse return-via-stdout, file redirects, or tool pipes as cover for user-facing banners without `out_*`.  
-3. Cite `template-*.md` or `skill-*.md` in **product source** (`./selfmanaged`) as output authority — cite this requirement file only.  
+3. Cite `template-*.md` or `skill-*.md` in **product source** (`./timer`) as output authority — cite this requirement file only.  
 4. Bypass `out_*` for “quick debug” on stdout.  
 5. Remove or weaken **`--json` forces quiet** / human-suppression in `out_text`.  
 6. Emit human banners on stdout while claiming JSON mode.  
@@ -238,7 +238,7 @@ Align with SSOT-of-stdout and SSOT-of-stderr terms:
 
 ## 5. Definition of done (shell output requirements)
 
-Output-related work for selfmanaged is **not done** if any of the following fail:
+Output-related work for timer is **not done** if any of the following fail:
 
 1. All new **product** user-facing messages use `out_*` only (exceptions limited to §2.1.1).  
 2. Non-product `printf`/`echo` sites document their exception class in the function comment block when they are intentional helpers.  
@@ -260,10 +260,10 @@ Output-related work for selfmanaged is **not done** if any of the following fail
 | `docs/requirements/requirement-shell-modular-function-design.md` | `out_*` prefix ownership |
 | `docs/requirements/requirement-shell-interactive-vs-noninteractive.md` | Mode interaction with quiet/json |
 | `docs/requirements/index.md` | Registry SSOT |
-| `./selfmanaged` | Implementation under test |
+| `./timer` | Implementation under test |
 
 ---
 
 **Last Updated**: 2026-07-14
-**Owner**: selfmanaged project maintainers  
+**Owner**: timer project maintainers  
 **Alignment**: Registry `docs/requirements/index.md`; CIAO Principles 1, 2, 3, 4, 5, 14, 20 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).

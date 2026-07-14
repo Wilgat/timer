@@ -1,5 +1,6 @@
-# Nested SSOT aligned with root .gitignore (skill-create-gitignore)
+# Nested SSOT aligned with root .gitignore (skill-create-gitignore Pattern A)
 # Track requirements only under docs/; keep other docs trees local.
+# Root AGENTS.md is ignored at repo root .gitignore (not this file).
 *
 !.gitignore
 !requirements/

@@ -4,7 +4,7 @@
 
 ## 1. Purpose
 
-This requirement is the **project Single Source of Truth** for how the selfmanaged **POSIX shell CLI** behaves in **interactive** (human + TTY) versus **non-interactive** (automation, `curl | sh`, CI/CD, pipes, `--json` / often `--quiet`) environments.
+This requirement is the **project Single Source of Truth** for how the timer **POSIX shell CLI** behaves in **interactive** (human + TTY) versus **non-interactive** (automation, `curl | sh`, CI/CD, pipes, `--json` / often `--quiet`) environments.
 
 It defines interactive vs non-interactive behavior for this shell project (global flags + `prompt_*` + TTY detection—not a Node Config singleton).
 
@@ -106,10 +106,10 @@ interactive   non-interactive
 
 ### 2.5 Implementation Notes (this project)
 
-| Item | Value for selfmanaged |
+| Item | Value for timer |
 |------|------------------------|
-| **Product / binary** | `selfmanaged` |
-| **Implementation** | Repo root `./selfmanaged` |
+| **Product / binary** | `timer` |
+| **Implementation** | Repo root `./timer` |
 | **Mode globals** | `TTY`, `QUIET`, `JSON`, `DEBUG`, `FORCE`, `FORCE_REINSTALL` |
 | **TTY init** | `[ -t 0 ] && [ -t 1 ] && TTY=1` near config block |
 | **Flag parse SSOT** | `app_main` |
@@ -199,7 +199,7 @@ This dual policy is intentional: **pipe install proceeds**; **destructive uninst
 
 ## 5. Definition of done (shell interactive vs non-interactive)
 
-Mode-related work for selfmanaged is **not done** if any of the following fail:
+Mode-related work for timer is **not done** if any of the following fail:
 
 1. No code path blocks on `read` under `--json`, `--quiet`, or non-TTY (except documented `INTERACTIVE=1` value prompt).  
 2. Destructive uninstall without `--force` does not silently proceed in non-interactive mode.  
@@ -221,10 +221,10 @@ Mode-related work for selfmanaged is **not done** if any of the following fail:
 | `docs/requirements/requirement-shell-self-management.md` | Uninstall confirm / force policy |
 | `docs/requirements/requirement-shell-idempotency.md` | Re-run safety under automation |
 | `docs/requirements/index.md` | Registry SSOT |
-| `./selfmanaged` | Implementation under test |
+| `./timer` | Implementation under test |
 
 ---
 
 **Last Updated**: 2026-07-14
-**Owner**: selfmanaged project maintainers  
+**Owner**: timer project maintainers  
 **Alignment**: Registry `docs/requirements/index.md`; CIAO Principles 1, 2, 3, 4, 16, 20 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).

@@ -1,6 +1,6 @@
 # Requirements index
 
-**Product:** selfmanaged (POSIX `/bin/sh` Type 0 self-install / self-maintenance CLI)  
+**Product:** timer (POSIX `/bin/sh` Type 0 self-install / self-maintenance CLI)  
 **Workspace state:** Specialized product law (not blank genesis).  
 **Updated:** 2026-07-14
 
@@ -17,7 +17,7 @@
 
 **Rules for agents:**
 
-1. Treat rows above as the **live product-law inventory** for selfmanaged.  
+1. Treat rows above as the **live product-law inventory** for timer.  
 2. **Do not invent** additional `requirement-*.md` paths — verify on disk and add a registry row in the same change when creating one.  
 3. Product source comments cite **only** these live requirement files (or future registered ones) — never `template-*` / `skill-*` as behavioral authority.  
 4. This versioned surface lists **requirement rows only** — do not dump templates / skills / terminologies / incidents path inventories here (git-surface; INC-20260712-005).  
