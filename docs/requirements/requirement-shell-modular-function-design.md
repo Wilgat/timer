@@ -145,7 +145,7 @@ function_name() {
 | **Product / binary** | `timer` (`APP_NAME`) |
 | **Single shipped script** | Repo root `./timer` (~2.9k lines, `#!/bin/sh`) |
 | **`src/` directory** | **Not used** for runtime — single-file ship unit only |
-| **Domain prefix `timer_*`** | **In use** — named-timer domain ops (`start` / `stop` / `status` / `list` / kill-or-reset helpers) |
+| **Domain prefix `timer_*`** | **In use** — named-timer domain ops (`start` / `stop` / `status` / `list` / kill-or-reset helpers); **behavior SSOT:** `requirement-domain-timer.md` |
 | **Bootstrap** | Always `app_main "$@"` at end of script — **no** `${0##*/}` / `APP_NAME` basename gate (required for `curl \| sh`; INC-20260712-001) |
 
 #### Live prefix inventory (authoritative categories)
@@ -246,6 +246,7 @@ A modular-structure change for timer is **not done** if any of the following fai
 | Artifact | Role |
 |----------|------|
 | `docs/requirements/requirement-shell-cli-interface.md` | Command surface owned by `app_*` dispatch |
+| `docs/requirements/requirement-domain-timer.md` | Domain behavior owned by `timer_*` handlers |
 | `docs/requirements/requirement-shell-self-management.md` | Lifecycle owned by `inst_*` / `ver_*` |
 | `docs/requirements/requirement-shell-idempotency.md` | Re-run safety inside ensure helpers |
 | `docs/requirements/requirement-shell-output-requirements.md` | `out_*` ownership |
@@ -254,6 +255,6 @@ A modular-structure change for timer is **not done** if any of the following fai
 
 ---
 
-**Last Updated**: 2026-07-14
+**Last Updated**: 2026-07-16  
 **Owner**: timer project maintainers  
 **Alignment**: Registry `docs/requirements/index.md`; CIAO Principles 1, 2, 3, 4, 6, 7, 8, 20 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).

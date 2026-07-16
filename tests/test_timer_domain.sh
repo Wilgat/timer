@@ -75,6 +75,26 @@ run_test_timer_domain() {
     _ec=$?
     assert_eq "domain json list exit 0" 0 "$_ec"
     assert_contains "domain json list type" "$_out" '"type":"list"'
+    # T-JSON-01 / TP-JSON-01: timers must be a nested JSON array, not a stringified field
+    if command -v python3 >/dev/null 2>&1; then
+        if printf '%s\n' "$_out" | python3 -c '
+import json,sys
+o=json.load(sys.stdin)
+t=o.get("timers")
+assert isinstance(t,list), "timers type=%s" % type(t).__name__
+assert any(x.get("name")=="json-t" for x in t if isinstance(x,dict)), "json-t missing"
+' 2>/dev/null; then
+            t_pass "domain json list timers is nested array"
+        else
+            t_fail "domain json list timers is nested array"
+        fi
+    else
+        # Fallback shape check without python: array open after "timers":
+        case "$_out" in
+            *'"timers":['*) t_pass "domain json list timers is nested array (shape)" ;;
+            *) t_fail "domain json list timers is nested array (shape)" ;;
+        esac
+    fi
 
     _out=$(_run --json stop json-t 2>/dev/null)
     _ec=$?

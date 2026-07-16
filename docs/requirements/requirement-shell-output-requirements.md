@@ -1,5 +1,5 @@
 **file**: docs/requirements/requirement-shell-output-requirements.md  
-**Status**: Active (Version 1.1.0 – CIAO v2.10.2 Principle 5 SSOT family)  
+**Status**: Active (Version 1.2.0 – out_json `@key` raw nested JSON fields)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
 ## 1. Purpose
@@ -172,6 +172,8 @@ Align with SSOT-of-stdout and SSOT-of-stderr terms:
 - Required: `"type":"<type>"`  
 - Optional: `"message":"..."` (escaped)  
 - Optional key/value pairs: alternating arguments after type/message  
+- **String fields (default):** key `name` → `"name":"<escaped value>"`  
+- **Raw nested JSON fields:** key prefixed with `@` (e.g. `@timers`) → `"timers":<raw JSON>` where the value is a complete JSON array or object built by the caller (already structured; not re-quoted as a string). Callers **MUST** escape any embedded string members (e.g. via `util_json_escape`). Used for domain `list` (`requirement-domain-timer.md`).
 
 `out_json_error` uses `type=out_error`, message, and `code` (default `unknown`).
 
@@ -191,6 +193,7 @@ Align with SSOT-of-stdout and SSOT-of-stderr terms:
 | JSON errors on stderr via `out_json_error` | **Implemented** (stdout remains success/status JSON only) |
 | `out_debug` on stderr when `DEBUG=1`, suppressed under JSON | **Implemented** |
 | Command paths use human **or** JSON via mode flags | **Enforced** (`out_text` no-ops when `JSON=1`) |
+| `out_json` `@key` raw nested values (arrays/objects) | **Implemented** (2026-07-16; domain `list` `@timers`) |
 
 ### 2.7 Why This Requirement Exists (Direct CIAO Alignment)
 
@@ -264,6 +267,6 @@ Output-related work for timer is **not done** if any of the following fail:
 
 ---
 
-**Last Updated**: 2026-07-14
+**Last Updated**: 2026-07-16
 **Owner**: timer project maintainers  
 **Alignment**: Registry `docs/requirements/index.md`; CIAO Principles 1, 2, 3, 4, 5, 14, 20 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).

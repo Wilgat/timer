@@ -5,6 +5,13 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.10.0] - 2026-07-16
+
+### Changed
+
+- Bump project target version and ship-unit `VERSION` to **2.10.0** (README Version badge SSOT + binary parity).
+- Refresh in-repo companion digest `timer.sha256` for the automatic integrity path.
+
 ## [2.9.0] - 2026-07-14
 
 ### Added

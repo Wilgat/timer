@@ -1,15 +1,15 @@
 **file**: docs/requirements/requirement-shell-cli-interface.md  
-**Status**: Active (Version 1.0.2 – CIAO v2.10.2 Principles 5/6/9/10/16/20)  
+**Status**: Active (Version 1.1.0 – domain command table + domain SSOT peer)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
 ## 1. Purpose
 
 This requirement is the **project Single Source of Truth** for the **POSIX shell CLI interface** of the timer tool: command surface, privilege typing, global flags, dispatcher behavior, output modes, and interactive vs non-interactive rules.
 
-It defines a **Type 0–centric self-managed shell CLI** (install / update / uninstall of the tool itself). It does **not** invent Type 1 host-bootstrap or Type 2 system-user app-ops commands unless a future requirement adds them.
+It defines a **Type 0–centric self-managed shell CLI** (install / update / uninstall of the tool itself) **plus routing for named-timer domain commands**. Domain **behavior** (storage, name rules, elapsed semantics, domain error codes) is owned by `requirement-domain-timer.md`. It does **not** invent Type 1 host-bootstrap or Type 2 system-user app-ops commands unless a future requirement adds them.
 
 **Scope:** User-facing command names, flags, dispatch, privilege labels, and mode contracts.  
-**Out of scope (own requirements when specialized):** Online-install checksum mechanics detail, self-management safety beyond the command surface, shell coding style, full output-function catalog (cited, not re-owned).
+**Out of scope (own requirements when specialized):** Online-install checksum mechanics detail, self-management safety beyond the command surface, shell coding style, full output-function catalog (cited, not re-owned); **domain semantics** (owned by `requirement-domain-timer.md`).
 
 ---
 
@@ -41,6 +41,7 @@ Every CIAO-Lite shell CLI **MUST** expose a documented command set. Commands **M
 | `--json` | `JSON=1` (implies quiet) | Machine-readable structured output; no human banner text |
 | `--debug` | `DEBUG=1` | Extra diagnostics when designed (must not break JSON purity on stdout) |
 | `--force` | Force/reinstall policy vars | Skip safe confirms or force reinstall only where documented; never silent security bypass |
+| `--persist` | `TIMER_PERSIST=1` (this product) | Domain storage: use **persistent** mode for timer ops (see `requirement-domain-timer.md`) |
 
 Additional flags **MAY** be added only when documented here (or a superseding requirement) and wired in the dispatcher.
 
@@ -82,11 +83,12 @@ In JSON mode, help **MUST NOT** dump long human text; return a short structured 
 | **Primary executable** | Repo root `./timer` (POSIX `/bin/sh`, single-file for `curl \| sh`) |
 | **Dispatcher** | `app_main` (always invoked at end of script: `app_main "$@"` — no `${0##*/}` / APP_NAME basename gate; required for `curl \| sh`) |
 | **Output SSOT** | `out_text` + wrappers (`out_info`, `out_success`, `out_warn`, `out_error`, `out_die`, `out_plain`, `out_json`, …) |
-| **Version SSOT** | `VERSION` in script config block (product SSOT; currently `VERSION="2.9.0"`) |
+| **Version SSOT** | `VERSION` in script config block (product SSOT; currently `VERSION="2.10.0"`) |
 | **Install paths** | Global: `GLOBAL_BIN` default `/usr/local/bin`; User: `USER_BIN` default `${HOME}/.local/bin` |
 | **Remote channel env (help surface)** | `REPO_USER` / `REPO_NAME` (defaults `Wilgat` / `timer`); `SCRIPT_URL` composed default `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${APP_NAME}` (literal product default: `https://raw.githubusercontent.com/Wilgat/timer/main/timer`; override via env). **`help` / `about` MUST list these operator channel vars as designed — MUST NOT list `CHECKSUM`** (install-path runtime pin only; see `requirement-shell-automatic-checksum.md`) |
-| **Type 1 / Type 2 commands** | **None** on current surface — this tool is CLI lifecycle only |
-| **Dedicated system user** | **Not required** for Type 0 CLI self-management |
+| **Type 1 / Type 2 commands** | **None** on current surface |
+| **Domain commands** | **Present** — `start` / `stop` / `status` / `list` / `kill` / `reset`; behavior SSOT: `requirement-domain-timer.md` |
+| **Dedicated system user** | **Not required** for Type 0 CLI self-management or domain timer ops |
 
 #### Supported commands (normative for this project)
 
@@ -95,11 +97,17 @@ In JSON mode, help **MUST NOT** dump long human text; return a short structured 
 | *(no args — empty argv)* | Type 0 | `app_main` → `inst_maybe_install` / `inst_perform_install` | **Type O install-ensure** (not Type N help): not-installed / local / global; never help; see `requirement-shell-cli-zero-arguments.md` |
 | `install` | Type 0 | `inst_perform_install` | Install binary for current privilege (root→global, user→local); idempotent unless force reinstall |
 | `version` | Type 0 | `app_main` / `app_version` | Print local version; JSON object when `--json` |
-| `about` | Type 0 | `app_about` | Diagnostics: install presence, global/local paths, user, shell, TTY; JSON when `--json`; **no `CHECKSUM` field** |
+| `about` | Type 0 | `app_about` | Diagnostics: install presence, global/local paths, user, shell, TTY; domain command hints; JSON when `--json`; **no `CHECKSUM` field** |
 | `version-check` | Type 0 | `ver_check` | Compare local vs remote `VERSION` from `SCRIPT_URL`; fail clearly if URL unset/unreachable |
 | `self-update` | Type 0 | `inst_self_update` | Fetch remote version; reinstall when policy allows; reuse install primitives |
 | `self-uninstall` | Type 0 | `inst_self_uninstall` | Remove managed binary; PATH cleanup only if `~/.local/bin` empty (user installs) |
-| `help` | Type 0 | `app_help` | Full usage in human mode; short JSON note in JSON mode; Environment lists channel vars only — **not** `CHECKSUM` |
+| `help` | Type 0 | `app_help` | Full usage in human mode (Type 0 + **Timer commands**); short JSON note in JSON mode; Environment lists channel vars only — **not** `CHECKSUM` |
+| `start` | Type 0 (domain) | `timer_start` | Start named timer; optional name; honors `--persist` — **behavior:** `requirement-domain-timer.md` |
+| `stop` | Type 0 (domain) | `timer_stop` | Stop timer; show elapsed — **behavior:** `requirement-domain-timer.md` |
+| `status` | Type 0 (domain) | `timer_status` | Elapsed without stopping — **behavior:** `requirement-domain-timer.md` |
+| `list` | Type 0 (domain) | `timer_list` | List running timers (mode-aware) — **behavior:** `requirement-domain-timer.md` |
+| `kill` | Type 0 (domain) | `timer_kill_or_reset kill` | Discard timer without elapsed report — **behavior:** `requirement-domain-timer.md` |
+| `reset` | Type 0 (domain) | `timer_kill_or_reset reset` | Reset/discard running timer — **behavior:** `requirement-domain-timer.md` |
 
 #### Global flags (normative wiring for this project)
 
@@ -109,6 +117,7 @@ In JSON mode, help **MUST NOT** dump long human text; return a short structured 
 | `--json` | Set `JSON=1` and `QUIET=1` in `app_main` |
 | `--debug` | Set `DEBUG=1` in `app_main` |
 | `--force` | Parsed by `app_main` → `FORCE=1` and `FORCE_REINSTALL=1`; used by install reinstall, self-update (incl. deliberate downgrade), and uninstall confirm skip |
+| `--persist` | Parsed by `app_main` → `TIMER_PERSIST=1`; domain storage mode only (see domain REQ) |
 
 #### Dispatcher acceptance criteria (this project)
 
@@ -116,13 +125,13 @@ In JSON mode, help **MUST NOT** dump long human text; return a short structured 
 2. Zero-arg → install-ensure: not installed → install; already installed (local or global) → already-installed success (not help); failures non-zero.  
 3. Command routing table in `app_main` **must** include every row in the command table above.  
 4. Help text **must** stay aligned with that table (no orphan commands, no listed-but-unrouted commands).  
-5. User-facing strings **must not** use raw `echo`/`printf` outside the `out_*` system (protected low-level helpers excepted only if already CIAO-marked and not for general messages).
+5. User-facing strings **must not** use raw `echo`/`printf` outside the `out_*` system (protected low-level helpers excepted only if already CIAO-marked and not for general messages).  
+6. Free token after a domain command is selected **must** be treated as timer name (not a second command). Domain semantics remain owned by `requirement-domain-timer.md`.
 
 #### Explicitly out of scope until a new requirement
 
 - Type 1: `prerequisites`, `create-user`, Docker host install, etc.  
-- Type 2: app `start`/`stop`/`configure` under a system user  
-- Domain product subcommands unrelated to CLI lifecycle  
+- Type 2: app lifecycle under a dedicated system user (not invoker-owned named timers)  
 
 ### 2.7 Why This Requirement Exists (Direct CIAO Alignment)
 
@@ -185,17 +194,18 @@ This requirement is satisfied for the timer shell CLI when all of the following 
 
 | Artifact | Role |
 |----------|------|
+| `docs/requirements/requirement-domain-timer.md` | **Domain behavior SSOT** (named timers) |
 | `docs/requirements/requirement-shell-self-management.md` | Lifecycle command semantics |
 | `docs/requirements/requirement-shell-output-requirements.md` | Output SSOT and channels |
 | `docs/requirements/requirement-shell-interactive-vs-noninteractive.md` | TTY / automation mode behavior |
 | `docs/requirements/requirement-shell-cli-zero-arguments.md` | Empty argv install-ensure (not installed / local / global) |
 | `docs/requirements/requirement-shell-idempotency.md` | Re-run safety for ensure ops |
-| `docs/requirements/requirement-shell-modular-function-design.md` | Prefix ownership (`app_`, `inst_`, `out_*`) |
+| `docs/requirements/requirement-shell-modular-function-design.md` | Prefix ownership (`app_`, `inst_`, `out_*`, `timer_*`) |
 | `docs/requirements/index.md` | Registry SSOT |
 | `./timer` | Implementation under test |
 
 ---
 
-**Last Updated**: 2026-07-14
+**Last Updated**: 2026-07-16  
 **Owner**: timer project maintainers  
 **Alignment**: Registry `docs/requirements/index.md`; peer live requirements in §6; CIAO Principles 1, 2, 3, 4, 6, 9, 10, 16, 20 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).

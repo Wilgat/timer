@@ -1,6 +1,6 @@
 # timer - Lightweight Per-User Named Timers
 
-![Version](https://img.shields.io/badge/Version-2.9.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/Version-2.10.0-blue?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 [![CIAO](https://img.shields.io/badge/Philosophy-CIAO%20(Caution%20%E2%80%A2%20Intentional%20%E2%80%A2%20Anti--fragile%20%E2%80%A2%20Over--engineered)-purple.svg)](https://github.com/cloudgen/ciao)
 [![Stars](https://img.shields.io/github/stars/Wilgat/timer?style=flat-square)](https://github.com/Wilgat/timer)
@@ -194,4 +194,4 @@ MIT License — see [`LICENSE.md`](./LICENSE.md).
 
 ## Last Update
 
-2026-07-14 (timer **2.9.0**)
+2026-07-16 (timer **2.10.0**)

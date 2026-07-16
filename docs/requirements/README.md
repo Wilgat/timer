@@ -2,7 +2,25 @@
 
 Authoritative product and engineering requirements for this project live here.
 
-**Current state (2026-07-14 — timer specialization):** **Eight** live `requirement-shell-*.md` files (automatic-checksum, CLI interface, CLI zero-arguments, idempotency, interactive vs noninteractive, modular design, output, self-management). Status **Active**; versions per file header (most v1.0.0; `requirement-shell-cli-zero-arguments` **v1.1.0** Type O). Registry: `index.md` (must stay in sync). This set is **sufficient product law** for the current Type 0 self-install/self-maintenance surface (no Type 1/2); online-install behavior is covered by composition (zero-arguments + CLI + checksum + self-management + interactive + idempotency), not a ninth umbrella file. Do **not** invent additional requirement paths without a real ownership gap — verify on disk and register new files in `index.md` in the same change.
+**Current state (2026-07-16 — timer specialization):** **Nine** live requirement files: eight `requirement-shell-*.md` (automatic-checksum, CLI interface, CLI zero-arguments, idempotency, interactive vs noninteractive, modular design, output, self-management) plus **domain SSOT** `requirement-domain-timer.md` (named-timer subcommands / storage / help-about domain rows). Status **Active**; versions per file header. Registry: `index.md` (must stay in sync). Type 0 lifecycle remains composition of zero-arguments + CLI + checksum + self-management + interactive + idempotency. No Type 1/2. Do **not** invent additional requirement paths without a real ownership gap — verify on disk and register new files in `index.md` in the same change.
+
+## Naming law (filename discipline)
+
+| Family | Pattern | Notes |
+|--------|---------|-------|
+| Shell / Type 0 | `requirement-shell-*.md` | Lifecycle, output, modular structure, integrity — **not** domain product law |
+| **Domain SSOT** | `requirement-domain-<subject>.md` | Exactly **one Active** when domain surface exists; `<subject>` = **domain knowledge** (here: `timer`) |
+| Other topics | `requirement-` or `requirement-<lang>-` | Language prefix when the law is stack-specific |
+
+**Domain subject rule (agents / subagents):** Before creating a **new** domain requirement:
+
+1. Name the domain knowledge subject in plain language.  
+2. Propose `requirement-domain-<subject>.md` (kebab-case subject).  
+3. **Confirm the subject** with the user when ambiguous — do not invent.  
+4. Prefer updating the existing Active domain SSOT over a second Active peer.  
+5. **Forbidden** for domain law: `requirement-shell-domain*`, bare `requirement-domain.md`, subjects that are only stack words (`shell`, `cli`, …).
+
+Registry: Area `domain`, key = basename without `.md`.
 
 ## Purpose
 

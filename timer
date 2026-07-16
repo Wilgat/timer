@@ -10,6 +10,7 @@
 # Project requirements (docs/requirements/ only — never cite templates here):
 # - requirement-shell-cli-interface.md
 # - requirement-shell-cli-zero-arguments.md  (Type O empty argv = install-ensure)
+# - requirement-domain-timer.md              (named-timer domain product law)
 # - requirement-shell-idempotency.md
 # - requirement-shell-self-management.md
 # - requirement-shell-modular-function-design.md
@@ -21,7 +22,7 @@
 # Philosophy: CIAO (Caution • Intentional • Anti-fragile • Over-engineered)
 # Single file for curl | sh compatibility.
 #
-# APP NAME: timer via APP_NAME (Config SSOT; safe default below).
+# APP NAME: hard-assign APP_NAME="timer" (extractor parity with VERSION); optional := default after.
 # REPO_USER / REPO_NAME: GitHub owner/repo identity for the install channel.
 # SCRIPT_URL: product channel SSOT — composed from repo identity + APP_NAME (raw content URL).
 #   Override SCRIPT_URL with env for a full custom channel; or override REPO_* before first use
@@ -35,13 +36,15 @@ set -u  # Treat unset variables as error (defensive)
 # =============================================================================
 # GLOBAL SAFE DEFAULTS (Single Source of Truth for configuration)
 # =============================================================================
+# Product identity SSOT (extractors use: grep '^APP_NAME="' / '^VERSION="').
+APP_NAME="timer"
 : "${APP_NAME:=timer}"
 : "${APP_DESC:=Lightweight per-user named timers (volatile or persistent)}"
 : "${SHORT_DESCRIPTION:=${APP_DESC}}"
 : "${DESCRIPTION:=POSIX /bin/sh Type 0 CLI: install, version-check, self-update, self-uninstall, about, plus timer start/stop/status/list.}"
-# Product version SSOT (first-commit baseline 1.0.0). Extractors use: grep '^VERSION="'
-VERSION="2.9.0"
-: "${VERSION:=2.9.0}"
+# Product version SSOT. Extractors use: grep '^VERSION="'
+VERSION="2.10.0"
+: "${VERSION:=2.10.0}"
 
 # Runtime flags (safe defaults)
 : "${QUIET:=0}"
@@ -401,14 +404,26 @@ util_json_escape() {
 
 out_json() {
     [ "${JSON}" -eq 0 ] && return 0
-    local type="$1" message="$2"; shift 2
+    local type="$1" message="$2" key raw_key; shift 2
     # Success/status JSON on stdout (SSOT-of-stdout; pure for pipes)
-    # Escape type, message, and all key/value pairs (M7 / machine contract).
+    # Escape type, message, and string key/value pairs (M7 / machine contract).
+    # Raw nested JSON: key prefixed with "@" → value inserted unquoted (caller builds
+    # a complete JSON array/object; key name is without the "@"). Used for domain
+    # list timers array (requirement-domain-timer / requirement-shell-output-requirements).
     printf '{'
     printf '"type":"%s"' "$(util_json_escape "$type")"
     [ -n "$message" ] && printf ',"message":"%s"' "$(util_json_escape "$message")"
     while [ $# -ge 2 ]; do
-        printf ',"%s":"%s"' "$(util_json_escape "$1")" "$(util_json_escape "$2")"
+        key="$1"
+        case "$key" in
+            @*)
+                raw_key="${key#@}"
+                printf ',"%s":%s' "$(util_json_escape "$raw_key")" "$2"
+                ;;
+            *)
+                printf ',"%s":"%s"' "$(util_json_escape "$key")" "$(util_json_escape "$2")"
+                ;;
+        esac
         shift 2
     done
     printf '}\n'
@@ -2229,6 +2244,7 @@ util_get_current_shell() {
 # GENERAL PURPOSE:
 # Per-user named timers (volatile /dev/shm or persistent cache). All output goes
 # through out_* SSOT. Architecture and lifecycle stay on inst_*/app_* from bootstrap.
+# Domain product law SSOT: docs/requirements/requirement-domain-timer.md
 #
 # !!! DO NOT SIMPLIFY fallback chains or name sanitization !!!
 # =============================================================================
@@ -2449,7 +2465,8 @@ timer_list() {
 
     if [ ! -d "$base_dir" ]; then
         if [ "${JSON}" -eq 1 ]; then
-            out_json "list" "" "mode" "$requested_mode" "count" "0" "timers" "[]"
+            # @timers = nested JSON array (not a stringified JSON-text field)
+            out_json "list" "" "mode" "$requested_mode" "count" "0" "@timers" "[]"
         else
             out_plain "No running timers found."
         fi
@@ -2478,17 +2495,18 @@ timer_list() {
             timers_json="${timers_json},"
         fi
         first=0
-        timers_json="${timers_json}{\"name\":\"${name}\",\"minutes\":${minutes},\"seconds\":${seconds},\"elapsed\":${elapsed}}"
+        # name escaped for JSON string; minutes/seconds/elapsed are integers
+        timers_json="${timers_json}{\"name\":\"$(util_json_escape "$name")\",\"minutes\":${minutes},\"seconds\":${seconds},\"elapsed\":${elapsed}}"
         count=$((count + 1))
     done
     timers_json="${timers_json}]"
 
     if [ "${JSON}" -eq 1 ]; then
-        # out_json stringifies values (bootstrap SSOT); timers payload is a JSON-text field
+        # @timers → nested array in object (requirement-domain-timer §2.2.4)
         out_json "list" "" \
             "mode" "$requested_mode" \
             "count" "$count" \
-            "timers" "$timers_json"
+            "@timers" "$timers_json"
     else
         if [ "$count" -eq 0 ]; then
             out_plain "No running timers found."
@@ -2512,8 +2530,8 @@ app_about() {
     : "${JSON:=0}"
     : "${QUIET:=0}"
     : "${APP_NAME:=timer}"
-    # Version comes from global SSOT (VERSION="1.0.0" near top); default only if unset
-    : "${VERSION:=2.9.0}"
+    # Version comes from global SSOT (VERSION="…" hard-assign near top); default only if unset
+    : "${VERSION:=2.10.0}"
     : "${GLOBAL_BIN:=/usr/local/bin}"
     : "${USER_BIN:=${HOME}/.local/bin}"
     : "${SCRIPT_URL:=}"
@@ -2630,7 +2648,7 @@ app_about() {
 
 app_version() {
     : "${APP_NAME:=timer}"
-    : "${VERSION:=2.9.0}"
+    : "${VERSION:=2.10.0}"
     : "${JSON:=0}"
     if [ "${JSON}" -eq 1 ]; then
         # Same machine contract as historical app_main inline path
@@ -2883,7 +2901,8 @@ app_main() {
 # Always invoke the single dispatcher. Do NOT gate on ${0##*/} matching APP_NAME:
 # under curl | sh / stdin pipe, $0 is the shell (sh/bash/…), not the product
 # filename — a basename gate causes silent no-op and breaks one-liner install.
-# See docs/terminologies/shell-cli-bootstrap.md and INC-20260712-001.
+# Product law: requirement-shell-cli-zero-arguments.md (Type O) +
+# requirement-shell-cli-interface.md (single app_main entry). Historical: INC-20260712-001.
 #
 # Single-file install CLI: source-as-library is unsupported; main always runs.
 # =============================================================================
