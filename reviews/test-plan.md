@@ -2,7 +2,7 @@
 
 Maps **baseline coverage** and **finding lock-in (TP-*)** to `tests/`.  
 **Suite entry:** `./tests/run.sh`  
-**Last update:** 2026-07-16 (findings fix)
+**Last update:** 2026-07-19 (JSON number types + class gate)
 
 Status: **have** = automated today · **TODO** = needed · **n/a** = not applicable / product choice
 
@@ -40,8 +40,9 @@ Status: **have** = automated today · **TODO** = needed · **n/a** = not applica
 | invalid_name | have | domain suite |
 | --persist start / list / stop | have | domain suite |
 | JSON `timers` nested array | **have** | TP-JSON-01 — python3 isinstance list |
+| JSON elapsed/count as numbers | **have** | TP-JSON-02 — status/stop/list type checks |
 
-**Baseline result (2026-07-16 fix):** PASS=130 FAIL=0 SKIP=0
+**Baseline result (2026-07-19):** PASS=133 FAIL=0 SKIP=0
 
 ---
 
@@ -50,6 +51,8 @@ Status: **have** = automated today · **TODO** = needed · **n/a** = not applica
 | TP-ID | Related finding / lesson | Intent | Status | Target / notes |
 |-------|--------------------------|--------|--------|----------------|
 | TP-JSON-01 | T-JSON-01, L-JSON-01 | `list --json` → `timers` nested array | **have** | `test_timer_domain.sh` |
+| TP-JSON-02 | T-JSON-02, L-JSON-02 | status/stop elapsed + list count are JSON numbers | **have** | `test_timer_domain.sh` |
+| TP-CLASS-01 | T-CLASS-01, L-CLASS-01 | Active `requirement-class-software-dev.md` registered | **have** | Static + registry 2026-07-19 |
 | TP-CITE-01 | T-CITE-01, L-CITE-01 | Ship unit top ALIGNMENT includes domain REQ | **have** | Static fix 2026-07-16 |
 | TP-CITE-02 | T-CITE-02 | Bootstrap cites requirements not terminologies | **have** | Static fix 2026-07-16 |
 | TP-ID-01 | T-ID-01, L-ID-01 | `APP_NAME="…"` hard-assign | **have** | Static fix 2026-07-16 |

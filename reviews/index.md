@@ -1,7 +1,7 @@
 # Reviews index — timer
 
 **Registry** of review plan artifacts and run reports. Keep rows in sync with disk.  
-**Updated:** 2026-07-16
+**Updated:** 2026-07-19
 
 ## Plan artifacts
 
@@ -16,6 +16,7 @@
 
 | Date | File | Scope | Baseline | Verdict |
 |------|------|-------|----------|---------|
+| 2026-07-19 | `reports/2026-07-19-timer-product-review.md` | Class gate + domain JSON numbers + precommit | PASS=133 FAIL=0 | **Pass** — T-CLASS-01 / T-JSON-02 fixed |
 | 2026-07-16 | `reports/2026-07-16-timer-product-review.md` | Full Type 0 + domain; plan bootstrap | PASS=129 FAIL=0 | **Revise** — findings opened |
 | 2026-07-16 | `reports/2026-07-16-timer-findings-fix.md` | Close T-JSON/CITE/ID/DOC | PASS=130 FAIL=0 | **Pass** — all prior opens closed |
 | 2026-07-16 | `reports/2026-07-16-bootstrap-origin-selfmanaged-from-timer.md` | Origin A=selfmanaged from this B report | A prior PASS=93 | **Block** on A (storage debt); B domain not origin work |
@@ -24,9 +25,9 @@
 
 | ID | Severity | Status | One-line |
 |----|----------|--------|----------|
-| *(none)* | — | — | All 2026-07-16 review findings closed on fix pass |
+| *(none)* | — | — | All 2026-07-19 findings closed in same pass |
 
 ## Notes
 
-- Product class: **domain product** (domain SSOT present).  
+- Product class: **software-development** + **domain product** (class REQ + domain SSOT present).  
 - Residual vigilance only: L-CSUM-01 wording (suite already green).  

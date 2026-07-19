@@ -1,5 +1,5 @@
 **file**: docs/requirements/requirement-shell-output-requirements.md  
-**Status**: Active (Version 1.2.0 – out_json `@key` raw nested JSON fields)  
+**Status**: Active (Version 1.2.1 – out_json `@key` raw nested and numeric JSON fields)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
 ## 1. Purpose
@@ -173,7 +173,8 @@ Align with SSOT-of-stdout and SSOT-of-stderr terms:
 - Optional: `"message":"..."` (escaped)  
 - Optional key/value pairs: alternating arguments after type/message  
 - **String fields (default):** key `name` → `"name":"<escaped value>"`  
-- **Raw nested JSON fields:** key prefixed with `@` (e.g. `@timers`) → `"timers":<raw JSON>` where the value is a complete JSON array or object built by the caller (already structured; not re-quoted as a string). Callers **MUST** escape any embedded string members (e.g. via `util_json_escape`). Used for domain `list` (`requirement-domain-timer.md`).
+- **Raw nested JSON fields:** key prefixed with `@` (e.g. `@timers`) → `"timers":<raw JSON>` where the value is a complete JSON array or object built by the caller (already structured; not re-quoted as a string). Callers **MUST** escape any embedded string members (e.g. via `util_json_escape`). Used for domain `list` (`requirement-domain-timer.md`).  
+- **Raw numeric JSON fields:** key prefixed with `@` and a decimal integer value (e.g. `@minutes` `3`) → `"minutes":3` (JSON number, not `"3"`). Domain **status** / **stop** / list **count** use this for elapsed metrics (`requirement-domain-timer.md`).
 
 `out_json_error` uses `type=out_error`, message, and `code` (default `unknown`).
 
@@ -194,6 +195,7 @@ Align with SSOT-of-stdout and SSOT-of-stderr terms:
 | `out_debug` on stderr when `DEBUG=1`, suppressed under JSON | **Implemented** |
 | Command paths use human **or** JSON via mode flags | **Enforced** (`out_text` no-ops when `JSON=1`) |
 | `out_json` `@key` raw nested values (arrays/objects) | **Implemented** (2026-07-16; domain `list` `@timers`) |
+| `out_json` `@key` raw numeric values (domain elapsed/count) | **Implemented** (2026-07-19; status/stop `@minutes`/`@seconds`/`@elapsed`; list `@count`) |
 
 ### 2.7 Why This Requirement Exists (Direct CIAO Alignment)
 

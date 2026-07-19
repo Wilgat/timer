@@ -4,7 +4,7 @@
 **Class:** Domain product — Active domain SSOT required and present.  
 **Always load first:** `reviews/lessons.md`
 
-**Last plan update:** 2026-07-16
+**Last plan update:** 2026-07-19
 
 ---
 
@@ -12,12 +12,13 @@
 
 | # | Check | Notes |
 |---|--------|--------|
-| P1 | Read `docs/requirements/index.md` (live law only) | 9 shell REQs including **domain** |
+| P1 | Read `docs/requirements/index.md` (live law only) | class + shell + **domain** REQs registered |
 | P2 | Confirm domain SSOT present | `requirement-domain-timer.md` Active |
+| P2b | Confirm class law present | `requirement-class-software-dev.md` Active |
 | P3 | Confirm ship unit `./timer` + companion `./timer.sha256` | Digest match via tests |
 | P4 | Load `reviews/lessons.md` and re-check every open L-* | Mandatory |
 | P5 | Run `./tests/run.sh` for baseline | Record PASS/FAIL in report |
-| P6 | Class still domain (domain surface + domain law) | Not bootstrap; not genesis |
+| P6 | Class still software-dev + domain | Not bootstrap; not genesis |
 
 ---
 
@@ -46,6 +47,8 @@
 | Domain dispatch `start\|stop\|status\|list\|kill\|reset` | Orphan vs law; wrong storage mode | L-DOM-01 |
 | `timer_sanitize_name` | Path injection / unsafe names | L-DOM-02 |
 | `timer_list` JSON `timers` field | Machine contract (array vs string) | L-JSON-01 |
+| Domain JSON elapsed / `count` types | Numbers not quoted strings | L-JSON-02 |
+| Class requirement present | software-dev class gate | L-CLASS-01 |
 | `timer_start` already-running | Silent overwrite | L-DOM-03 |
 | Install / self-update integrity | Companion vs pin trust bounds | L-CSUM-01 |
 | `self-uninstall` non-force | Fake JSON success cancel | L-UNIN-01 |

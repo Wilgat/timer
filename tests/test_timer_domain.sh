@@ -70,6 +70,24 @@ run_test_timer_domain() {
     _ec=$?
     assert_eq "domain json status exit 0" 0 "$_ec"
     assert_contains "domain json status type" "$_out" '"type":"status"'
+    # T-JSON-02: status elapsed fields are JSON numbers (not strings)
+    if command -v python3 >/dev/null 2>&1; then
+        if printf '%s\n' "$_out" | python3 -c '
+import json,sys
+o=json.load(sys.stdin)
+for k in ("minutes","seconds","elapsed"):
+    assert isinstance(o.get(k), int), "%s type=%s" % (k, type(o.get(k)).__name__)
+' 2>/dev/null; then
+            t_pass "domain json status elapsed fields are numbers"
+        else
+            t_fail "domain json status elapsed fields are numbers"
+        fi
+    else
+        case "$_out" in
+            *'"elapsed":'*) case "$_out" in *'"elapsed":"'*) t_fail "domain json status elapsed fields are numbers (shape)" ;; *) t_pass "domain json status elapsed fields are numbers (shape)" ;; esac ;;
+            *) t_fail "domain json status elapsed fields are numbers (shape)" ;;
+        esac
+    fi
 
     _out=$(_run --json list 2>/dev/null)
     _ec=$?
@@ -82,11 +100,17 @@ import json,sys
 o=json.load(sys.stdin)
 t=o.get("timers")
 assert isinstance(t,list), "timers type=%s" % type(t).__name__
+assert isinstance(o.get("count"), int), "count type=%s" % type(o.get("count")).__name__
 assert any(x.get("name")=="json-t" for x in t if isinstance(x,dict)), "json-t missing"
+row=next(x for x in t if isinstance(x,dict) and x.get("name")=="json-t")
+for k in ("minutes","seconds","elapsed"):
+    assert isinstance(row.get(k), int), "timers[].%s type=%s" % (k, type(row.get(k)).__name__)
 ' 2>/dev/null; then
             t_pass "domain json list timers is nested array"
+            t_pass "domain json list count and elapsed fields are numbers"
         else
             t_fail "domain json list timers is nested array"
+            t_fail "domain json list count and elapsed fields are numbers"
         fi
     else
         # Fallback shape check without python: array open after "timers":
@@ -94,12 +118,33 @@ assert any(x.get("name")=="json-t" for x in t if isinstance(x,dict)), "json-t mi
             *'"timers":['*) t_pass "domain json list timers is nested array (shape)" ;;
             *) t_fail "domain json list timers is nested array (shape)" ;;
         esac
+        case "$_out" in
+            *'"count":'*) case "$_out" in *'"count":"'*) t_fail "domain json list count is number (shape)" ;; *) t_pass "domain json list count is number (shape)" ;; esac ;;
+            *) t_fail "domain json list count is number (shape)" ;;
+        esac
     fi
 
     _out=$(_run --json stop json-t 2>/dev/null)
     _ec=$?
     assert_eq "domain json stop exit 0" 0 "$_ec"
     assert_contains "domain json stop elapsed" "$_out" '"elapsed":'
+    if command -v python3 >/dev/null 2>&1; then
+        if printf '%s\n' "$_out" | python3 -c '
+import json,sys
+o=json.load(sys.stdin)
+for k in ("minutes","seconds","elapsed"):
+    assert isinstance(o.get(k), int), "%s type=%s" % (k, type(o.get(k)).__name__)
+' 2>/dev/null; then
+            t_pass "domain json stop elapsed fields are numbers"
+        else
+            t_fail "domain json stop elapsed fields are numbers"
+        fi
+    else
+        case "$_out" in
+            *'"elapsed":'*) case "$_out" in *'"elapsed":"'*) t_fail "domain json stop elapsed fields are numbers (shape)" ;; *) t_pass "domain json stop elapsed fields are numbers (shape)" ;; esac ;;
+            *) t_fail "domain json stop elapsed fields are numbers (shape)" ;;
+        esac
+    fi
 
     # --- no_timer errors ---
     _err=$(_run --json status gone 2>&1 >/dev/null)

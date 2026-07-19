@@ -8,6 +8,7 @@
 # Bootstrap: specialized from selfmanaged Type 0 architecture (out_*/inst_*/app_*).
 # Product domain: start / stop / status / list / kill / reset named timers.
 # Project requirements (docs/requirements/ only — never cite templates here):
+# - requirement-class-software-dev.md        (software-development class + residual stack)
 # - requirement-shell-cli-interface.md
 # - requirement-shell-cli-zero-arguments.md  (Type O empty argv = install-ensure)
 # - requirement-domain-timer.md              (named-timer domain product law)
@@ -43,7 +44,7 @@ APP_NAME="timer"
 : "${SHORT_DESCRIPTION:=${APP_DESC}}"
 : "${DESCRIPTION:=POSIX /bin/sh Type 0 CLI: install, version-check, self-update, self-uninstall, about, plus timer start/stop/status/list.}"
 # Product version SSOT. Extractors use: grep '^VERSION="'
-VERSION="2.10.0"
+VERSION="2.10.1"
 : "${VERSION:=2.10.0}"
 
 # Runtime flags (safe defaults)
@@ -2394,11 +2395,12 @@ timer_stop() {
     seconds=$((elapsed % 60))
 
     if [ "${JSON}" -eq 1 ]; then
+        # Numeric fields as raw JSON numbers (@key) — consistent with list timers array
         out_json "success" "Timer '${TIMER_NAME}' stopped after ${minutes} min ${seconds} sec." \
             "name" "$TIMER_NAME" \
-            "minutes" "$minutes" \
-            "seconds" "$seconds" \
-            "elapsed" "$elapsed"
+            "@minutes" "$minutes" \
+            "@seconds" "$seconds" \
+            "@elapsed" "$elapsed"
     else
         out_success "Timer '${TIMER_NAME}' stopped after ${minutes} min ${seconds} sec."
     fi
@@ -2419,11 +2421,12 @@ timer_status() {
     seconds=$((elapsed % 60))
 
     if [ "${JSON}" -eq 1 ]; then
+        # Numeric fields as raw JSON numbers (@key) — consistent with list timers array
         out_json "status" "Timer '${TIMER_NAME}' running." \
             "name" "$TIMER_NAME" \
-            "minutes" "$minutes" \
-            "seconds" "$seconds" \
-            "elapsed" "$elapsed"
+            "@minutes" "$minutes" \
+            "@seconds" "$seconds" \
+            "@elapsed" "$elapsed"
     else
         out_plain "Timer '${TIMER_NAME}': ${minutes} min ${seconds} sec"
     fi
@@ -2465,8 +2468,8 @@ timer_list() {
 
     if [ ! -d "$base_dir" ]; then
         if [ "${JSON}" -eq 1 ]; then
-            # @timers = nested JSON array (not a stringified JSON-text field)
-            out_json "list" "" "mode" "$requested_mode" "count" "0" "@timers" "[]"
+            # @count raw number; @timers nested JSON array (not stringified fields)
+            out_json "list" "" "mode" "$requested_mode" "@count" "0" "@timers" "[]"
         else
             out_plain "No running timers found."
         fi
@@ -2502,10 +2505,10 @@ timer_list() {
     timers_json="${timers_json}]"
 
     if [ "${JSON}" -eq 1 ]; then
-        # @timers → nested array in object (requirement-domain-timer §2.2.4)
+        # @count raw number; @timers nested array (requirement-domain-timer §2.2.4)
         out_json "list" "" \
             "mode" "$requested_mode" \
-            "count" "$count" \
+            "@count" "$count" \
             "@timers" "$timers_json"
     else
         if [ "$count" -eq 0 ]; then

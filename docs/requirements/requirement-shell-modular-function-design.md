@@ -43,7 +43,7 @@ Optional multi-file layout under `src/` for future authoring **MAY** exist only 
 | `ver_` | Version comparison | Semantic version handling | `ver_gt`, `ver_check` |
 | `path_` | Shell PATH & environment | PATH manipulation and shell config | `path_add_shell`, `path_add_bashrc` |
 | `prompt_` | Interactive prompts | TTY-safe confirmations and questions | `prompt_yes_no`, `prompt_ask` |
-| `{{APP_NAME}}_` | Domain / product business logic | Product-specific ops (start, configure, deploy) | *None required until domain ops exist* |
+| `{{APP_NAME}}_` | Domain / product business logic | Product-specific ops (start, configure, deploy) | *Required when domain ops exist — see Implementation Notes* |
 
 **`app_*` vs domain prefix:**
 

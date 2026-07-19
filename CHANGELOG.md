@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.10.1] - 2026-07-19
+
+### Fixed
+
+- Domain JSON **status** / **stop** elapsed fields (`minutes`, `seconds`, `elapsed`) and list **`count`** are JSON **numbers** (aligned with nested `timers[]` members), not quoted strings.
+- Product-law class gate: Active `requirement-class-software-dev.md` registered for software-development residual stack.
+
+### Changed
+
+- Bump project target version and ship-unit `VERSION` to **2.10.1** (README Version badge SSOT + binary parity).
+- Refresh in-repo companion digest `timer.sha256` for the automatic integrity path.
+- Domain / output requirements document numeric JSON field contract; domain suite covers type checks.
+
 ## [2.10.0] - 2026-07-16
 
 ### Changed

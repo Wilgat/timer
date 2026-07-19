@@ -1,5 +1,5 @@
 **file**: docs/requirements/requirement-domain-timer.md  
-**Status**: Active (Version 1.0.0 – CIAO v2.10.2 domain product law SSOT)  
+**Status**: Active (Version 1.0.1 – JSON numeric elapsed fields + class peer)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
 ## 1. Purpose
@@ -102,6 +102,8 @@ JSON success-ish domain types (when JSON mode):
 | status | `status` | `name`, elapsed fields (`minutes`, `seconds`, `elapsed`) |
 | list | `list` | `mode`, `count`, `timers` (array; may be empty) |
 | domain error | error object via `out_json_error` / domain fail helper | stable `code` |
+
+**Numeric JSON fields (normative):** When present, **`minutes`**, **`seconds`**, **`elapsed`**, and list **`count`** **MUST** be JSON **numbers** (not quoted strings). Nested `timers[]` members use the same numeric types for elapsed fields. Implementation uses `out_json` `@key` raw values (`requirement-shell-output-requirements.md`).
 
 #### 2.2.5 Non-goals (explicit)
 
