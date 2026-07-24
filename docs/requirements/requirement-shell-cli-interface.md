@@ -1,4 +1,5 @@
 **file**: docs/requirements/requirement-shell-cli-interface.md  
+**Requirement-ID**: `RQ-SHELL-CLI-INTERFACE`  
 **Status**: Active (Version 1.1.0 – domain command table + domain SSOT peer)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
@@ -205,6 +206,29 @@ This requirement is satisfied for the timer shell CLI when all of the following 
 | `./timer` | Implementation under test |
 
 ---
+
+## Design-time verification
+
+**Requirement-ID:** `RQ-SHELL-CLI-INTERFACE`  
+**Specialized from:** `LM-CLI-INTERFACE`  
+**Matrix:** `reviews/requirement-test-matrix.md`  
+**Map:** `reviews/test-plan.md`
+
+| TP family / ID | Suite | Status |
+|----------------|-------|--------|
+| **TP-CLI-01** syntax + companion | `tests/test_cli.sh` | have |
+| **TP-CLI-02** version human + JSON | `tests/test_cli.sh` | have |
+| **TP-CLI-03** help Type 0 + domain rows | `tests/test_cli.sh` | have |
+| **TP-CLI-04** help/about JSON purity | `tests/test_cli.sh` | have |
+| **TP-CLI-05** about shell storage fields | n/a — domain owns storage (**TP-TIMER-09**) | n/a |
+| **TP-CLI-06** unknown command | `tests/test_cli.sh` | have |
+| **TP-CLI-07** quiet / `-q` | `tests/test_cli.sh` | have |
+| **TP-CLI-08** / **TP-U-01** `env -u HOME` | `tests/test_cli.sh` | have |
+| **TP-CLI-09** zero-arg bad channel | `tests/test_cli.sh` | have |
+| **TP-CLI-10** bashrc+sdkman | n/a — product has no sdkman source path | n/a |
+| **TP-CLI-11** self-uninstall refuse | `tests/test_cli.sh` | have |
+| **TP-TIMER-01** domain help verbs | `tests/test_timer_domain.sh` | have |
+
 
 **Last Updated**: 2026-07-16  
 **Owner**: timer project maintainers  

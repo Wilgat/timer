@@ -1,4 +1,5 @@
 **file**: docs/requirements/requirement-class-software-dev.md  
+**Requirement-ID**: `RQ-CLASS-SOFTWARE-DEV`  
 **Status**: Active (Version 1.0.0 – timer class law + residual stack)  
 **Area**: class  
 **Key**: `requirement-class-software-dev`  
@@ -180,6 +181,20 @@ This file is **class law + residual SSOT**, not a second copy of Type 0 lifecycl
 | 2026-07-19 | Active | Class gate fix (software-development missing Active class REQ) |
 
 ---
+
+## Design-time verification
+
+**Requirement-ID:** `RQ-CLASS-SOFTWARE-DEV`  
+**Specialized from:** `LM-REQUIREMENT-CLASS-SOFTWARE-DEV`  
+**Matrix:** `reviews/requirement-test-matrix.md`  
+**Map:** `reviews/test-plan.md`
+
+| Gate / TP | Suite or method | Status |
+|-----------|-----------------|--------|
+| **TP-CLASS-01** Active class REQ registered | static + `docs/requirements/index.md` | have |
+| Residual stack not duplicating peers | peer `requirement-shell-*` / `RQ-DOMAIN-TIMER` own pillars | have |
+| Full suite green | `./tests/run.sh` | have |
+
 
 **Last Updated**: 2026-07-19  
 **Owner**: timer maintainers  

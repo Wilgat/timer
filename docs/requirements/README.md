@@ -2,7 +2,7 @@
 
 Authoritative product and engineering requirements for this project live here.
 
-**Current state (2026-07-16 — timer specialization):** **Nine** live requirement files: eight `requirement-shell-*.md` (automatic-checksum, CLI interface, CLI zero-arguments, idempotency, interactive vs noninteractive, modular design, output, self-management) plus **domain SSOT** `requirement-domain-timer.md` (named-timer subcommands / storage / help-about domain rows). Status **Active**; versions per file header. Registry: `index.md` (must stay in sync). Type 0 lifecycle remains composition of zero-arguments + CLI + checksum + self-management + interactive + idempotency. No Type 1/2. Do **not** invent additional requirement paths without a real ownership gap — verify on disk and register new files in `index.md` in the same change.
+**Current state (2026-07-24 — timer specialization + ID notation):** **Ten** live requirement files: class law `requirement-class-software-dev` (`RQ-CLASS-SOFTWARE-DEV`), eight `requirement-shell-*.md` with `RQ-SHELL-*` IDs, plus **domain SSOT** `requirement-domain-timer` (`RQ-DOMAIN-TIMER`). Status **Active**. Registry: `index.md` (Requirement-ID + key). Each file has **Design-time verification** (TP-IDs + `tests/*` + `reviews/*` only). Type 0 lifecycle remains composition of zero-arguments + CLI + checksum + self-management + interactive + idempotency. No Type 1/2. Do **not** invent additional requirement paths without a real ownership gap.
 
 ## Naming law (filename discipline)
 
@@ -34,15 +34,22 @@ Registry: Area `domain`, key = basename without `.md`.
 |------|------|
 | `docs/requirements/index.md` | Registry of all requirements (IDs, status, owners) — keep in sync with files |
 | `docs/requirements/requirement-*.md` | CIAO-style project requirements (flat; primary live convention) |
-| `docs/requirements/<area>/<REQ-ID>.md` | Optional council-style `REQ-<AREA>-<NNN>` files |
+| `docs/requirements/<area>/…` | Optional council-style files (prefer flat `requirement-*.md` + `RQ-*`) |
 
 Suggested areas (if using subdirs): `product/`, `platform/`, `security/`, `ops/` — create as needed.
 
-## ID scheme
+## ID scheme (harness ID notation)
 
-- Format: `REQ-<AREA>-<NNN>` (example: `REQ-PLAT-001`).
+| Kind | Form | Scope |
+|------|------|--------|
+| **Requirement-ID** | `RQ-<UPPER-KEBAB-STEM>` matching file stem after `requirement-` | **This product only** (not portable harness) |
+| Example | `requirement-shell-cli-interface.md` → **`RQ-SHELL-CLI-INTERFACE`** | Cite `RQ-*` first on product surfaces; path secondary |
+| Optional council files | `REQ-<AREA>-<NNN>` under subdirs | Legacy optional; prefer flat `requirement-*.md` + `RQ-*` |
+
 - IDs are stable. Prefer status/`supersedes` over renumbering.
-- Record every ID in `index.md` when created or status changes.
+- Record every **Requirement-ID** and key in `index.md` when created or status changes.
+- **Never** freeze product `RQ-*` into portable templates/skills/terminologies (policy-harness-id-notation).
+- Test cases use **`TP-*`**; skills **`SK-*`**; law molds **`LM-*`**; proof molds **`PM-*-TEST-PLAN`**.
 
 ## Status values
 
@@ -62,12 +69,12 @@ When planning non-trivial work:
 1. Search `docs/requirements/` (and `index.md`) for related requirements.
 2. Decide: **new requirement**, **update existing**, or **no requirements impact** (state why).
 3. Apply requirement file changes **before** or as part of finishing the plan.
-4. Session plan (`plan.md`) must list affected REQ-IDs and whether each is create / update / no-change.
+4. Session plan (`plan.md`) must list affected Requirement-IDs (`RQ-*`) and whether each is create / update / no-change.
 5. Do not implement against unstated intent — if behavior is required, it belongs in a requirement file.
 
 ## Implementation rules
 
-- Every non-trivial PR/change set cites one or more REQ-IDs in commit/PR/summary when requirements exist.
+- Every non-trivial PR/change set cites one or more Requirement-IDs (`RQ-*`) in commit/PR/summary when requirements exist.
 - Do not invent requirements only in code comments; promote durable intent here.
 - **No placeholders** in requirement files: no `TBD`/`TODO` acceptance criteria, hollow sections, or stub “later” text (no-placeholder / dual-policy hygiene; deliver complete criteria or explicit deferred ownership).
 - Product source comments cite only **live** `requirement-*.md` files (never invent basenames).

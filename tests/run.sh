@@ -1,19 +1,10 @@
 #!/bin/sh
 # =============================================================================
-# tests/run.sh — CI entrypoint for timer
+# tests/run.sh — CI entrypoint for timer (PM-SHELL-CLI-SUITE-TEST-PLAN)
 # =============================================================================
-#
-# GENERAL PURPOSE:
-# Run the product test suite in a non-interactive, network-isolated-friendly
-# way suitable for local development and GitHub Actions.
-#
-# Usage:
-#   ./tests/run.sh
-#   sh tests/run.sh
-#
-# Exit 0 when all assertions pass; non-zero when any fail.
-#
-# Requirements: POSIX sh, curl, python3 (local channel), sha256sum, grep, date
+# Order: CLI → install lifecycle → online curl (local) → domain
+# Assert labels use TP-IDs (TP-CLI / TP-LC / TP-CSUM / TP-U / TP-CURL / TP-TIMER).
+# Product map: reviews/test-plan.md · RTM: reviews/requirement-test-matrix.md
 # =============================================================================
 
 set -u
@@ -21,11 +12,10 @@ set -u
 TESTS_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 REPO_ROOT=$(CDPATH= cd -- "${TESTS_ROOT}/.." && pwd)
 export TESTS_ROOT REPO_ROOT
-
-# Ship unit under test (bootstrap-specialized product)
-APP_NAME="${APP_NAME:-timer}"
+: "${APP_NAME:=timer}"
+export APP_NAME
 SCRIPT="${REPO_ROOT}/${APP_NAME}"
-export APP_NAME SCRIPT
+export SCRIPT
 
 # shellcheck source=helpers.sh
 . "${TESTS_ROOT}/helpers.sh"
@@ -33,6 +23,8 @@ export APP_NAME SCRIPT
 . "${TESTS_ROOT}/test_cli.sh"
 # shellcheck source=test_install_lifecycle.sh
 . "${TESTS_ROOT}/test_install_lifecycle.sh"
+# shellcheck source=test_online_curl_install.sh
+. "${TESTS_ROOT}/test_online_curl_install.sh"
 # shellcheck source=test_timer_domain.sh
 . "${TESTS_ROOT}/test_timer_domain.sh"
 
@@ -42,14 +34,13 @@ SKIP=0
 
 _cleanup() {
     ci_stop_channel 2>/dev/null || true
-    ci_cleanup_env 2>/dev/null || true
     ci_cleanup_timer_domain 2>/dev/null || true
+    ci_cleanup_env 2>/dev/null || true
 }
 trap _cleanup EXIT INT HUP TERM
 
-printf '%s CI tests\n' "${APP_NAME}"
+printf 'timer CI tests\n'
 printf 'script: %s\n' "${SCRIPT}"
-printf 'version: %s\n' "${APP_VERSION}"
 
 if [ ! -f "${SCRIPT}" ]; then
     printf 'ERROR: ship unit missing: %s\n' "${SCRIPT}" >&2
@@ -61,6 +52,7 @@ fi
 
 run_test_cli
 run_test_install_lifecycle
+run_test_online_curl_install
 run_test_timer_domain
 
 printf '\n== summary ==\n'

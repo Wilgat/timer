@@ -1,4 +1,5 @@
 **file**: docs/requirements/requirement-domain-timer.md  
+**Requirement-ID**: `RQ-DOMAIN-TIMER`  
 **Status**: Active (Version 1.0.1 – JSON numeric elapsed fields + class peer)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
@@ -245,6 +246,27 @@ This requirement is satisfied for timer when all of the following hold:
 | Root `README.md` | User-facing domain usage |
 
 ---
+
+## Design-time verification
+
+**Requirement-ID:** `RQ-DOMAIN-TIMER`  
+**Specialized from:** product domain SSOT (no portable domain law mold); design aid **`PM-DOMAIN-TEST-PLAN`** → family **`TP-TIMER`** (not `TP-DOM`)  
+**Matrix:** `reviews/requirement-test-matrix.md`  
+**Map:** `reviews/test-plan.md`
+
+| TP family / ID | Suite | Status |
+|----------------|-------|--------|
+| **TP-TIMER-01** help domain verbs/flags | `tests/test_timer_domain.sh` | have |
+| **TP-TIMER-02** start/status/list/stop human | `tests/test_timer_domain.sh` | have |
+| **TP-TIMER-03** already-running | `tests/test_timer_domain.sh` | have |
+| **TP-TIMER-04** JSON + number/`timers[]` types | `tests/test_timer_domain.sh` | have |
+| **TP-TIMER-05** `no_timer` | `tests/test_timer_domain.sh` | have |
+| **TP-TIMER-06** kill / reset | `tests/test_timer_domain.sh` | have |
+| **TP-TIMER-07** `invalid_name` | `tests/test_timer_domain.sh` | have |
+| **TP-TIMER-08** `--persist` | `tests/test_timer_domain.sh` | have |
+| **TP-TIMER-09** volatile storage path | `tests/test_timer_domain.sh` | have |
+| **TP-PAYLOAD-*** Type O-P scaffold | n/a — not Type O-P payload product | n/a |
+
 
 **Last Updated**: 2026-07-16  
 **Owner**: timer project maintainers  

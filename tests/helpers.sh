@@ -3,6 +3,7 @@
 # =============================================================================
 # Source from test scripts (POSIX /bin/sh). Does not modify product code.
 # Parameterized ship unit: APP_NAME (default timer), SCRIPT, APP_VERSION.
+# Assert labels SHOULD include TP-IDs (policy-harness-id-notation).
 # =============================================================================
 
 # shellcheck disable=SC2034
@@ -19,6 +20,8 @@ if [ -z "${APP_VERSION:-}" ] && [ -f "${SCRIPT}" ]; then
     APP_VERSION=$(grep '^VERSION="' "${SCRIPT}" 2>/dev/null | head -n1 | cut -d'"' -f2)
 fi
 : "${APP_VERSION:=unknown}"
+# Alias used by some ported asserts
+: "${PRODUCT_VERSION:=${APP_VERSION}}"
 
 # --- output ---
 t_info()  { printf '  · %s\n' "$*"; }
@@ -78,13 +81,21 @@ assert_file_missing() {
     fi
 }
 
+# Silent class: both stdout and stderr empty after a claimed one-liner = fail
+assert_not_silent() {
+    _lab="$1"; _out="$2"; _err="$3"
+    if [ -n "$_out" ] || [ -n "$_err" ]; then
+        t_pass "$_lab"
+    else
+        t_fail "$_lab (0-byte stdout and stderr — silent class fail)"
+    fi
+}
+
 _trunc() {
     printf '%s' "$1" | tr '\n' ' ' | cut -c1-160
 }
 
 # --- isolation helpers ---
-# Start a local HTTP channel serving SCRIPT as APP_NAME (+ derived .sha256).
-# Sets: CI_HTTP_PID, CI_SCRIPT_URL, CI_CHANNEL_DIR, CI_PORT
 ci_start_channel() {
     CI_CHANNEL_DIR=$(mktemp -d "${TMPDIR:-/tmp}/tm-channel.XXXXXX")
     cp "${SCRIPT}" "${CI_CHANNEL_DIR}/${APP_NAME}"
@@ -122,7 +133,6 @@ ci_stop_channel() {
     fi
 }
 
-# Isolated HOME + USER_BIN. Sets CI_HOME, CI_USER_BIN.
 ci_isolated_env() {
     CI_HOME=$(mktemp -d "${TMPDIR:-/tmp}/tm-home.XXXXXX")
     CI_USER_BIN="${CI_HOME}/.local/bin"
@@ -140,7 +150,6 @@ ci_cleanup_env() {
     fi
 }
 
-# Remove this user's volatile timer files (best-effort; domain suite).
 ci_cleanup_timer_domain() {
     _u=$(id -un 2>/dev/null || echo "unknown")
     rm -f /dev/shm/${APP_NAME}_"${_u}"_* 2>/dev/null || true

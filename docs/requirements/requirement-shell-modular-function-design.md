@@ -1,4 +1,5 @@
 **file**: docs/requirements/requirement-shell-modular-function-design.md  
+**Requirement-ID**: `RQ-SHELL-MODULAR-FUNCTION-DESIGN`  
 **Status**: Active (Version 1.0.2 – CIAO v2.10.2 Principles 6/7/8/20)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
@@ -254,6 +255,20 @@ A modular-structure change for timer is **not done** if any of the following fai
 | `./timer` | Implementation under modular design rules |
 
 ---
+
+## Design-time verification
+
+**Requirement-ID:** `RQ-SHELL-MODULAR-FUNCTION-DESIGN`  
+**Specialized from:** `LM-MODULAR-FUNCTION-DESIGN`  
+**Matrix:** `reviews/requirement-test-matrix.md`  
+**Map:** `reviews/test-plan.md`
+
+| Gate / TP | Suite or method | Status |
+|-----------|-----------------|--------|
+| **TP-CLI-01** ship unit syntax | `tests/test_cli.sh` | have |
+| Prefix / modular structure | code review vs this REQ prefix table | have |
+| Behavior under suite umbrella | `./tests/run.sh` green | have |
+
 
 **Last Updated**: 2026-07-16  
 **Owner**: timer project maintainers  

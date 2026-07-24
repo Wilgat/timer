@@ -1,4 +1,5 @@
 **file**: docs/requirements/requirement-shell-self-management.md  
+**Requirement-ID**: `RQ-SHELL-SELF-MANAGEMENT`  
 **Status**: Active (Version 1.0.2 – CIAO v2.10.2 Principles 5/9/10/11/20)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
@@ -209,6 +210,27 @@ Work claiming self-management support for timer is **not done** if any of the fo
 | `./timer` | Implementation under test |
 
 ---
+
+## Design-time verification
+
+**Requirement-ID:** `RQ-SHELL-SELF-MANAGEMENT`  
+**Specialized from:** `LM-SELF-MANAGEMENT`  
+**Matrix:** `reviews/requirement-test-matrix.md`  
+**Map:** `reviews/test-plan.md`
+
+| TP family / ID | Suite | Status |
+|----------------|-------|--------|
+| **TP-LC-04** about installed + version-check | `tests/test_install_lifecycle.sh` | have |
+| **TP-LC-05** self-update already-latest | `tests/test_install_lifecycle.sh` | have |
+| **TP-LC-05b** self-update when remote newer | `tests/test_install_lifecycle.sh` | have |
+| **TP-LC-06** force reinstall companion transparency | `tests/test_install_lifecycle.sh` | have |
+| **TP-LC-07** self-uninstall refuse / force | `tests/test_install_lifecycle.sh` | have |
+| **TP-LC-08** downgrade refuse / force | `tests/test_install_lifecycle.sh` | have |
+| **TP-LC-11** version-check network failure | `tests/test_install_lifecycle.sh` | have |
+| **TP-LC-12** explicit `install --json` | `tests/test_install_lifecycle.sh` | have |
+| **TP-CLI-11** uninstall refuse (CLI suite) | `tests/test_cli.sh` | have |
+| **TP-CURL-02,07** pipe install / pipe version | `tests/test_online_curl_install.sh` | have |
+
 
 **Last Updated**: 2026-07-14
 **Owner**: timer project maintainers  

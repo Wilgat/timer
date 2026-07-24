@@ -1,4 +1,5 @@
 **file**: docs/requirements/requirement-shell-output-requirements.md  
+**Requirement-ID**: `RQ-SHELL-OUTPUT-REQUIREMENTS`  
 **Status**: Active (Version 1.2.1 – out_json `@key` raw nested and numeric JSON fields)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
@@ -268,6 +269,23 @@ Output-related work for timer is **not done** if any of the following fail:
 | `./timer` | Implementation under test |
 
 ---
+
+## Design-time verification
+
+**Requirement-ID:** `RQ-SHELL-OUTPUT-REQUIREMENTS`  
+**Specialized from:** `LM-OUTPUT-REQUIREMENTS`  
+**Matrix:** `reviews/requirement-test-matrix.md`  
+**Map:** `reviews/test-plan.md`
+
+| TP family / ID | Suite | Status |
+|----------------|-------|--------|
+| **TP-CLI-02** version JSON | `tests/test_cli.sh` | have |
+| **TP-CLI-04** help/about JSON purity | `tests/test_cli.sh` | have |
+| **TP-CLI-06** error JSON / loud fail | `tests/test_cli.sh` | have |
+| **TP-CLI-07** quiet suppresses human | `tests/test_cli.sh` | have |
+| **TP-CLI-12** `out_json` `@key` raw nested | `tests/test_cli.sh` | have |
+| **TP-TIMER-04** domain JSON numbers + `timers[]` | `tests/test_timer_domain.sh` | have |
+
 
 **Last Updated**: 2026-07-16
 **Owner**: timer project maintainers  

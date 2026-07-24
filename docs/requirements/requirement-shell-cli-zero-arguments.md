@@ -1,4 +1,5 @@
 **file**: docs/requirements/requirement-shell-cli-zero-arguments.md  
+**Requirement-ID**: `RQ-SHELL-CLI-ZERO-ARGUMENTS`  
 **Status**: Active (Version 1.1.1 – CIAO v2.10.2 principle map)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
@@ -224,3 +225,21 @@ This requirement is satisfied when all of the following hold:
 |------|--------|----------------|
 | 2026-07-14 | Initial Active v1.0.0: empty argv = install-ensure for not-installed / local / global; forbid help fallthrough | Grok (owner request) |
 | 2026-07-14 | v1.1.0: Classify product as Type O (online-install) under dual-type empty-argv template model | Grok |
+
+## Design-time verification
+
+**Requirement-ID:** `RQ-SHELL-CLI-ZERO-ARGUMENTS`  
+**Specialized from:** `LM-SHELL-CLI-ZERO-ARGUMENTS`  
+**Matrix:** `reviews/requirement-test-matrix.md`  
+**Map:** `reviews/test-plan.md`
+
+| TP family / ID | Suite | Status |
+|----------------|-------|--------|
+| **TP-CLI-09** / **TP-LC-09** zero-arg fail loud | `tests/test_cli.sh` | have |
+| **TP-LC-01** first ensure + already local/global | `tests/test_install_lifecycle.sh` | have |
+| **TP-CURL-02** first `curl\|sh` | `tests/test_online_curl_install.sh` | have |
+| **TP-CURL-03** second pipe | `tests/test_online_curl_install.sh` | have |
+| **TP-CURL-08** unreachable channel | `tests/test_online_curl_install.sh` | have |
+| **TP-U-02** nounset on zero-arg fail path | `tests/test_cli.sh` (with TP-CLI-09) | have |
+| **TP-PAYLOAD-*** / Type O-P domain ensure | n/a — Type O CLI, not Type O-P payload | n/a |
+

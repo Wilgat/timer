@@ -4,7 +4,7 @@
 
 **Not:** Product law (`docs/requirements/`). Not harness blank checklists. Not session `/tmp` scratch (promote durable outcomes here).
 
-**Product class:** **Domain product** (Active domain SSOT: `docs/requirements/requirement-domain-timer.md`).  
+**Product class:** **Domain product** (Active domain SSOT: **`RQ-DOMAIN-TIMER`** · `docs/requirements/requirement-domain-timer.md`).  
 **Ship unit:** `./timer`  
 **Tests:** `./tests/run.sh`
 
@@ -16,6 +16,7 @@ reviews/
   index.md               # registry of plans + reports + open items
   what-to-review.md      # living checklist (review plan)
   test-plan.md           # TP-* → tests/
+  requirement-test-matrix.md  # RQ-* ↔ TP families
   lessons.md             # L-* failure modes from prior reports
   reports/
     YYYY-MM-DD-<scope>.md
@@ -36,6 +37,7 @@ reviews/
 | Artifact | Path |
 |----------|------|
 | Product review skill | `docs/skills/skill-product-review.md` |
-| Template | `docs/templates/template-project-reviews.md` |
-| Terms | `project-reviews`, `review-plan`, `project-review-folder`, `review-report` |
-| Domain law | `docs/requirements/requirement-domain-timer.md` |
+| Template (law mold) | `docs/templates/requirements/template-project-reviews.md` |
+| Terms | `project-reviews`, `review-plan`, `project-review-folder`, `review-report`, `id-notation` |
+| Domain law | `RQ-DOMAIN-TIMER` · `docs/requirements/requirement-domain-timer.md` |
+| RTM | `requirement-test-matrix.md` |

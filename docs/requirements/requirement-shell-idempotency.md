@@ -1,4 +1,5 @@
 **file**: docs/requirements/requirement-shell-idempotency.md  
+**Requirement-ID**: `RQ-SHELL-IDEMPOTENCY`  
 **Status**: Active (Version 1.0.2 – CIAO v2.10.2 Principles 11/12/20)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
@@ -170,6 +171,21 @@ A state-changing shell change for timer is **not done** if any of the following 
 | `./timer` | Implementation under test |
 
 ---
+
+## Design-time verification
+
+**Requirement-ID:** `RQ-SHELL-IDEMPOTENCY`  
+**Specialized from:** `LM-IDEMPOTENCY`  
+**Matrix:** `reviews/requirement-test-matrix.md`  
+**Map:** `reviews/test-plan.md`
+
+| TP family / ID | Suite | Status |
+|----------------|-------|--------|
+| **TP-LC-01** ensure re-run / already-installed paths | `tests/test_install_lifecycle.sh` | have |
+| **TP-LC-05** self-update already-latest | `tests/test_install_lifecycle.sh` | have |
+| **TP-LC-10** idempotent re-install | `tests/test_install_lifecycle.sh` | have |
+| **TP-CURL-03** second pipe already-installed | `tests/test_online_curl_install.sh` | have |
+
 
 **Last Updated**: 2026-07-14
 **Owner**: timer project maintainers  

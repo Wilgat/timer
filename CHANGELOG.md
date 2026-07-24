@@ -5,6 +5,17 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/),
 and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Aligned product Requirement-IDs (`RQ-*`) and suite TP-IDs with harness ID notation; each live requirement has Design-time verification.
+- Expanded CI suite: TP-labeled CLI/lifecycle parity, local-channel TP-CURL suite, domain-subject **TP-TIMER-01..09** (not TP-DOM) (187 PASS / 0 FAIL / 1 SKIP optional online).
+- Aligned each live requirement **Design-time verification** with law mold TP families (`LM-*` specialize provenance; domain → `TP-TIMER-01..09`); product RTM lists LM/PM + TP matrix.
+- ID notation: domain product cases use **`TP-<SUBJECT>-*`** (e.g. **TP-TIMER-***); deprecate product **`TP-DOM-*`** (policy-harness-id-notation §5).
+- Product maps: `reviews/test-plan.md`, `reviews/requirement-test-matrix.md`.
+- Removed legacy flat `docs/templates/template-*.md` layout; law/proof molds under `templates/requirements/` and `templates/tests/` (H2 from genesis).
+
 ## [2.10.1] - 2026-07-19
 
 ### Fixed

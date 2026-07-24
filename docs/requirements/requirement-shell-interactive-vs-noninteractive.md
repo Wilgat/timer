@@ -1,4 +1,5 @@
 **file**: docs/requirements/requirement-shell-interactive-vs-noninteractive.md  
+**Requirement-ID**: `RQ-SHELL-INTERACTIVE-VS-NONINTERACTIVE`  
 **Status**: Active (Version 1.0.2 – CIAO v2.10.2 Principles 16/20)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
@@ -224,6 +225,22 @@ Mode-related work for timer is **not done** if any of the following fail:
 | `./timer` | Implementation under test |
 
 ---
+
+## Design-time verification
+
+**Requirement-ID:** `RQ-SHELL-INTERACTIVE-VS-NONINTERACTIVE`  
+**Specialized from:** `LM-INTERACTIVE-VS-NONINTERACTIVE`  
+**Matrix:** `reviews/requirement-test-matrix.md`  
+**Map:** `reviews/test-plan.md`
+
+| TP family / ID | Suite | Status |
+|----------------|-------|--------|
+| **TP-CLI-07** quiet mode | `tests/test_cli.sh` | have |
+| **TP-CLI-11** uninstall refuse (no hang / confirm_required) | `tests/test_cli.sh` | have |
+| **TP-LC-07** lifecycle uninstall refuse | `tests/test_install_lifecycle.sh` | have |
+| **TP-CURL-02** non-TTY first pipe | `tests/test_online_curl_install.sh` | have |
+| **TP-CURL-03** non-TTY second pipe | `tests/test_online_curl_install.sh` | have |
+
 
 **Last Updated**: 2026-07-14
 **Owner**: timer project maintainers  

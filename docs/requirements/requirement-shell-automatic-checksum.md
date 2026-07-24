@@ -1,4 +1,5 @@
 **file**: docs/requirements/requirement-shell-automatic-checksum.md  
+**Requirement-ID**: `RQ-SHELL-AUTOMATIC-CHECKSUM`  
 **Status**: Active (Version 1.0.1 – CIAO v2.10.2 principle map)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
@@ -205,3 +206,19 @@ Violating this rule is a requirements failure and must be recorded (incident or 
 |------|--------|----------------|
 | 2026-07-13 | Initial Active v1.0.0 — automatic companion digest + transparency (link/value/result); secondary CHECKSUM; README primary-path rules | Multi-agent council |
 | 2026-07-13 | `CHECKSUM` = install-path runtime variable only; **MUST NOT** display in `help` / `about` | Multi-agent council |
+
+## Design-time verification
+
+**Requirement-ID:** `RQ-SHELL-AUTOMATIC-CHECKSUM`  
+**Specialized from:** `LM-AUTOMATIC-CHECKSUM`  
+**Matrix:** `reviews/requirement-test-matrix.md`  
+**Map:** `reviews/test-plan.md`
+
+| TP family / ID | Suite | Status |
+|----------------|-------|--------|
+| **TP-CSUM-01** publisher companion matches ship unit | `tests/test_cli.sh` | have |
+| **TP-CSUM-02** / **TP-LC-06** human force reinstall transparency | `tests/test_install_lifecycle.sh` | have |
+| **TP-CSUM-03** Shape B pin mismatch | `tests/test_install_lifecycle.sh` | have |
+| **TP-CSUM-04** Shape B pin match | `tests/test_install_lifecycle.sh` | have |
+| **TP-CSUM-05** help/about hide CHECKSUM | `tests/test_cli.sh` | have |
+

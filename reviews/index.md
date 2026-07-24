@@ -1,14 +1,14 @@
 # Reviews index — timer
 
 **Registry** of review plan artifacts and run reports. Keep rows in sync with disk.  
-**Updated:** 2026-07-19
+**Updated:** 2026-07-24
 
 ## Plan artifacts
 
 | Artifact | Path | Role |
 |----------|------|------|
 | What to review | `what-to-review.md` | Living checklist (review plan) |
-| Test plan | `test-plan.md` | TP-* lock-in |
+| Test plan | `test-plan.md`, `requirement-test-matrix.md` | TP-* lock-in |
 | Lessons | `lessons.md` | L-* re-check |
 | README | `README.md` | Surface rules |
 
@@ -16,6 +16,7 @@
 
 | Date | File | Scope | Baseline | Verdict |
 |------|------|-------|----------|---------|
+| 2026-07-24 | *(housekeeping — suite/maps)* | H2 + TP coverage + RQ notation | PASS=187 FAIL=0 SKIP=1 | **Pass** (maps updated; formal report optional) |
 | 2026-07-19 | `reports/2026-07-19-timer-product-review.md` | Class gate + domain JSON numbers + precommit | PASS=133 FAIL=0 | **Pass** — T-CLASS-01 / T-JSON-02 fixed |
 | 2026-07-16 | `reports/2026-07-16-timer-product-review.md` | Full Type 0 + domain; plan bootstrap | PASS=129 FAIL=0 | **Revise** — findings opened |
 | 2026-07-16 | `reports/2026-07-16-timer-findings-fix.md` | Close T-JSON/CITE/ID/DOC | PASS=130 FAIL=0 | **Pass** — all prior opens closed |
