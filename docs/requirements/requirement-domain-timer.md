@@ -263,8 +263,9 @@ This requirement is satisfied for timer when all of the following hold:
 | **TP-TIMER-05** `no_timer` | `tests/test_timer_domain.sh` | have |
 | **TP-TIMER-06** kill / reset | `tests/test_timer_domain.sh` | have |
 | **TP-TIMER-07** `invalid_name` | `tests/test_timer_domain.sh` | have |
-| **TP-TIMER-08** `--persist` | `tests/test_timer_domain.sh` | have |
-| **TP-TIMER-09** volatile storage path | `tests/test_timer_domain.sh` | have |
+| **TP-STORAGE-02** `--persist` (shared dual-storage) | `tests/test_timer_domain.sh` | have |
+| **TP-STORAGE-01** volatile storage path (shared) | `tests/test_timer_domain.sh` | have |
+| **TP-STORAGE-03** corrupted state | n/a — not claimed in suite | n/a |
 | **TP-PAYLOAD-*** Type O-P scaffold | n/a — not Type O-P payload product | n/a |
 
 

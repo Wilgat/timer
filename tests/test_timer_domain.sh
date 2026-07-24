@@ -1,7 +1,7 @@
 # =============================================================================
-# tests/test_timer_domain.sh — timer domain (RQ-DOMAIN-TIMER / TP-TIMER-*)
+# tests/test_timer_domain.sh — timer domain (RQ-DOMAIN-TIMER / TP-TIMER-* ops + TP-STORAGE-*)
 # =============================================================================
-# Domain-subject family TP-TIMER-* proves RQ-DOMAIN-TIMER (policy-harness-id-notation §5).
+# Domain-subject family TP-TIMER-* ops + TP-STORAGE-* proves RQ-DOMAIN-TIMER (policy-harness-id-notation §5).
 # Type O-P portable payload design tokens (TP-PAYLOAD-*/PM-DOMAIN-TEST-PLAN) are n/a for this product.
 # =============================================================================
 
@@ -9,7 +9,7 @@
 . "${TESTS_ROOT}/helpers.sh"
 
 run_test_timer_domain() {
-    t_header "Timer domain (TP-TIMER-*)"
+    t_header "Timer domain (TP-TIMER-* ops + TP-STORAGE-*)"
 
     require_cmd date
     require_cmd sh
@@ -160,25 +160,25 @@ for k in ("minutes","seconds","elapsed"):
     assert_eq "TP-TIMER-07 invalid name json exit 1" 1 "$_ec"
     assert_contains "TP-TIMER-07 invalid_name code" "$_err" "invalid_name"
 
-    # --- TP-TIMER-08: --persist start / list / stop ---
+    # --- TP-STORAGE-02: --persist start / list / stop ---
     _out=$(_run --persist start persist-t 2>/dev/null)
     _ec=$?
-    assert_eq "TP-TIMER-08 persist start exit 0" 0 "$_ec"
+    assert_eq "TP-STORAGE-02 persist start exit 0" 0 "$_ec"
     case "$_out" in
-        *persist*|*started*|*success*) t_pass "TP-TIMER-08 persist mode note or success" ;;
-        *) t_fail "TP-TIMER-08 persist start unexpected: $_out" ;;
+        *persist*|*started*|*success*) t_pass "TP-STORAGE-02 persist mode note or success" ;;
+        *) t_fail "TP-STORAGE-02 persist start unexpected: $_out" ;;
     esac
 
     _out=$(_run --persist list 2>/dev/null)
     _ec=$?
-    assert_eq "TP-TIMER-08 persist list exit 0" 0 "$_ec"
-    assert_contains "TP-TIMER-08 persist list name" "$_out" "persist-t"
+    assert_eq "TP-STORAGE-02 persist list exit 0" 0 "$_ec"
+    assert_contains "TP-STORAGE-02 persist list name" "$_out" "persist-t"
 
     _out=$(_run --persist stop persist-t 2>/dev/null)
     _ec=$?
-    assert_eq "TP-TIMER-08 persist stop exit 0" 0 "$_ec"
+    assert_eq "TP-STORAGE-02 persist stop exit 0" 0 "$_ec"
 
-    # --- TP-TIMER-09: storage paths (volatile file exists while running) ---
+    # --- TP-STORAGE-01: storage paths (volatile file exists while running) ---
     _run start stor-path >/dev/null 2>&1
     _u=$(id -un 2>/dev/null || echo "unknown")
     _hit=0
@@ -199,14 +199,14 @@ for k in ("minutes","seconds","elapsed"):
         [ "$_hit" -eq 1 ] && break
     done
     if [ "$_hit" -eq 1 ]; then
-        t_pass "TP-TIMER-09 volatile storage file present under /dev/shm or /tmp"
+        t_pass "TP-STORAGE-01 volatile storage file present under /dev/shm or /tmp"
     else
         # fallback: status still works → storage resolved somehow
         _out=$(_run status stor-path 2>/dev/null)
         if [ $? -eq 0 ]; then
-            t_pass "TP-TIMER-09 storage resolved (status OK; path layout may differ)"
+            t_pass "TP-STORAGE-01 storage resolved (status OK; path layout may differ)"
         else
-            t_fail "TP-TIMER-09 no storage file and status failed"
+            t_fail "TP-STORAGE-01 no storage file and status failed"
         fi
     fi
     _run stop stor-path >/dev/null 2>&1 || true

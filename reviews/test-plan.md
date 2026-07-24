@@ -13,7 +13,8 @@ Maps **portable TP families** (proof molds) to product-root `tests/`.
 | **TP-CSUM** | `PM-CHECKSUM-TEST-PLAN` | CLI + lifecycle |
 | **TP-U** | `PM-SET-U-TEST-PLAN` | CLI + curl (partial) |
 | **TP-CURL** | `PM-ONLINE-CURL-INSTALL-TEST-PLAN` | `tests/test_online_curl_install.sh` |
-| **TP-TIMER** | `PM-DOMAIN-TEST-PLAN` (specialize) | `tests/test_timer_domain.sh` |
+| **TP-TIMER** | `PM-DOMAIN-TEST-PLAN` §4.3.2 (ops) | `tests/test_timer_domain.sh` |
+| **TP-STORAGE** | `PM-DOMAIN-TEST-PLAN` §4.2 shared dual-storage | `tests/test_timer_domain.sh` |
 | Umbrella | `PM-SHELL-CLI-SUITE-TEST-PLAN` | `tests/run.sh` |
 | RTM mold | `PM-REQUIREMENT-TEST-TRACEABILITY` | `reviews/requirement-test-matrix.md` |
 
@@ -38,7 +39,7 @@ Status: **have** = automated · **todo** = needed · **n/a** = not applicable ·
 | **TP-CLI-02** | Version human + JSON | **have** | version exit/app/version; `--debug` |
 | **TP-CLI-03** | Help Type 0 + domain surface | **have** | install/self-*; start/stop/list; no CHECKSUM |
 | **TP-CLI-04** | Help/about JSON purity | **have** | help/about JSON; about no CHECKSUM |
-| **TP-CLI-05** | About shell storage resolve | **n/a** | timer about has no `storage_dir`; domain owns storage (**TP-TIMER-09**) |
+| **TP-CLI-05** | About shell storage resolve | **n/a** | domain owns storage (**TP-STORAGE-***) |
 | **TP-CLI-06** | Unknown command | **have** | human + JSON `out_error` |
 | **TP-CLI-07** | Quiet mode | **have** | `--quiet` and `-q` |
 | **TP-CLI-08** | `env -u HOME` under set -u | **have** | also **TP-U-01** |
@@ -135,11 +136,21 @@ Policy: `policy-harness-id-notation` §5.
 | **TP-TIMER-05** | `no_timer` error code | **have** | domain suite |
 | **TP-TIMER-06** | kill / reset | **have** | domain suite |
 | **TP-TIMER-07** | `invalid_name` | **have** | domain suite |
-| **TP-TIMER-08** | `--persist` start/list/stop | **have** | domain suite |
-| **TP-TIMER-09** | Volatile storage path resolve | **have** | `/dev/shm` or `/tmp` file |
 | **TP-PAYLOAD-*** | Type O-P payload scaffold (mold) | **n/a** | not a Type O-P payload product |
 
-**Legacy map (retired):** `TP-TIMER-*` → **`TP-TIMER-*`** (same NN where applicable; dense 01–09).
+---
+
+## TP-STORAGE — Shared dual-storage (`PM-DOMAIN-TEST-PLAN` §4.2)
+
+**Not subject-branded** (timer · countdown · pomo · peers). Primary storage proof IDs.
+
+| TP-ID | Intent | Status | Evidence | Legacy alias |
+|-------|--------|--------|----------|--------------|
+| **TP-STORAGE-01** | Volatile storage path resolve | **have** | `/dev/shm` or `/tmp` file | was **TP-TIMER-09** |
+| **TP-STORAGE-02** | `--persist` start/list/stop | **have** | domain suite | was **TP-TIMER-08** |
+| **TP-STORAGE-03** | Corrupted state fail-closed | **n/a** | product does not claim corruption code path in suite | — |
+
+**Legacy map:** ops remain **`TP-TIMER-01..07`**; storage **TP-TIMER-08/09** → **`TP-STORAGE-02/01`**.
 
 
 ---

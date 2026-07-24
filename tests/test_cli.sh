@@ -82,11 +82,11 @@ run_test_cli() {
     # --- TP-CLI-05: shell about storage fields ---
     # timer product: about JSON has no effective_storage/storage_dir (domain storage is
     # owned by RQ-DOMAIN-TIMER / timer_* paths). Mark shell storage mold fields N/A;
-    # domain suite proves volatile/persistent storage (TP-TIMER-09).
+    # domain suite proves volatile/persistent storage (TP-STORAGE-01).
     _out=$(sh "${SCRIPT}" --json about 2>/dev/null)
     assert_contains "TP-CLI-05 about --json type present (shell storage fields n/a)" "$_out" '"type":"about"'
     assert_not_contains "TP-CLI-05 timer about has no shell storage_dir field (domain owns storage)" "$_out" '"storage_dir"'
-    t_pass "TP-CLI-05 shell storage resolve n/a for timer (see TP-TIMER-09)"
+    t_pass "TP-CLI-05 shell storage resolve n/a for timer (see TP-STORAGE-01)"
 
     # --- TP-CLI-06: unknown command ---
     _err=$(sh "${SCRIPT}" no-such-command 2>&1 >/dev/null)
