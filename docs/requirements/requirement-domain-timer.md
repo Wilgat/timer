@@ -1,11 +1,14 @@
 **file**: docs/requirements/requirement-domain-timer.md  
 **Requirement-ID**: `RQ-DOMAIN-TIMER`  
-**Status**: Active (Version 1.0.1 – JSON numeric elapsed fields + class peer)  
+**Status**: Active (Version 1.0.2 – mold-aligned to LM-NAMED-TIMER-DOMAIN)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
 ## 1. Purpose
 
 This requirement is the **project Single Source of Truth for domain product law** of the timer POSIX shell CLI: **named-timer operations beyond Type 0 self-management**.
+
+**Specialized from:** **`LM-NAMED-TIMER-DOMAIN`** (full-domain external-timer expansion of **`LM-SHELL-INTERNAL-VOLATILE-TIMER`** base).  
+**Proof design:** **`PM-DOMAIN-TEST-PLAN`** → product family **`TP-TIMER`** (+ shared **`TP-STORAGE-*`** dual-storage rows).
 
 It owns the **four domain pillars**:
 
@@ -14,8 +17,17 @@ It owns the **four domain pillars**:
 3. **Specialized project help items** (what `help` must list for domain)  
 4. **Specialized project about items** (what `about` must expose for domain guidance)
 
-**Scope:** Domain command surface, timer identity/storage rules, human/JSON domain contracts, help/about domain rows.  
-**Out of scope (peer requirements own):** Install / self-update / uninstall / empty-argv install-ensure; full `out_*` catalog; modular prefix system shape; companion-digest integrity; Type 1 host bootstrap / Type 2 system-user app ops.
+**Mandatory peers (from law mold — fail closed):**
+
+| Peer | Requirement-ID | Owns |
+|------|----------------|------|
+| CLI interface | **RQ-SHELL-CLI-INTERFACE** | Dispatch, `--persist`, empty argv Type O, help routing |
+| Shell CLI storage | **RQ-SHELL-CLI-STORAGE** | Scratch/cache resolve, isolation, about storage fields |
+| Temp file system | **RQ-SHELL-TEMP-FILE-SYSTEM** | `mktemp` leaves, cleanup/atomic stage for install temps |
+| Output | **RQ-SHELL-OUTPUT-REQUIREMENTS** | `out_*` channels |
+
+**Scope:** Domain command surface, timer identity/**record** rules, human/JSON domain contracts, help/about domain rows.  
+**Out of scope (peer requirements own):** Install / self-update / uninstall / empty-argv install-ensure; full `out_*` catalog; modular prefix system shape; companion-digest integrity; shell scratch resolve (**RQ-SHELL-CLI-STORAGE**); temp leaf policy (**RQ-SHELL-TEMP-FILE-SYSTEM**); Type 1 host bootstrap / Type 2 system-user app ops.
 
 **Must not confuse with:** Type 0 lifecycle commands (`install`, `version`, `about`, `version-check`, `self-update`, `self-uninstall`, `help`); OS package managers; multi-user daemon services.
 
@@ -250,7 +262,8 @@ This requirement is satisfied for timer when all of the following hold:
 ## Design-time verification
 
 **Requirement-ID:** `RQ-DOMAIN-TIMER`  
-**Specialized from:** product domain SSOT (no portable domain law mold); design aid **`PM-DOMAIN-TEST-PLAN`** → family **`TP-TIMER`** (not `TP-DOM`)  
+**Specialized from:** `LM-NAMED-TIMER-DOMAIN` (base: `LM-SHELL-INTERNAL-VOLATILE-TIMER`)  
+**Proof mold:** `PM-DOMAIN-TEST-PLAN` → family **`TP-TIMER`** (not product `TP-DOM`)  
 **Matrix:** `reviews/requirement-test-matrix.md`  
 **Map:** `reviews/test-plan.md`
 
@@ -269,6 +282,6 @@ This requirement is satisfied for timer when all of the following hold:
 | **TP-PAYLOAD-*** Type O-P scaffold | n/a — not Type O-P payload product | n/a |
 
 
-**Last Updated**: 2026-07-16  
+**Last Updated**: 2026-08-11  
 **Owner**: timer project maintainers  
-**Alignment**: Registry `docs/requirements/index.md`; peer live requirements in §6; CIAO Principles 1, 2, 3, 4, 5, 6, 9, 10, 11, 20 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).
+**Alignment**: Registry `docs/requirements/index.md`; **`LM-NAMED-TIMER-DOMAIN`**; **`PM-DOMAIN-TEST-PLAN`**; mandatory peers CLI/storage/temp/output; CIAO Principles 1, 2, 3, 4, 5, 6, 9, 10, 11, 20 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).

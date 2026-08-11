@@ -10,7 +10,7 @@ This requirement is the **project Single Source of Truth** for the **POSIX shell
 It defines a **Type 0–centric self-managed shell CLI** (install / update / uninstall of the tool itself) **plus routing for named-timer domain commands**. Domain **behavior** (storage, name rules, elapsed semantics, domain error codes) is owned by `requirement-domain-timer.md`. It does **not** invent Type 1 host-bootstrap or Type 2 system-user app-ops commands unless a future requirement adds them.
 
 **Scope:** User-facing command names, flags, dispatch, privilege labels, and mode contracts.  
-**Out of scope (own requirements when specialized):** Online-install checksum mechanics detail, self-management safety beyond the command surface, shell coding style, full output-function catalog (cited, not re-owned); **domain semantics** (owned by `requirement-domain-timer.md`).
+**Out of scope (own requirements when specialized):** Online-install checksum mechanics detail, self-management safety beyond the command surface, shell coding style, full output-function catalog (cited, not re-owned); **domain semantics** (owned by **`RQ-DOMAIN-TIMER`**); **shell scratch resolve** (owned by **`RQ-SHELL-CLI-STORAGE`** / **`LM-SHELL-CLI-STORAGE`**).
 
 ---
 
@@ -220,7 +220,7 @@ This requirement is satisfied for the timer shell CLI when all of the following 
 | **TP-CLI-02** version human + JSON | `tests/test_cli.sh` | have |
 | **TP-CLI-03** help Type 0 + domain rows | `tests/test_cli.sh` | have |
 | **TP-CLI-04** help/about JSON purity | `tests/test_cli.sh` | have |
-| **TP-CLI-05** about shell storage fields | n/a — domain owns storage (**TP-TIMER-09**) | n/a |
+| **TP-CLI-05** about shell storage fields | `tests/test_cli.sh` — owned by **RQ-SHELL-CLI-STORAGE** / **LM-SHELL-CLI-STORAGE** | have |
 | **TP-CLI-06** unknown command | `tests/test_cli.sh` | have |
 | **TP-CLI-07** quiet / `-q` | `tests/test_cli.sh` | have |
 | **TP-CLI-08** / **TP-U-01** `env -u HOME` | `tests/test_cli.sh` | have |
@@ -230,6 +230,6 @@ This requirement is satisfied for the timer shell CLI when all of the following 
 | **TP-TIMER-01** domain help verbs | `tests/test_timer_domain.sh` | have |
 
 
-**Last Updated**: 2026-07-16  
+**Last Updated**: 2026-08-11  
 **Owner**: timer project maintainers  
-**Alignment**: Registry `docs/requirements/index.md`; peer live requirements in §6; CIAO Principles 1, 2, 3, 4, 6, 9, 10, 16, 20 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).
+**Alignment**: Registry `docs/requirements/index.md`; **`LM-CLI-INTERFACE`**; peer storage **RQ-SHELL-CLI-STORAGE** / **TP-CLI-05**; CIAO Principles 1, 2, 3, 4, 6, 9, 10, 16, 20 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).

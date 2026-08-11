@@ -79,14 +79,51 @@ run_test_cli() {
     assert_contains "TP-CLI-04 about --json app" "$_out" '"app":"timer"'
     assert_not_contains "TP-CLI-04 TP-CSUM-05 about --json must not include CHECKSUM" "$_out" "CHECKSUM"
 
-    # --- TP-CLI-05: shell about storage fields ---
-    # timer product: about JSON has no effective_storage/storage_dir (domain storage is
-    # owned by RQ-DOMAIN-TIMER / timer_* paths). Mark shell storage mold fields N/A;
-    # domain suite proves volatile/persistent storage (TP-STORAGE-01).
+    # --- TP-CLI-05: shell about storage fields (RQ-SHELL-CLI-STORAGE; inherited from selfmanaged) ---
+    # Shell scratch/cache resolve is separate from domain timer file storage (RQ-DOMAIN-TIMER).
     _out=$(sh "${SCRIPT}" --json about 2>/dev/null)
-    assert_contains "TP-CLI-05 about --json type present (shell storage fields n/a)" "$_out" '"type":"about"'
-    assert_not_contains "TP-CLI-05 timer about has no shell storage_dir field (domain owns storage)" "$_out" '"storage_dir"'
-    t_pass "TP-CLI-05 shell storage resolve n/a for timer (see TP-STORAGE-01)"
+    assert_contains "TP-CLI-05 about --json type" "$_out" '"type":"about"'
+    assert_contains "TP-CLI-05 about --json effective_storage" "$_out" '"effective_storage"'
+    assert_contains "TP-CLI-05 about --json storage_dir" "$_out" '"storage_dir"'
+    assert_contains "TP-CLI-05 about --json storage includes app name" "$_out" "${APP_NAME:-timer}"
+    assert_not_contains "TP-CLI-05 about --json must not include CHECKSUM" "$_out" "CHECKSUM"
+
+    ci_isolated_env 2>/dev/null || true
+    if [ -n "${CI_HOME:-}" ]; then
+        _out=$(HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN:-${CI_HOME}/.local/bin}" \
+            sh "${SCRIPT}" --json about 2>/dev/null)
+        assert_contains "TP-CLI-05 isolated about effective_storage has app" "$_out" "${APP_NAME:-timer}"
+        case "$_out" in
+            *'"effective_storage":"'*"${APP_NAME:-timer}"*) t_pass "TP-CLI-05 effective_storage path contains ${APP_NAME:-timer}" ;;
+            *) t_fail "TP-CLI-05 effective_storage missing app isolation in: $_out" ;;
+        esac
+        assert_contains "TP-CLI-05 storage_dir field present under isolation" "$_out" '"storage_dir"'
+        _custom="${CI_HOME}/custom-storage-root"
+        _out=$(HOME="${CI_HOME}" STORAGE_DIR="${_custom}" \
+            sh "${SCRIPT}" --json about 2>/dev/null)
+        assert_contains "TP-CLI-05 storage_dir honors STORAGE_DIR env" "$_out" "custom-storage-root"
+        _eff=$(printf '%s' "$_out" | sed -n 's/.*"effective_storage":"\([^"]*\)".*/\1/p' | head -n1)
+        if [ -n "$_eff" ] && [ -d "$_eff" ]; then
+            t_pass "TP-CLI-05 effective_storage directory exists after resolve"
+        else
+            t_fail "TP-CLI-05 effective_storage missing or not a directory: '${_eff:-empty}'"
+        fi
+        _who=$(id -un 2>/dev/null || echo "unknown")
+        case "$_out" in
+            *'"effective_storage":"'*"${_who}"*|*'"effective_storage":"'*"unknown"*) \
+                t_pass "TP-CLI-05 effective_storage includes user segment" ;;
+            *) t_fail "TP-CLI-05 effective_storage missing user segment for '${_who}': $_out" ;;
+        esac
+        ci_cleanup_env 2>/dev/null || true
+    else
+        _out=$(sh "${SCRIPT}" --json about 2>/dev/null)
+        _eff=$(printf '%s' "$_out" | sed -n 's/.*"effective_storage":"\([^"]*\)".*/\1/p' | head -n1)
+        if [ -n "$_eff" ] && [ -d "$_eff" ]; then
+            t_pass "TP-CLI-05 effective_storage directory exists after resolve"
+        else
+            t_fail "TP-CLI-05 effective_storage missing or not a directory: '${_eff:-empty}'"
+        fi
+    fi
 
     # --- TP-CLI-06: unknown command ---
     _err=$(sh "${SCRIPT}" no-such-command 2>&1 >/dev/null)

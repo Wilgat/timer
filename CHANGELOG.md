@@ -9,16 +9,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- Software-dev housekeeping (2026-08-11): H2 harness pull from RAM `GENESIS_SSOT`, dest-SSOT map rebind (**10** Active REQs recognized), H1/H2 backup ignore patterns on product `.gitignore` (Pattern A local harness only).
+- Software-dev housekeeping (2026-08-11): H2 harness pull from RAM `GENESIS_SSOT`, dest-SSOT map rebind, H1/H2 backup ignore patterns on product `.gitignore` (Pattern A local harness only).
+- Requirements mold alignment (2026-08-11): Active **`RQ-SHELL-TEMP-FILE-SYSTEM`** (**`LM-TEMP-FILE-SYSTEM`**); domain cites **`LM-NAMED-TIMER-DOMAIN`**; storage DTV + TP-CLI-05 maps corrected.
+
+### Fixed
+
+- Stale DTV claiming TP-CLI-05 n/a (domain storage) after shell storage inheritance.
+- Revised `reviews/what-to-review.md`, `reviews/test-plan.md`, RTM, lessons, and index for **2.11.0** / 12 REQs / PASS=195 (shell vs domain storage split; mold peers).
+- Product-review residuals: SECURITY supported-versions table (collapse 2.10 rows); explicit install-integrity **Must not claim** bounds; **L-CSUM-01** closed.
 
 ### Changed
 
 - Aligned product Requirement-IDs (`RQ-*`) and suite TP-IDs with harness ID notation; each live requirement has Design-time verification.
-- Expanded CI suite: TP-labeled CLI/lifecycle parity, local-channel TP-CURL suite, domain-subject **TP-TIMER-01..09** (not TP-DOM) (187 PASS / 0 FAIL / 1 SKIP optional online).
+- Expanded CI suite: TP-labeled CLI/lifecycle parity, local-channel TP-CURL suite, domain-subject **TP-TIMER-01..09** (not TP-DOM).
 - Aligned each live requirement **Design-time verification** with law mold TP families (`LM-*` specialize provenance; domain → `TP-TIMER-01..09`); product RTM lists LM/PM + TP matrix.
 - ID notation: domain product cases use **`TP-<SUBJECT>-*`** (e.g. **TP-TIMER-***); deprecate product **`TP-DOM-*`** (policy-harness-id-notation §5).
 - Product maps: `reviews/test-plan.md`, `reviews/requirement-test-matrix.md`.
 - Removed legacy flat `docs/templates/template-*.md` layout; law/proof molds under `templates/requirements/` and `templates/tests/` (H2 from genesis).
+
+## [2.11.0] - 2026-08-11
+
+### Added
+
+- Re-specialized ship unit from bootstrap origin **selfmanaged 1.2.1** (A→B only): inherit wired shell storage resolve (`util_resolve_storage` + `EFFECTIVE_STORAGE_DIR` / `TMPDIR` + about fields).
+- Active product law **`RQ-SHELL-CLI-STORAGE`** / `requirement-shell-cli-storage.md` (shell scratch; domain timer files remain under **`RQ-DOMAIN-TIMER`**).
+- Suite **TP-CLI-05** now asserts shell about storage fields, isolation, and `STORAGE_DIR` override (ported from selfmanaged storage proof).
+
+### Changed
+
+- Ship-unit `VERSION` and README Version badge → **2.11.0**.
+- Registry inventory: **11** Active REQs (class + domain + 9 shell including storage).
+- Companion digest `timer.sha256` regenerated for the rebuilt ship unit.
+
+### Fixed
+
+- Dead / unwired `util_resolve_storage` inheritance from older A: resolver now creates tier root fail-closed and is called from `app_main` / `app_about` (architecture parity with selfmanaged 1.2.x).
 
 ## [2.10.1] - 2026-07-19
 

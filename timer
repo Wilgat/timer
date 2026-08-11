@@ -11,7 +11,9 @@
 # - requirement-class-software-dev.md        (software-development class + residual stack)
 # - requirement-shell-cli-interface.md
 # - requirement-shell-cli-zero-arguments.md  (Type O empty argv = install-ensure)
-# - requirement-domain-timer.md              (named-timer domain product law)
+# - requirement-shell-cli-storage.md         (util_resolve_storage + about fields; LM-SHELL-CLI-STORAGE)
+# - requirement-shell-temp-file-system.md    (mktemp / TMPDIR inheritance; LM-TEMP-FILE-SYSTEM)
+# - requirement-domain-timer.md              (named-timer domain; LM-NAMED-TIMER-DOMAIN)
 # - requirement-shell-idempotency.md
 # - requirement-shell-self-management.md
 # - requirement-shell-modular-function-design.md
@@ -43,9 +45,9 @@ APP_NAME="timer"
 : "${APP_DESC:=Lightweight per-user named timers (volatile or persistent)}"
 : "${SHORT_DESCRIPTION:=${APP_DESC}}"
 : "${DESCRIPTION:=POSIX /bin/sh Type 0 CLI: install, version-check, self-update, self-uninstall, about, plus timer start/stop/status/list.}"
-# Product version SSOT. Extractors use: grep '^VERSION="'
-VERSION="2.10.1"
-: "${VERSION:=2.10.0}"
+# Product version SSOT (semver). Extractors use: grep '^VERSION="'
+VERSION="2.11.0"
+: "${VERSION:=2.11.0}"
 
 # Runtime flags (safe defaults)
 : "${QUIET:=0}"
@@ -399,8 +401,18 @@ out_double_line() { out_text plain "============================================
 # GENERAL PURPOSE: Prevent broken machine JSON when values contain " or \.
 # Class B helper used only by out_json / out_json_error (not a product message).
 util_json_escape() {
-    # shellcheck disable=SC2001
-    printf '%s' "${1-}" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
+    # Escape \, ", and common controls so JSON cannot be broken by newlines/tabs (L-06).
+    # awk is POSIX; multi-line values become \n between physical lines.
+    printf '%s' "${1-}" | awk '
+    {
+      line = $0
+      gsub(/\\/, "\\\\", line)
+      gsub(/"/, "\\\"", line)
+      gsub(/\t/, "\\t", line)
+      gsub(/\r/, "\\r", line)
+      if (NR > 1) printf "\\n"
+      printf "%s", line
+    }'
 }
 
 out_json() {
@@ -409,8 +421,8 @@ out_json() {
     # Success/status JSON on stdout (SSOT-of-stdout; pure for pipes)
     # Escape type, message, and string key/value pairs (M7 / machine contract).
     # Raw nested JSON: key prefixed with "@" → value inserted unquoted (caller builds
-    # a complete JSON array/object; key name is without the "@"). Used for domain
-    # list timers array (requirement-domain-timer / requirement-shell-output-requirements).
+    # a complete JSON array/object; key name is without the "@"). Portable SSOT for
+    # specialized products that need nested structures (requirement-shell-output-requirements).
     printf '{'
     printf '"type":"%s"' "$(util_json_escape "$type")"
     [ -n "$message" ] && printf ',"message":"%s"' "$(util_json_escape "$message")"
@@ -824,7 +836,7 @@ inst_perform_install_download_without_checksum() {
             return 1
         fi
 
-        if wget -q --server-response "${SCRIPT_URL}.sha256" -O "${sha_file}" 2>&1 | grep -q "HTTP/1.1 200"; then
+        if wget -q --server-response "${SCRIPT_URL}.sha256" -O "${sha_file}" 2>&1 | grep -qE "HTTP/[0-9.]+ 200"; then
             local expected actual
             expected=$(awk 'NF { print $1; exit }' "${sha_file}" 2>/dev/null)
             actual=$(util_sha256_file "${tmp_file}") || actual=""
@@ -1313,7 +1325,6 @@ inst_self_uninstall_cleanup_path() {
             if sed -i.bak \
                 -e '/# Added by .* installer/d' \
                 -e "\|${escaped_bin}|d" \
-                -e '/\.local\/bin/d' \
                 "$config" 2>/dev/null; then
                 cleaned=1
             fi
@@ -1402,17 +1413,28 @@ inst_is_installed() {
 
 inst_get_version() {
     # --- Safe Variable Defaults ----
-    # Defensive defaults - never assume globals are set
+    # Align with util_get_install_bin_path: non-root prefers user-local when present (L-03).
     : "${APP_NAME:=app}"
     : "${IS_ROOT:=0}"
+    : "${HOME:=/tmp}"
     : "${GLOBAL_BIN:=/usr/local/bin}"
     : "${USER_BIN:=${HOME}/.local/bin}"
+    : "${FORCE_USER:=0}"
+    : "${FORCE_GLOBAL:=0}"
 
-    local bin_path
-    if [ "$IS_ROOT" -eq 1 ] || [ -x "${GLOBAL_BIN}/${APP_NAME}" ]; then
+    local bin_path=""
+    if [ "${FORCE_USER}" -eq 1 ]; then
+        bin_path="${USER_BIN}/${APP_NAME}"
+    elif [ "${FORCE_GLOBAL}" -eq 1 ] || [ "${IS_ROOT}" -eq 1 ] || [ "$(id -u)" -eq 0 ]; then
         bin_path="${GLOBAL_BIN}/${APP_NAME}"
     else
-        bin_path="${USER_BIN}/${APP_NAME}"
+        if [ -x "${USER_BIN}/${APP_NAME}" ]; then
+            bin_path="${USER_BIN}/${APP_NAME}"
+        elif [ -x "${GLOBAL_BIN}/${APP_NAME}" ]; then
+            bin_path="${GLOBAL_BIN}/${APP_NAME}"
+        else
+            bin_path="${USER_BIN}/${APP_NAME}"
+        fi
     fi
 
     if [ -x "$bin_path" ]; then
@@ -2017,8 +2039,11 @@ util_backup() {
 # 2026-07-13: STORAGE_DIR was bare/unset on third fallback (INC-20260713-001 P1).
 # 2026-07-14: Third fallback uses XDG_CACHE_HOME / HOME/.cache / /tmp with
 #             per-user ${APP_NAME}-${USERNAME} isolation under set -u.
+# 2026-07-16: Create chosen tier root before echo (fail-closed) for all tiers;
+#             wire from app_main (EFFECTIVE_STORAGE_DIR + TMPDIR). SM-STOR-01.
 #
-# Last reviewed: 2026-07-14
+# Last reviewed: 2026-07-16
+# SSOT: requirement-shell-cli-storage.md
 # =============================================================================
 util_resolve_storage() {
     # --- Safe Variable Defaults ----
@@ -2028,20 +2053,22 @@ util_resolve_storage() {
     : "${HOME:=/tmp}"
     : "${XDG_CACHE_HOME:=${HOME}/.cache}"
 
+    # Pick first available tier, then create root (all tiers fail-closed)
+    _storage_candidate=""
     if [ -d "/dev/shm" ] && [ -w "/dev/shm" ]; then
-        echo "/dev/shm/${APP_NAME}-${USERNAME}"
-        return 0
+        _storage_candidate="/dev/shm/${APP_NAME}-${USERNAME}"
+    elif [ -w "/tmp" ]; then
+        _storage_candidate="/tmp/${APP_NAME}-${USERNAME}"
+    else
+        : "${STORAGE_DIR:=${XDG_CACHE_HOME}/${APP_NAME}-${USERNAME}}"
+        _storage_candidate="${STORAGE_DIR}"
     fi
-    if [ -w "/tmp" ]; then
-        echo "/tmp/${APP_NAME}-${USERNAME}"
-        return 0
+
+    if ! mkdir -p "${_storage_candidate}" 2>/dev/null; then
+        out_die "Cannot create storage directory ${_storage_candidate}"
     fi
-    # XDG-style per-user cache isolation (set -u safe)
-    : "${STORAGE_DIR:=${XDG_CACHE_HOME}/${APP_NAME}-${USERNAME}}"
-    if ! mkdir -p "${STORAGE_DIR}" 2>/dev/null; then
-        out_die "Cannot create storage directory ${STORAGE_DIR}"
-    fi
-    echo "${STORAGE_DIR}"
+    echo "${_storage_candidate}"
+    unset _storage_candidate
     return 0
 }
 
@@ -2534,10 +2561,19 @@ app_about() {
     : "${QUIET:=0}"
     : "${APP_NAME:=timer}"
     # Version comes from global SSOT (VERSION="…" hard-assign near top); default only if unset
-    : "${VERSION:=2.10.0}"
+    : "${VERSION:=2.11.0}"
     : "${GLOBAL_BIN:=/usr/local/bin}"
     : "${USER_BIN:=${HOME}/.local/bin}"
     : "${SCRIPT_URL:=}"
+    : "${USERNAME:=unknown}"
+    : "${HOME:=/tmp}"
+    : "${XDG_CACHE_HOME:=${HOME}/.cache}"
+
+    # Storage (requirement-shell-cli-storage): resolve if main has not yet
+    if [ -z "${EFFECTIVE_STORAGE_DIR:-}" ]; then
+        EFFECTIVE_STORAGE_DIR=$(util_resolve_storage)
+    fi
+    : "${STORAGE_DIR:=${XDG_CACHE_HOME}/${APP_NAME}-${USERNAME}}"
 
     if [ "${JSON}" -eq 1 ]; then
         # === JSON MODE - Clean, machine-friendly output ===
@@ -2571,7 +2607,9 @@ app_about() {
             "local_version" "${local_ver}" \
             "shell" "${current_shell}" \
             "interactive" "${interactive}" \
-            "user" "${current_user}"
+            "user" "${current_user}" \
+            "effective_storage" "${EFFECTIVE_STORAGE_DIR}" \
+            "storage_dir" "${STORAGE_DIR}"
         return 0
     fi
 
@@ -2636,6 +2674,10 @@ app_about() {
     fi
 
     out_empty_line
+    out_info "Storage (effective): ${EFFECTIVE_STORAGE_DIR}"
+    out_info "Storage (fallback config field): ${STORAGE_DIR}"
+
+    out_empty_line
     out_info "Useful commands:"
     out_info "   ${APP_NAME} start [name]   → Start a timer"
     out_info "   ${APP_NAME} stop [name]    → Stop and show elapsed"
@@ -2651,7 +2693,7 @@ app_about() {
 
 app_version() {
     : "${APP_NAME:=timer}"
-    : "${VERSION:=2.10.0}"
+    : "${VERSION:=2.11.0}"
     : "${JSON:=0}"
     if [ "${JSON}" -eq 1 ]; then
         # Same machine contract as historical app_main inline path
@@ -2681,7 +2723,7 @@ app_help() {
     if [ "${JSON}" -eq 1 ]; then
         out_json "success" "Help text available in human-readable mode. Run without --json." \
             "command" "help" \
-            "note" "Use --json with version, about, version-check, install, self-update, self-uninstall."
+            "note" "Use --json with version, about, version-check, install, self-update, self-uninstall, start, stop, status, list."
         return 0
     fi
 
@@ -2783,7 +2825,7 @@ app_help() {
 #   - Type O empty argv: always install-ensure (not help when already installed).
 #     Cases A/B/C (not installed / local / global). --force only for deliberate
 #     re-download/replace — not required for a second one-liner run.
-#     SSOT: requirement-shell-cli-zero-arguments.md (selfmanaged = Type O).
+#     SSOT: requirement-shell-cli-zero-arguments.md (timer = Type O; specialized from selfmanaged).
 #
 # Last reviewed: 2026-07-14
 # =============================================================================
@@ -2796,6 +2838,18 @@ app_main() {
     : "${DEBUG:=0}"
     : "${FORCE:=0}"
     : "${FORCE_REINSTALL:=0}"
+
+    # Effective scratch/cache root for this run (requirement-shell-cli-storage).
+    # Priority: /dev/shm → /tmp → STORAGE_DIR (persistent cache fallback).
+    # Resolver creates root fail-closed. Export TMPDIR so mktemp -t (install
+    # download stage) lands under the isolated product root.
+    : "${USERNAME:=unknown}"
+    : "${HOME:=/tmp}"
+    : "${XDG_CACHE_HOME:=${HOME}/.cache}"
+    : "${STORAGE_DIR:=${XDG_CACHE_HOME}/${APP_NAME}-${USERNAME}}"
+    EFFECTIVE_STORAGE_DIR=$(util_resolve_storage)
+    export EFFECTIVE_STORAGE_DIR STORAGE_DIR
+    export TMPDIR="${EFFECTIVE_STORAGE_DIR}"
 
     # === ZERO-ARG = Type O install-ensure (curl | sh contract) ===
     # Product type: Type O (online-install) — not Type N help-default.
@@ -2855,7 +2909,6 @@ app_main() {
         shift
     done
 
-    # Export force into install/uninstall paths via globals already set
     out_debug "dispatch command=${COMMAND} quiet=${QUIET} json=${JSON} force=${FORCE} persist=${TIMER_PERSIST}"
 
     case "${COMMAND}" in
@@ -2896,6 +2949,7 @@ app_main() {
             ;;
     esac
 }
+
 
 # =============================================================================
 # BOOTSTRAP

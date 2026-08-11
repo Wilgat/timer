@@ -93,6 +93,11 @@ obj/
 .h2-backup-*/
 .h2-backup-from-ram-genesis-*/
 
+# --- bootstrap specialize work artifacts (A ship unit + pre-B archives; not timer product) ---
+.bootstrap-archive/
+/selfmanaged
+/selfmanaged.sha256
+
 # --- agent harness (root) — local only; not product surface ---
 AGENTS.md
 # Common alternate agent-instruction basenames (keep local if present)

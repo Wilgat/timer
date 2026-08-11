@@ -4,9 +4,9 @@
 
 | Version | Supported |
 |---------|-----------|
-| 2.10.1 (current) | Yes |
-| 2.10.0 | Best-effort |
-| Older releases | Best-effort only; please upgrade to the current version when possible |
+| **2.11.0** (current) | Yes — full support |
+| **2.10.x** | Security fixes only; upgrade to current when possible |
+| Older than 2.10 | Best-effort only; upgrade recommended |
 
 ## Reporting a Vulnerability
 
@@ -46,8 +46,14 @@ This section describes **design posture**. It is **not** a claim of third-party 
 | **Mismatch** | Abort — do not install mismatched bytes. |
 | **Missing sidecar** | **Warn and continue** install (best-effort). Do **not** claim “always verified” when the companion is absent. |
 | **Optional pin** | Process-env `CHECKSUM` is **secondary** (CI / out-of-band freeze). Same-origin pin fetch is **not** stronger than automatic mode. Not advertised in `help` / `about`. |
-| **Trust bound** | Same-channel SHA-256 proves **byte consistency** (wrong blob / bit-flip / stale companion vs artifact). It is **not** independent authenticity (signing / separate trust root) by itself. |
+| **Trust bound** | Same-channel SHA-256 proves **byte consistency** (wrong blob / bit-flip / stale companion vs artifact). It is **not** independent authenticity (code signing, notary, or a separate trust root) by itself. |
 | **Forbidden pattern** | Embedding the expected digest of the installable file **inside** that same file as “self-verify.” |
+
+**Must not claim (operators / docs / marketing):**
+
+- That companion or `CHECKSUM` pin **authenticates** the publisher (identity / non-repudiation).  
+- That a pin fetched from the **same** `SCRIPT_URL` origin is stronger than automatic companion mode.  
+- That install is “always verified” when the companion sidecar is **missing** (policy is warn-and-continue).  
 
 In-repo companion file: [`timer.sha256`](./timer.sha256) (published beside `./timer` for the release channel).
 

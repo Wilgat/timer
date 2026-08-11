@@ -1,24 +1,41 @@
 # Test plan — timer
 
-Maps **portable TP families** (proof molds) to product-root `tests/`.  
-**Suite entry:** `./tests/run.sh`  
-**Last update:** 2026-07-24 (H2 sync, ID notation, full TP coverage + curl suite)
+Maps **portable TP families** (proof molds) and product domain cases to product-root `tests/`.
 
-**Proof molds (cite by PM-ID):**
-
-| Family | Proof mold-ID | Suite file |
-|--------|---------------|------------|
-| **TP-CLI** | `PM-SHELL-CLI-TEST-PLAN` | `tests/test_cli.sh` |
-| **TP-LC** | `PM-INSTALL-LIFECYCLE-TEST-PLAN` | `tests/test_install_lifecycle.sh` |
-| **TP-CSUM** | `PM-CHECKSUM-TEST-PLAN` | CLI + lifecycle |
-| **TP-U** | `PM-SET-U-TEST-PLAN` | CLI + curl (partial) |
-| **TP-CURL** | `PM-ONLINE-CURL-INSTALL-TEST-PLAN` | `tests/test_online_curl_install.sh` |
-| **TP-TIMER** | `PM-DOMAIN-TEST-PLAN` §4.3.2 (ops) | `tests/test_timer_domain.sh` |
-| **TP-STORAGE** | `PM-DOMAIN-TEST-PLAN` §4.2 shared dual-storage | `tests/test_timer_domain.sh` |
-| Umbrella | `PM-SHELL-CLI-SUITE-TEST-PLAN` | `tests/run.sh` |
-| RTM mold | `PM-REQUIREMENT-TEST-TRACEABILITY` | `reviews/requirement-test-matrix.md` |
+| Field | Value |
+|-------|--------|
+| **Product** | timer |
+| **Ship unit** | `./timer` · `VERSION=2.11.0` |
+| **Companion** | `./timer.sha256` |
+| **Suite entry** | `./tests/run.sh` |
+| **RTM** | `reviews/requirement-test-matrix.md` |
+| **Live law** | **12** Active REQs — `docs/requirements/index.md` |
+| **Last update** | 2026-08-11 (revise: 2.11.0 baseline; shell storage + temp; mold peers) |
 
 Status: **have** = automated · **todo** = needed · **n/a** = not applicable · **optional** = gated
+
+---
+
+## Proof molds (cite by PM-ID)
+
+| Family | Proof mold-ID | Suite file(s) | Primary product law |
+|--------|---------------|---------------|---------------------|
+| **TP-CLI** | `PM-SHELL-CLI-TEST-PLAN` | `tests/test_cli.sh` | RQ-SHELL-CLI-INTERFACE · RQ-SHELL-CLI-STORAGE · RQ-SHELL-OUTPUT-REQUIREMENTS |
+| **TP-LC** | `PM-INSTALL-LIFECYCLE-TEST-PLAN` | `tests/test_install_lifecycle.sh` | RQ-SHELL-SELF-MANAGEMENT · RQ-SHELL-IDEMPOTENCY · RQ-SHELL-TEMP-FILE-SYSTEM |
+| **TP-CSUM** | `PM-CHECKSUM-TEST-PLAN` | CLI + lifecycle | RQ-SHELL-AUTOMATIC-CHECKSUM |
+| **TP-U** | `PM-SET-U-TEST-PLAN` | CLI + curl (partial) | set -u / defaults (cross-cutting) |
+| **TP-CURL** | `PM-ONLINE-CURL-INSTALL-TEST-PLAN` | `tests/test_online_curl_install.sh` | RQ-SHELL-CLI-ZERO-ARGUMENTS · RQ-SHELL-SELF-MANAGEMENT |
+| **TP-TIMER** | `PM-DOMAIN-TEST-PLAN` (ops / subject catalog) | `tests/test_timer_domain.sh` | **RQ-DOMAIN-TIMER** · **LM-NAMED-TIMER-DOMAIN** |
+| **TP-STORAGE** | `PM-DOMAIN-TEST-PLAN` § shared dual-storage | `tests/test_timer_domain.sh` | **RQ-DOMAIN-TIMER** (domain *records*; not shell scratch) |
+| Umbrella | `PM-SHELL-CLI-SUITE-TEST-PLAN` | `tests/run.sh` | full Type 0 + domain |
+| RTM mold | `PM-REQUIREMENT-TEST-TRACEABILITY` | `reviews/requirement-test-matrix.md` | design-time RQ↔TP |
+
+**Storage split (do not collapse):**
+
+| Concern | Owner | Proof |
+|---------|-------|-------|
+| Shell scratch / about fields / `TMPDIR` root | **RQ-SHELL-CLI-STORAGE** · **RQ-SHELL-TEMP-FILE-SYSTEM** | **TP-CLI-05** · install **TP-LC** / **TP-CSUM** |
+| Named-timer domain records (volatile / `--persist`) | **RQ-DOMAIN-TIMER** | **TP-STORAGE-01/02** · **TP-TIMER-*** |
 
 ---
 
@@ -26,20 +43,23 @@ Status: **have** = automated · **todo** = needed · **n/a** = not applicable ·
 
 | Date | Result | Notes |
 |------|--------|-------|
-| 2026-07-19 | PASS=133 FAIL=0 | Prior domain JSON number lock-in |
-| 2026-07-24 | **PASS=187 FAIL=0 SKIP=1** | TP labels; lifecycle parity; TP-CURL local; domain TP-TIMER-02+ |
+| 2026-07-19 | PASS=133 FAIL=0 | Domain JSON number lock-in |
+| 2026-07-24 | PASS=187 FAIL=0 SKIP=1 | TP labels; lifecycle parity; TP-CURL local |
+| 2026-08-11 | **PASS=195 FAIL=0 SKIP=1** | Re-specialize + mold peers; full product review **Pass** (`reports/2026-08-11-timer-product-review.md`) |
+
+**How to re-baseline:** `cd` product root → `./tests/run.sh` → paste summary line into this table when law/suite changes.
 
 ---
 
 ## TP-CLI — CLI surface (`PM-SHELL-CLI-TEST-PLAN`)
 
-| TP-ID | Intent | Status | Evidence |
-|-------|--------|--------|----------|
+| TP-ID | Intent | Status | Evidence / owner |
+|-------|--------|--------|------------------|
 | **TP-CLI-01** | Syntax + companion Shape A | **have** | `sh -n`; `timer.sha256` match |
 | **TP-CLI-02** | Version human + JSON | **have** | version exit/app/version; `--debug` |
 | **TP-CLI-03** | Help Type 0 + domain surface | **have** | install/self-*; start/stop/list; no CHECKSUM |
 | **TP-CLI-04** | Help/about JSON purity | **have** | help/about JSON; about no CHECKSUM |
-| **TP-CLI-05** | About shell storage resolve | **n/a** | domain owns storage (**TP-STORAGE-***) |
+| **TP-CLI-05** | About shell storage resolve | **have** | `effective_storage` / `storage_dir` + isolation + dir exists + `STORAGE_DIR` override (**RQ-SHELL-CLI-STORAGE**) |
 | **TP-CLI-06** | Unknown command | **have** | human + JSON `out_error` |
 | **TP-CLI-07** | Quiet mode | **have** | `--quiet` and `-q` |
 | **TP-CLI-08** | `env -u HOME` under set -u | **have** | also **TP-U-01** |
@@ -57,11 +77,14 @@ Status: **have** = automated · **todo** = needed · **n/a** = not applicable ·
 | TP-CSUM-01 (help hide) | **TP-CSUM-05** + **TP-CLI-03/04** |
 | TP-UNIN-01 | **TP-CLI-11** |
 | TP-SETU-01 | **TP-U-01** / **TP-CLI-08** |
-| TP-TIMER-01..03 (old) | **TP-TIMER-01**, **TP-TIMER-02+** |
+| TP-TIMER-01..03 (old numbering) | **TP-TIMER-01**, **TP-TIMER-02+** |
+| TP-TIMER-08/09 (old storage ops) | **TP-STORAGE-02/01** |
 
 ---
 
 ## TP-LC — Install lifecycle (`PM-INSTALL-LIFECYCLE-TEST-PLAN`)
+
+Also proves install **temp leaves** / staging (**RQ-SHELL-TEMP-FILE-SYSTEM**): download and companion stages use `mktemp` under storage-resolved `TMPDIR`.
 
 | TP-ID | Intent | Status | Evidence |
 |-------|--------|--------|----------|
@@ -71,13 +94,13 @@ Status: **have** = automated · **todo** = needed · **n/a** = not applicable ·
 | **TP-LC-04** | About installed + version-check JSON | **have** | local/remote/is_latest |
 | **TP-LC-05** | self-update already-latest | **have** | success message |
 | **TP-LC-05b** | self-update when remote newer | **have** | upgrades VERSION |
-| **TP-LC-06** | Force reinstall companion transparency | **have** | link/expected/actual/PASS |
+| **TP-LC-06** | Force reinstall companion transparency | **have** | link/expected/actual/PASS (**temp + CSUM**) |
 | **TP-LC-07** | self-uninstall refuse / force + PATH cleanup | **have** | refuse + force remove |
 | **TP-LC-08** | Downgrade refuse / force | **have** | `downgrade_blocked` |
 | **TP-LC-09** | Bad channel empty argv | **have** | same class as **TP-CLI-09** |
 | **TP-LC-10** | Idempotent re-install | **have** | “already installed” |
 | **TP-LC-11** | version-check network failure | **have** | `network_error` |
-| **TP-LC-12** | Explicit `install --json` | **have** | first install path |
+| **TP-LC-12** | Explicit `install --json` | **have** | first install path (**mktemp** stage) |
 
 ---
 
@@ -121,10 +144,11 @@ Status: **have** = automated · **todo** = needed · **n/a** = not applicable ·
 
 ---
 
-## TP-TIMER — Domain-subject family (`RQ-DOMAIN-TIMER`)
+## TP-TIMER — Domain-subject family (`RQ-DOMAIN-TIMER` · `LM-NAMED-TIMER-DOMAIN`)
 
-Domain product cases use **`TP-TIMER-*`** (subject = `timer`), **not** portable **`TP-TIMER-*`**.  
-Proof mold **`PM-DOMAIN-TEST-PLAN`** is a design aid only; Type O-P payload tokens are **`TP-PAYLOAD-*`** (n/a here).  
+Domain product cases use **subject family** **`TP-TIMER-*`** (subject = `timer`).  
+**Do not** use deprecated product **`TP-DOM-*`**.  
+Proof mold **`PM-DOMAIN-TEST-PLAN`** is a design aid; Type O-P payload tokens **`TP-PAYLOAD-*`** are **n/a** here.  
 Policy: `policy-harness-id-notation` §5.
 
 | TP-ID | Intent | Status | Evidence |
@@ -132,7 +156,7 @@ Policy: `policy-harness-id-notation` §5.
 | **TP-TIMER-01** | Help lists domain verbs/flags | **have** | start/stop/status/list/kill/reset/--persist |
 | **TP-TIMER-02** | start / status / list / stop human | **have** | `test_timer_domain.sh` |
 | **TP-TIMER-03** | already-running start fails | **have** | domain suite |
-| **TP-TIMER-04** | JSON start/status/list/stop + number types | **have** | timers array; elapsed ints |
+| **TP-TIMER-04** | JSON start/status/list/stop + number types | **have** | `timers` array; elapsed ints |
 | **TP-TIMER-05** | `no_timer` error code | **have** | domain suite |
 | **TP-TIMER-06** | kill / reset | **have** | domain suite |
 | **TP-TIMER-07** | `invalid_name` | **have** | domain suite |
@@ -140,18 +164,15 @@ Policy: `policy-harness-id-notation` §5.
 
 ---
 
-## TP-STORAGE — Shared dual-storage (`PM-DOMAIN-TEST-PLAN` §4.2)
+## TP-STORAGE — Domain dual-storage (`PM-DOMAIN-TEST-PLAN` shared)
 
-**Not subject-branded** (timer · countdown · pomo · peers). Primary storage proof IDs.
+**Domain record** modes only (volatile / persistent). **Not** shell about `effective_storage` (that is **TP-CLI-05**).
 
 | TP-ID | Intent | Status | Evidence | Legacy alias |
 |-------|--------|--------|----------|--------------|
-| **TP-STORAGE-01** | Volatile storage path resolve | **have** | `/dev/shm` or `/tmp` file | was **TP-TIMER-09** |
+| **TP-STORAGE-01** | Volatile domain record path | **have** | `/dev/shm` or `/tmp` timer file | was **TP-TIMER-09** |
 | **TP-STORAGE-02** | `--persist` start/list/stop | **have** | domain suite | was **TP-TIMER-08** |
 | **TP-STORAGE-03** | Corrupted state fail-closed | **n/a** | product does not claim corruption code path in suite | — |
-
-**Legacy map:** ops remain **`TP-TIMER-01..07`**; storage **TP-TIMER-08/09** → **`TP-STORAGE-02/01`**.
-
 
 ---
 
@@ -160,8 +181,18 @@ Policy: `policy-harness-id-notation` §5.
 | TP-ID | Intent | Status | Notes |
 |-------|--------|--------|-------|
 | **TP-CLASS-01** | Active class REQ registered | **have** | `RQ-CLASS-SOFTWARE-DEV` |
-| **TP-CITE-01** | Ship unit ALIGNMENT cites live REQs | **have** | header comments |
+| **TP-CITE-01** | Ship unit ALIGNMENT cites live REQs | **have** | header lists class, shell, domain, storage, temp |
 | **TP-ID-01** | `APP_NAME="…"` hard-assign | **have** | ship unit |
+| **TP-MOLD-01** | Named-timer mandatory peers Active | **have** | CLI · shell storage · temp · output (static registry) |
+
+---
+
+## Type 1 elevation (plan completeness)
+
+| Claim | Status |
+|-------|--------|
+| Type 1 host elevation / password sudo in product law | **Not claimed** — Type 0 only |
+| **CL-SHELL-TTY-PRIVILEGE-TRAPS** TP rows | **N/A** |
 
 ---
 
@@ -169,6 +200,8 @@ Policy: `policy-harness-id-notation` §5.
 
 1. Closing a **bug** finding updates the matching TP to **have** (or supersedes with a new test).  
 2. Do not mark TP **have** without a suite assertion (or documented static fix).  
-3. Domain product: keep domain suite green.  
+3. Domain product: keep domain suite green (**TP-TIMER-*** + **TP-STORAGE-01/02**).  
 4. Primary citation uses **TP-IDs** / **RQ-***; suite path secondary (policy-harness-id-notation).  
 5. Versioned requirements list TP + `tests/*` + `reviews/*` only — never `docs/templates/**`.  
+6. When adding TP cases end-to-end (mold + DTV + REQ + maps + suite) → **`skill-add-tests`**.  
+7. Shell scratch (**TP-CLI-05**) and domain records (**TP-STORAGE-***) must not be collapsed into one owner.
