@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Software-dev housekeeping (2026-08-11): H2 harness pull from RAM `GENESIS_SSOT`, dest-SSOT map rebind (**10** Active REQs recognized), H1/H2 backup ignore patterns on product `.gitignore` (Pattern A local harness only).
+
 ### Changed
 
 - Aligned product Requirement-IDs (`RQ-*`) and suite TP-IDs with harness ID notation; each live requirement has Design-time verification.

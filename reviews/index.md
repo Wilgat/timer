@@ -1,7 +1,7 @@
 # Reviews index — timer
 
 **Registry** of review plan artifacts and run reports. Keep rows in sync with disk.  
-**Updated:** 2026-07-24
+**Updated:** 2026-08-11
 
 ## Plan artifacts
 
@@ -16,6 +16,7 @@
 
 | Date | File | Scope | Baseline | Verdict |
 |------|------|-------|----------|---------|
+| 2026-08-11 | *(housekeeping — H2 + rebind)* | RAM genesis H2 harness pull + dest-SSOT map rebind (10 Active REQs) | PASS=187 FAIL=0 SKIP=1; product law unchanged | **Pass** (maps honest; formal product re-review optional) |
 | 2026-07-24 | *(housekeeping — suite/maps)* | H2 + TP coverage + RQ notation | PASS=187 FAIL=0 SKIP=1 | **Pass** (maps updated; formal report optional) |
 | 2026-07-19 | `reports/2026-07-19-timer-product-review.md` | Class gate + domain JSON numbers + precommit | PASS=133 FAIL=0 | **Pass** — T-CLASS-01 / T-JSON-02 fixed |
 | 2026-07-16 | `reports/2026-07-16-timer-product-review.md` | Full Type 0 + domain; plan bootstrap | PASS=129 FAIL=0 | **Revise** — findings opened |

@@ -4,8 +4,7 @@
 **Class:** Domain product — Active domain SSOT required and present.  
 **Always load first:** `reviews/lessons.md`
 
-**Last plan update:** 2026-07-19
-
+**Last plan update:** 2026-08-11 (housekeeping residual; law/suite baseline unchanged from 2026-07-24)
 ---
 
 ## Pre-flight

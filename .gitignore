@@ -84,6 +84,15 @@ obj/
 # --- shell / local run debris ---
 *.YYYYMMDD-*.bak
 
+# --- harness transfer safety backups (H1/H2; not payload) ---
+.harness-transfer-bak-*/
+.harness-sync-*-bak-*/
+.harness-*-bak-*/
+.harness-backup-*/
+.h1-backup-*/
+.h2-backup-*/
+.h2-backup-from-ram-genesis-*/
+
 # --- agent harness (root) — local only; not product surface ---
 AGENTS.md
 # Common alternate agent-instruction basenames (keep local if present)
@@ -93,6 +102,7 @@ CLAUDE.md
 .codex/
 
 # --- docs layer (CIAO Pattern A) — track requirements only ---
+# Nested docs/.gitignore mirrors this policy under docs/.
 docs/**
 !docs/.gitignore
 !docs/requirements/
