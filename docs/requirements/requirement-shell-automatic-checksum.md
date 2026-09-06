@@ -12,6 +12,30 @@ This requirement is the **project Single Source of Truth** for **automatic compa
 
 **Must not confuse with:** Embedding a hash of `./timer` *inside* `./timer`; requiring operators to set `CHECKSUM` for every install; claiming independent host authenticity from same-channel SHA-256 alone.
 
+### 1.1 Human-facing
+
+**In one sentence:** When you install or update, the program downloads a SHA-256 sidecar itself and shows the link, the expected value, and the result.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Default install with no pin | companion match → continue |
+| The other role | CI with an optional pin | `CHECKSUM` env — not in `help` |
+| Not this file | Command names | CLI interface |
+
+| Includes | Excludes |
+|----------|----------|
+| Automatic `${SCRIPT_URL}.sha256` | Package signing |
+| Termux: same companion path; no extra `pkg` | `sudo` for checksum |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./timer` | ship unit | download verify |
+| `timer.sha256` | companion file | publisher digest |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Install from the channel | Program fetches the sidecar | `curl -fsSL …/timer \| sh` |
+
 ---
 
 ## 2. Core Rules / Requirements (Mandatory)
@@ -206,6 +230,17 @@ Violating this rule is a requirements failure and must be recorded (incident or 
 |------|--------|----------------|
 | 2026-07-13 | Initial Active v1.0.0 — automatic companion digest + transparency (link/value/result); secondary CHECKSUM; README primary-path rules | Multi-agent council |
 | 2026-07-13 | `CHECKSUM` = install-path runtime variable only; **MUST NOT** display in `help` / `about` | Multi-agent council |
+
+## Under command line for normal user only
+
+When the program runs on Termux, Git Bash, Windows cmd, or the same class, only **this login** may use it. Admin privilege and a dedicated system-user switch stay **unused**.
+
+**This requirement:** companion digest. Same automatic sidecar on Termux; no `pkg` and no `sudo` to verify.
+
+| MUST | MUST NOT |
+|------|----------|
+| Fetch `${SCRIPT_URL}.sha256` as this login | Require root to verify |
+| Fail closed on mismatch | Wrap `apt`/`pkg` as integrity |
 
 ## Design-time verification
 

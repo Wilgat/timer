@@ -12,6 +12,31 @@ It defines a **Type 0–centric self-managed shell CLI** (install / update / uni
 **Scope:** User-facing command names, flags, dispatch, privilege labels, and mode contracts.  
 **Out of scope (own requirements when specialized):** Online-install checksum mechanics detail, self-management safety beyond the command surface, shell coding style, full output-function catalog (cited, not re-owned); **domain semantics** (owned by **`RQ-DOMAIN-TIMER`**); **shell scratch resolve** (owned by **`RQ-SHELL-CLI-STORAGE`** / **`LM-SHELL-CLI-STORAGE`**).
 
+### 1.1 Human-facing
+
+**In one sentence:** `timer help` lists the verbs you can type; this file is the contract for those names, flags, and who may run them.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Run commands as yourself | `timer start work` |
+| The other role | Root on Linux/macOS only for a global copy | `sudo` install is **not** Termux |
+| Not this file | How a timer file is stored | Domain requirement |
+
+| Includes | Excludes |
+|----------|----------|
+| Command table, flags, dispatch, Termux detect | Domain elapsed math |
+| Marking admin / dedicated-account verbs unused | Enabling `sudo` on Termux |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./timer` | ship unit | live dispatcher |
+| `timer help` | command | listed verbs |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| See the list | Help matches the dispatcher | `timer help` |
+| Run on Termux | Still this login; no sudo dest | `timer about` |
+
 ---
 
 ## 2. Core Rules / Requirements (Mandatory)
@@ -84,10 +109,11 @@ In JSON mode, help **MUST NOT** dump long human text; return a short structured 
 | **Primary executable** | Repo root `./timer` (POSIX `/bin/sh`, single-file for `curl \| sh`) |
 | **Dispatcher** | `app_main` (always invoked at end of script: `app_main "$@"` — no `${0##*/}` / APP_NAME basename gate; required for `curl \| sh`) |
 | **Output SSOT** | `out_text` + wrappers (`out_info`, `out_success`, `out_warn`, `out_error`, `out_die`, `out_plain`, `out_json`, …) |
-| **Version SSOT** | `VERSION` in script config block (product SSOT; currently `VERSION="2.10.0"`) |
-| **Install paths** | Global: `GLOBAL_BIN` default `/usr/local/bin`; User: `USER_BIN` default `${HOME}/.local/bin` |
+| **Version SSOT** | `VERSION` in script config block (product SSOT; currently `VERSION="2.12.0"`) |
+| **Install paths** | Global: `GLOBAL_BIN` default `/usr/local/bin` (Linux/macOS root). User: `USER_BIN` default `${HOME}/.local/bin`. **Termux:** `USER_BIN=$PREFIX/bin` when that directory exists; `IS_ROOT` forced 0 |
+| **Termux detect** | `util_is_termux` / `util_apply_termux_target` — `PREFIX` contains `com.termux`, `TERMUX_VERSION`, or Termux usr tree |
 | **Remote channel env (help surface)** | `REPO_USER` / `REPO_NAME` (defaults `Wilgat` / `timer`); `SCRIPT_URL` composed default `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${APP_NAME}` (literal product default: `https://raw.githubusercontent.com/Wilgat/timer/main/timer`; override via env). **`help` / `about` MUST list these operator channel vars as designed — MUST NOT list `CHECKSUM`** (install-path runtime pin only; see `requirement-shell-automatic-checksum.md`) |
-| **Type 1 / Type 2 commands** | **None** on current surface |
+| **Type 1 / Type 2 commands** | **None** on current surface (unused on Termux / Git Bash / Windows cmd) |
 | **Domain commands** | **Present** — `start` / `stop` / `status` / `list` / `kill` / `reset`; behavior SSOT: `requirement-domain-timer.md` |
 | **Dedicated system user** | **Not required** for Type 0 CLI self-management or domain timer ops |
 
@@ -207,6 +233,20 @@ This requirement is satisfied for the timer shell CLI when all of the following 
 
 ---
 
+## Under command line for normal user only
+
+When the program runs on Termux, Git Bash, Windows cmd, or the same class, only **this login** may use it. Admin privilege and a dedicated system-user switch stay **unused**.
+
+**This requirement:** detect + command surface. Detect Termux; mark Type 1/2 unused; do not list `sudo` install on detect.
+
+| MUST | MUST NOT |
+|------|----------|
+| Detect Termux (`PREFIX` contains `com.termux`, `TERMUX_VERSION`, or Termux usr tree) | In-tool `sudo`; wrap `apt`/`dnf`; dedicated system user |
+| User-only dest (`$PREFIX/bin` or `~/.local/bin`) | Recommend `sudo curl \| sh` on detect |
+| Git Bash / Windows cmd: same ceiling | Invoke Termux `pkg` because Git Bash or Windows cmd was detected |
+
+This product does **not** wrap Termux `pkg` (no named package list).
+
 ## Design-time verification
 
 **Requirement-ID:** `RQ-SHELL-CLI-INTERFACE`  
@@ -228,6 +268,11 @@ This requirement is satisfied for the timer shell CLI when all of the following 
 | **TP-CLI-10** bashrc+sdkman | n/a — product has no sdkman source path | n/a |
 | **TP-CLI-11** self-uninstall refuse | `tests/test_cli.sh` | have |
 | **TP-TIMER-01** domain help verbs | `tests/test_timer_domain.sh` | have |
+| **TP-TX-01** Termux off-detect | `tests/test_cli.sh` | have |
+| **TP-TX-02** Termux PREFIX detect | `tests/test_cli.sh` | have |
+| **TP-TX-03** no `sudo curl` on Termux | `tests/test_cli.sh` | have |
+| **TP-TX-04** `$PREFIX/bin` dest | `tests/test_cli.sh` | have |
+| **TP-TX-05** `pkg` not invoked | `tests/test_cli.sh` | have |
 
 
 **Last Updated**: 2026-08-11  

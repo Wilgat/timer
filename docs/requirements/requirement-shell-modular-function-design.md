@@ -14,6 +14,30 @@ It defines modular function organization for a **monolithic yet modular** single
 
 **Core idea:** Modularity is achieved through **clear function boundaries, consistent prefixes, and full CIAO documentation** — **not** by splitting the main CLI into multiple shipped files.
 
+### 1.1 Human-facing
+
+**In one sentence:** One file, named helper families — so install, output, and timers do not share one pile of names.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Still one `./timer` file | `curl \| sh` works |
+| The other role | Maintainers | `out_` vs `timer_` vs `inst_` |
+| Not this file | What each command does | CLI / domain requirements |
+
+| Includes | Excludes |
+|----------|----------|
+| Prefixes, Protection Zones, single-file ship | Splitting into many shipped files |
+| Termux helpers under `util_` | Privilege helpers that wrap `sudo` |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./timer` | ship unit | prefixes |
+| `timer help` | command | listed verbs |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Find timer logic | Look for `timer_*` | read `./timer` |
+
 ---
 
 ## 2. Core Rules / Requirements (Mandatory)
@@ -255,6 +279,12 @@ A modular-structure change for timer is **not done** if any of the following fai
 | `./timer` | Implementation under modular design rules |
 
 ---
+
+## Under command line for normal user only
+
+When the program runs on Termux, Git Bash, Windows cmd, or the same class, only **this login** may use it. Admin privilege and a dedicated system-user switch stay **unused**.
+
+**This requirement:** coding of helpers / prefixes. Termux detect lives under `util_`. Do not add a `sudo_` prefix family.
 
 ## Design-time verification
 

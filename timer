@@ -20,6 +20,8 @@
 # - requirement-shell-output-requirements.md
 # - requirement-shell-interactive-vs-noninteractive.md
 # - requirement-shell-automatic-checksum.md
+# - requirement-shell-script-coding.md       (coding-style specialize-in home)
+# Termux target: util_is_termux / util_apply_termux_target (user-only install).
 # Plus CIAO Protection Zones and "DO NOT MODIFY" rules.
 #
 # Philosophy: CIAO (Caution • Intentional • Anti-fragile • Over-engineered)
@@ -46,8 +48,8 @@ APP_NAME="timer"
 : "${SHORT_DESCRIPTION:=${APP_DESC}}"
 : "${DESCRIPTION:=POSIX /bin/sh Type 0 CLI: install, version-check, self-update, self-uninstall, about, plus timer start/stop/status/list.}"
 # Product version SSOT (semver). Extractors use: grep '^VERSION="'
-VERSION="2.11.0"
-: "${VERSION:=2.11.0}"
+VERSION="2.12.0"
+: "${VERSION:=2.12.0}"
 
 # Runtime flags (safe defaults)
 : "${QUIET:=0}"
@@ -105,7 +107,61 @@ else
     IS_ROOT=0
 fi
 : "${IS_ROOT:=0}"
+: "${IS_TERMUX:=0}"
+: "${FORCE_GLOBAL:=0}"
+: "${FORCE_USER:=0}"
 : "${SH:=sh}"
+
+# =============================================================================
+# util_is_termux() / util_apply_termux_target() - Termux as a target system
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Detect Termux-like userspace (this login owns $PREFIX) and freeze install
+# to a normal-user dest. Termux has no Linux /usr/local/bin + sudo story.
+# Named pkg ensure is out of scope for this product (no package list).
+#
+# Detect (any one): PREFIX contains com.termux; TERMUX_VERSION set;
+# /data/data/com.termux/files/usr exists.
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THESE HELPERS !!!
+# Aligns with requirement-shell-cli-interface / self-management
+# "Under command line for normal user only".
+# =============================================================================
+util_is_termux() {
+    [ -n "${PREFIX-}" ] && case "${PREFIX}" in *com.termux*) return 0 ;; esac
+    [ -n "${TERMUX_VERSION-}" ] && return 0
+    [ -d /data/data/com.termux/files/usr ] && return 0
+    return 1
+}
+
+util_apply_termux_target() {
+    : "${APP_NAME:=timer}"
+    : "${HOME:=/tmp}"
+    : "${FORCE_GLOBAL:=0}"
+    : "${FORCE_USER:=0}"
+    IS_TERMUX=0
+    if util_is_termux; then
+        IS_TERMUX=1
+        IS_ROOT=0
+        FORCE_GLOBAL=0
+        _default_user_bin="${HOME}/.local/bin"
+        if [ -n "${PREFIX-}" ] && [ -d "${PREFIX}/bin" ]; then
+            case "${USER_BIN-}" in
+                ""|"${_default_user_bin}")
+                    USER_BIN="${PREFIX}/bin"
+                    ;;
+            esac
+        fi
+        : "${USER_BIN:=${_default_user_bin}}"
+        INSTALL_PATH="${USER_BIN}/${APP_NAME}"
+        unset _default_user_bin
+    fi
+    : "${IS_TERMUX:=0}"
+    : "${IS_ROOT:=0}"
+}
+
+util_apply_termux_target
 # =============================================================================
 # out_text() - SINGLE SOURCE OF TRUTH FOR ALL OUTPUT
 # =============================================================================
@@ -535,6 +591,12 @@ inst_perform_install() {
         IS_ROOT=0
         INSTALL_PATH="${USER_BIN}/${APP_NAME}"
     fi
+    # Termux target: this login only — never /usr/local/bin or sudo dest.
+    util_apply_termux_target
+    if [ "${IS_TERMUX:-0}" -eq 1 ]; then
+        IS_ROOT=0
+        INSTALL_PATH="${USER_BIN}/${APP_NAME}"
+    fi
 
     if [ -z "$REMOTE_VERSION" ]; then
         REMOTE_VERSION=${VERSION}
@@ -954,6 +1016,10 @@ inst_maybe_install() {
     if [ "$(id -u 2>/dev/null || echo 1)" -eq 0 ]; then
         IS_ROOT=1
     else
+        IS_ROOT=0
+    fi
+    util_apply_termux_target
+    if [ "${IS_TERMUX:-0}" -eq 1 ]; then
         IS_ROOT=0
     fi
 
@@ -1423,7 +1489,10 @@ inst_get_version() {
     : "${FORCE_GLOBAL:=0}"
 
     local bin_path=""
+    util_apply_termux_target
     if [ "${FORCE_USER}" -eq 1 ]; then
+        bin_path="${USER_BIN}/${APP_NAME}"
+    elif [ "${IS_TERMUX:-0}" -eq 1 ]; then
         bin_path="${USER_BIN}/${APP_NAME}"
     elif [ "${FORCE_GLOBAL}" -eq 1 ] || [ "${IS_ROOT}" -eq 1 ] || [ "$(id -u)" -eq 0 ]; then
         bin_path="${GLOBAL_BIN}/${APP_NAME}"
@@ -1891,6 +1960,13 @@ util_get_install_bin_path() {
     : "${USER_BIN:=${HOME}/.local/bin}"
 
     local bin_path=""
+
+    util_apply_termux_target
+    # Termux: this login only — never operate on /usr/local/bin or recommend sudo.
+    if [ "${IS_TERMUX:-0}" -eq 1 ]; then
+        printf '%s' "${USER_BIN}/${APP_NAME}"
+        return 0
+    fi
 
     # Explicit force flags take precedence
     if [ "${FORCE_USER}" -eq 1 ]; then
@@ -2561,13 +2637,14 @@ app_about() {
     : "${QUIET:=0}"
     : "${APP_NAME:=timer}"
     # Version comes from global SSOT (VERSION="…" hard-assign near top); default only if unset
-    : "${VERSION:=2.11.0}"
+    : "${VERSION:=2.12.0}"
     : "${GLOBAL_BIN:=/usr/local/bin}"
     : "${USER_BIN:=${HOME}/.local/bin}"
     : "${SCRIPT_URL:=}"
     : "${USERNAME:=unknown}"
     : "${HOME:=/tmp}"
     : "${XDG_CACHE_HOME:=${HOME}/.cache}"
+    util_apply_termux_target
 
     # Storage (requirement-shell-cli-storage): resolve if main has not yet
     if [ -z "${EFFECTIVE_STORAGE_DIR:-}" ]; then
@@ -2599,6 +2676,9 @@ app_about() {
         local current_user
         current_user="$(id -un 2>/dev/null || echo "unknown")"
 
+        local termux_flag="false"
+        [ "${IS_TERMUX:-0}" -eq 1 ] && termux_flag="true"
+
         out_json "about" "" \
             "app" "${APP_NAME}" \
             "version" "${VERSION}" \
@@ -2608,6 +2688,9 @@ app_about() {
             "shell" "${current_shell}" \
             "interactive" "${interactive}" \
             "user" "${current_user}" \
+            "termux" "${termux_flag}" \
+            "user_bin" "${USER_BIN}" \
+            "prefix" "${PREFIX-}" \
             "effective_storage" "${EFFECTIVE_STORAGE_DIR}" \
             "storage_dir" "${STORAGE_DIR}"
         return 0
@@ -2654,10 +2737,15 @@ app_about() {
     current_user="$(id -un 2>/dev/null || echo "unknown")"
     out_info "Current user:      ${current_user}"
 
-    if [ "$(id -u)" -eq 0 ]; then
+    if [ "${IS_TERMUX:-0}" -eq 1 ]; then
+        out_info "Target system:     Termux (this login only — no sudo install)"
+        out_info "Termux prefix:     ${PREFIX:-unset}"
+        out_info "User install dir:  ${USER_BIN}"
+        out_info "Execution context: this login (no admin or dedicated-account path)"
+    elif [ "$(id -u)" -eq 0 ]; then
         out_success "Execution context: root (global install path available)"
     else
-        out_info "Execution context: normal user (Type 0 CLI self-management)"
+        out_info "Execution context: this login (user install path)"
     fi
 
     out_empty_line
@@ -2693,7 +2781,7 @@ app_about() {
 
 app_version() {
     : "${APP_NAME:=timer}"
-    : "${VERSION:=2.11.0}"
+    : "${VERSION:=2.12.0}"
     : "${JSON:=0}"
     if [ "${JSON}" -eq 1 ]; then
         # Same machine contract as historical app_main inline path
@@ -2718,7 +2806,8 @@ app_version() {
 
 app_help() {
     : "${SHORT_DESCRIPTION:=${APP_DESC:-Lightweight per-user named timers (volatile or persistent)}}"
-    : "${DESCRIPTION:=POSIX /bin/sh Type 0 CLI: install, version-check, self-update, self-uninstall, about, plus timer start/stop/status/list.}"
+    : "${DESCRIPTION:=POSIX /bin/sh CLI: install, version-check, self-update, self-uninstall, about, plus timer start/stop/status/list.}"
+    util_apply_termux_target
 
     if [ "${JSON}" -eq 1 ]; then
         out_json "success" "Help text available in human-readable mode. Run without --json." \
@@ -2748,8 +2837,12 @@ app_help() {
     out_plain "  reset [name]              Reset (discard) a running timer"
     out_empty_line
 
-    out_info "Self-Management (Type 0 - any user):"
-    out_plain "  install              Install ${APP_NAME} (root→global, user→~/.local/bin)"
+    out_info "Self-Management (this login):"
+    if [ "${IS_TERMUX:-0}" -eq 1 ]; then
+        out_plain "  install              Install ${APP_NAME} for this login (${USER_BIN})"
+    else
+        out_plain "  install              Install ${APP_NAME} (root→global, user→~/.local/bin)"
+    fi
     out_plain "  version              Show current version"
     out_plain "  about                Show detailed diagnostics"
     out_plain "  version-check        Compare local vs remote version (needs SCRIPT_URL)"

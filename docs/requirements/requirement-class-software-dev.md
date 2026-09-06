@@ -11,6 +11,32 @@ Declare this workspace as a **software-development** project class and hold the 
 
 This file is **class law + residual SSOT**, not a second copy of Type 0 lifecycle, checksum, output, domain pillars, or storage tables (those stay on peer requirements).
 
+### 1.1 Human-facing
+
+**In one sentence:** This project is software you can install and run; leftover stack facts (language, test runner, target systems) live here when no peer file owns them.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Use timer as yourself | `timer start work` |
+| The other role | Maintainers who name the stack | POSIX `/bin/sh`; Termux is a target |
+| Not this file | Timer start/stop, install, checksum | Peer `requirement-*.md` files |
+
+| Includes | Excludes |
+|----------|----------|
+| Project nature software-development; posix-sh; Termux as a runtime target | A second copy of install or domain tables |
+| Actor/role: considered — no dest approver | Invented `*-adm` accounts |
+| Dest fences: considered — none | Invented dest approve |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./timer` | ship unit | live program |
+| `docs/requirements/index.md` | registry | which law files exist |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Ask what language this is | POSIX `/bin/sh`, interpreted | `./timer version` |
+| Run on a phone | Termux is a named target | `timer about` |
+
 ---
 
 ## 2. Core Rules (Mandatory)
@@ -81,7 +107,11 @@ This file is **class law + residual SSOT**, not a second copy of Type 0 lifecycl
 | **Lockfile policy** | not used |
 | **Test runner** | `tests/run.sh` + `tests/test_cli.sh` + `tests/test_install_lifecycle.sh` + `tests/test_timer_domain.sh` (POSIX shell) |
 | **Linter/formatter** | none as project law (shellcheck optional for maintainers, not required gate) |
-| **Primary runtime / OS family** | POSIX Linux (and compatible UNIX where `/bin/sh` + coreutils/`sha256sum`/`mktemp` exist) |
+| **Primary runtime / OS family** | POSIX Linux; **Termux** (Android userspace, this login); Git Bash; compatible UNIX where `/bin/sh` + coreutils/`sha256sum`/`mktemp` exist |
+| **Target system (added)** | **Termux** — user-only install; no `sudo`; `$PREFIX/bin` when present |
+| **Actor / role / subject / approver** | **considered — no dest approver** |
+| **Dest fence conditions** | **considered — no dest fence conditions** |
+| **Coding-style related REQ** | `requirement-shell-script-coding` (`RQ-SHELL-SCRIPT-CODING`) — specialize-in home |
 | **Architectures supported** | any arch with a POSIX sh and the external tools the script invokes (no arch-specific binary) |
 | **Git surface** | used for product publish (`github.com/Wilgat/timer`) |
 | **Ship unit / install** | yes — repo root `./timer` + companion `timer.sha256`; Type 0 online install (peer shell REQs) |
@@ -104,6 +134,8 @@ This file is **class law + residual SSOT**, not a second copy of Type 0 lifecycl
 | Interactive vs non-interactive | `requirement-shell-interactive-vs-noninteractive` | Do not duplicate |
 | Modular prefixes / single-file layout | `requirement-shell-modular-function-design` | Do not duplicate |
 | Named-timer domain (four pillars) | `requirement-domain-timer` | Do not duplicate |
+| Coding-style specialize-in | `requirement-shell-script-coding` | Do not duplicate |
+| Termux detect / user dest | `requirement-shell-cli-interface` · `requirement-shell-self-management` | Residual names the target only |
 
 ---
 
@@ -170,6 +202,7 @@ This file is **class law + residual SSOT**, not a second copy of Type 0 lifecycl
 | `requirement-shell-interactive-vs-noninteractive` | Mode policy |
 | `requirement-shell-modular-function-design` | Prefixes / single-file modularity |
 | `requirement-domain-timer` | Named-timer domain product law |
+| `requirement-shell-script-coding` | Coding-style specialize-in home |
 | `docs/requirements/index.md` | Registry SSOT |
 
 ---
@@ -181,6 +214,12 @@ This file is **class law + residual SSOT**, not a second copy of Type 0 lifecycl
 | 2026-07-19 | Active | Class gate fix (software-development missing Active class REQ) |
 
 ---
+
+## Under command line for normal user only
+
+When the program runs on Termux, Git Bash, Windows cmd, or the same class, only **this login** may use it. Admin privilege and a dedicated system-user switch stay **unused**.
+
+**This requirement:** class residual. Termux is a named **target system**. Actor/role: **considered — no dest approver**. Dest fences: **considered — no dest fence conditions**. Coding-style owner: `requirement-shell-script-coding`.
 
 ## Design-time verification
 

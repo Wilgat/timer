@@ -22,6 +22,31 @@ It defines what happens when the tool is invoked with **no command and no flags*
 curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/main/timer | /bin/sh
 ```
 
+### 1.1 Human-facing
+
+**In one sentence:** If you run `timer` with no words, it makes sure the program is installed — it does not print help.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | First `curl \| sh` or a later no-arg run | already-installed → success |
+| The other role | Not a help desk | Help is `timer help` |
+| Not this file | Timer start/stop | Domain requirement |
+
+| Includes | Excludes |
+|----------|----------|
+| Empty argv install-ensure | Empty argv = help |
+| Termux: same ensure; dest is this login; no `sudo curl` | Root dest on Termux |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./timer` | ship unit | empty argv branch |
+| `curl … \| sh` | one-liner | first install |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Pipe the script | Install-ensure | `curl -fsSL …/timer \| sh` |
+| Run with no args later | Already installed → no-op | `timer` |
+
 Empty argv means **install-ensure** for three detect cases:
 
 | Case | Meaning |
@@ -225,6 +250,17 @@ This requirement is satisfied when all of the following hold:
 |------|--------|----------------|
 | 2026-07-14 | Initial Active v1.0.0: empty argv = install-ensure for not-installed / local / global; forbid help fallthrough | Grok (owner request) |
 | 2026-07-14 | v1.1.0: Classify product as Type O (online-install) under dual-type empty-argv template model | Grok |
+
+## Under command line for normal user only
+
+When the program runs on Termux, Git Bash, Windows cmd, or the same class, only **this login** may use it. Admin privilege and a dedicated system-user switch stay **unused**.
+
+**This requirement:** empty argv install-ensure. On Termux the printed one-liner is `curl | sh` (no `sudo`); dest stays this login.
+
+| MUST | MUST NOT |
+|------|----------|
+| Empty argv still install-ensure | Recommend `sudo curl \| sh` on Termux |
+| Fail closed on bad channel | Hang for a password on a pipe |
 
 ## Design-time verification
 

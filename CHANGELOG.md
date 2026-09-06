@@ -7,25 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.12.0] - 2026-09-06
+
 ### Added
 
-- Software-dev housekeeping (2026-08-11): H2 harness pull from RAM `GENESIS_SSOT`, dest-SSOT map rebind, H1/H2 backup ignore patterns on product `.gitignore` (Pattern A local harness only).
-- Requirements mold alignment (2026-08-11): Active **`RQ-SHELL-TEMP-FILE-SYSTEM`** (**`LM-TEMP-FILE-SYSTEM`**); domain cites **`LM-NAMED-TIMER-DOMAIN`**; storage DTV + TP-CLI-05 maps corrected.
-
-### Fixed
-
-- Stale DTV claiming TP-CLI-05 n/a (domain storage) after shell storage inheritance.
-- Revised `reviews/what-to-review.md`, `reviews/test-plan.md`, RTM, lessons, and index for **2.11.0** / 12 REQs / PASS=195 (shell vs domain storage split; mold peers).
-- Product-review residuals: SECURITY supported-versions table (collapse 2.10 rows); explicit install-integrity **Must not claim** bounds; **L-CSUM-01** closed.
+- **Termux** as a named target system: detect via `PREFIX` / `TERMUX_VERSION` / Termux usr tree; user-only install (`$PREFIX/bin` when present); `about` reports `termux` / `user_bin` / `prefix`; never recommend `sudo curl | sh` on detect.
+- Active coding-style law **`RQ-SHELL-SCRIPT-CODING`** (`requirement-shell-script-coding.md`) so portable shell lessons have a specialize-in home.
+- Suite **TP-TX-01..05** (Termux off/on detect, no sudo one-liner, `$PREFIX/bin` dest, `pkg` not invoked).
+- **§1.1 Human-facing** and **Under command line for normal user only** on every live requirement (closes HK-REQ-01 / HK-REQ-02).
+- Prior unreleased housekeeping (H2 harness pull, mold alignment) is included in this cut.
 
 ### Changed
 
-- Aligned product Requirement-IDs (`RQ-*`) and suite TP-IDs with harness ID notation; each live requirement has Design-time verification.
-- Expanded CI suite: TP-labeled CLI/lifecycle parity, local-channel TP-CURL suite, domain-subject **TP-TIMER-01..09** (not TP-DOM).
-- Aligned each live requirement **Design-time verification** with law mold TP families (`LM-*` specialize provenance; domain → `TP-TIMER-01..09`); product RTM lists LM/PM + TP matrix.
-- ID notation: domain product cases use **`TP-<SUBJECT>-*`** (e.g. **TP-TIMER-***); deprecate product **`TP-DOM-*`** (policy-harness-id-notation §5).
-- Product maps: `reviews/test-plan.md`, `reviews/requirement-test-matrix.md`.
-- Removed legacy flat `docs/templates/template-*.md` layout; law/proof molds under `templates/requirements/` and `templates/tests/` (H2 from genesis).
+- Ship-unit `VERSION` and README Version badge → **2.12.0**.
+- Product README: people-first description; Termux install notes; platform table; system-wide `sudo` labeled Linux/macOS only.
+- Class residual names Termux as a runtime target; actor/role **considered — no dest approver**; dest fences **considered — none**.
+- Registry inventory: **13** Active REQs.
+
+### Fixed
+
+- README human readability: lead with what a person does; Termux missing from Platform Compatibility.
+- Help on Termux names this-login dest instead of root→global.
 
 ## [2.11.0] - 2026-08-11
 

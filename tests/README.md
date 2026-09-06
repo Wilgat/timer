@@ -23,7 +23,7 @@ RUN_ONLINE_CURL_TESTS=1 ./tests/run.sh   # optional public channel smoke
 
 | Suite | File | TP families | Primary REQs |
 |-------|------|-------------|--------------|
-| CLI surface | `test_cli.sh` | TP-CLI, TP-CSUM-01/05, TP-U-01, TP-CLI-12 | `RQ-SHELL-CLI-INTERFACE`, `RQ-SHELL-OUTPUT-REQUIREMENTS`, `RQ-SHELL-AUTOMATIC-CHECKSUM` |
+| CLI surface | `test_cli.sh` | TP-CLI, TP-CSUM-01/05, TP-U-01, TP-CLI-12, **TP-TX-01..05** | `RQ-SHELL-CLI-INTERFACE`, `RQ-SHELL-OUTPUT-REQUIREMENTS`, `RQ-SHELL-AUTOMATIC-CHECKSUM`, `RQ-SHELL-SCRIPT-CODING` |
 | Install lifecycle | `test_install_lifecycle.sh` | TP-LC, TP-CSUM-02..04 | `RQ-SHELL-SELF-MANAGEMENT`, `RQ-SHELL-IDEMPOTENCY`, `RQ-SHELL-AUTOMATIC-CHECKSUM` |
 | Online curl\|sh | `test_online_curl_install.sh` | TP-CURL (local channel Core) | `RQ-SHELL-CLI-ZERO-ARGUMENTS`, `RQ-SHELL-INTERACTIVE-VS-NONINTERACTIVE` |
 | Timer domain | `test_timer_domain.sh` | **TP-TIMER-01..09** (domain-subject family; not `TP-DOM`) | `RQ-DOMAIN-TIMER` |
@@ -37,6 +37,7 @@ RUN_ONLINE_CURL_TESTS=1 ./tests/run.sh   # optional public channel smoke
 | `PM-CHECKSUM-TEST-PLAN` | `docs/templates/tests/template-checksum-test-plan.md` |
 | `PM-ONLINE-CURL-INSTALL-TEST-PLAN` | `docs/templates/tests/template-online-curl-install-test-plan.md` |
 | `PM-DOMAIN-TEST-PLAN` | `docs/templates/tests/template-domain-test-plan.md` |
+| `PM-SHELL-TERMUX-ISH-TEST-PLAN` | `docs/templates/tests/template-shell-termux-ish-test-plan.md` |
 | `PM-SET-U-TEST-PLAN` | `docs/templates/tests/template-set-u-test-plan.md` |
 | `PM-REQUIREMENT-TEST-TRACEABILITY` | `docs/templates/tests/template-requirement-test-traceability.md` |
 

@@ -12,6 +12,30 @@ It defines interactive vs non-interactive behavior for this shell project (globa
 **Scope:** Mode detection signals, prompt policy, auto-install vs confirm, force/skip rules, interaction with quiet/json/debug and output SSOT.  
 **Out of scope (cited, not re-owned):** Full command catalog (`requirement-shell-cli-interface.md`); output function catalog (`requirement-shell-output-requirements.md`); self-update integrity (`requirement-shell-self-management.md`); idempotency matrix (`requirement-shell-idempotency.md`).
 
+### 1.1 Human-facing
+
+**In one sentence:** A terminal may ask yes/no; a pipe or `--json` must never hang.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | TTY confirm for uninstall | `timer self-uninstall` |
+| The other role | Automation / `curl \| sh` | no prompt |
+| Not this file | Output colors | Output requirement |
+
+| Includes | Excludes |
+|----------|----------|
+| TTY vs pipe; `--json` / `--quiet`; prompts | Dest review questions |
+| Termux: same TTY rules; install stays this login | `sudo` prompts |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./timer` | ship unit | `prompt_*` |
+| `curl … \| sh` | pipe | auto install-ensure |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Uninstall in a script | Need `--force` | `timer self-uninstall --force` |
+
 ---
 
 ## 2. Core Rules / Requirements (Mandatory)
@@ -225,6 +249,12 @@ Mode-related work for timer is **not done** if any of the following fail:
 | `./timer` | Implementation under test |
 
 ---
+
+## Under command line for normal user only
+
+When the program runs on Termux, Git Bash, Windows cmd, or the same class, only **this login** may use it. Admin privilege and a dedicated system-user switch stay **unused**.
+
+**This requirement:** interactive install. Pipes auto-ensure; TTY may confirm. Never a `sudo` password prompt as the install path on this class.
 
 ## Design-time verification
 

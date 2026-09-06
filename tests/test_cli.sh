@@ -1,8 +1,8 @@
 # =============================================================================
 # tests/test_cli.sh — Type 0 CLI surface (PM-SHELL-CLI-TEST-PLAN / TP-CLI-*)
 # =============================================================================
-# Portable families: TP-CLI, TP-CSUM-01/05, TP-U-01.
-# Primary REQs: RQ-SHELL-CLI-INTERFACE, RQ-SHELL-OUTPUT-REQUIREMENTS, RQ-SHELL-AUTOMATIC-CHECKSUM, RQ-SHELL-CLI-ZERO-ARGUMENTS.
+# Portable families: TP-CLI, TP-CSUM-01/05, TP-U-01, TP-TX-01..05.
+# Primary REQs: RQ-SHELL-CLI-INTERFACE, RQ-SHELL-OUTPUT-REQUIREMENTS, RQ-SHELL-AUTOMATIC-CHECKSUM, RQ-SHELL-CLI-ZERO-ARGUMENTS, RQ-SHELL-SCRIPT-CODING.
 # Labels MUST include TP-IDs (policy-harness-id-notation / PM-SHELL-CLI-TEST-PLAN).
 # =============================================================================
 
@@ -232,4 +232,45 @@ run_test_cli() {
     assert_contains "TP-CLI-12 out_json plain string key" "$_out" '"plain":"v"'
     assert_contains "TP-CLI-12 out_json @nested unquoted object" "$_out" '"nested":{"a":1,"b":"x"}'
     assert_not_contains "TP-CLI-12 out_json must not double-quote nested blob" "$_out" '"nested":"{'
+
+    # --- TP-TX-*: Termux target (command line for this login only) ---
+    _stub=$(mktemp -d "${TMPDIR:-/tmp}/tm-pkgstub.XXXXXX")
+    printf '#!/bin/sh\necho pkg-called >> "%s/pkg.log"\nexit 0\n' "${_stub}" > "${_stub}/pkg"
+    chmod +x "${_stub}/pkg"
+    _out=$(env -u PREFIX -u TERMUX_VERSION PATH="${_stub}:${PATH}" \
+        sh "${SCRIPT}" --json about 2>/dev/null)
+    assert_contains "TP-TX-01 about termux false off detect" "$_out" '"termux":"false"'
+    assert_file_missing "TP-TX-01 TP-LC-15 pkg stub not invoked off Termux" "${_stub}/pkg.log"
+
+    ci_isolated_env
+    _tx_prefix="${CI_HOME}/data/com.termux/files/usr"
+    mkdir -p "${_tx_prefix}/bin"
+    _out=$(
+        HOME="${CI_HOME}" PREFIX="${_tx_prefix}" TERMUX_VERSION="0.118.0" \
+        PATH="${_stub}:${PATH}" \
+        env -u USER_BIN sh "${SCRIPT}" --json about 2>/dev/null
+    )
+    assert_contains "TP-TX-02 about termux true on PREFIX detect" "$_out" '"termux":"true"'
+    assert_contains "TP-TX-02 about prefix field" "$_out" "com.termux"
+    assert_contains "TP-TX-04 user_bin is PREFIX/bin" "$_out" "${_tx_prefix}/bin"
+    assert_file_missing "TP-TX-05 pkg stub not invoked on Termux (no pkg companion)" "${_stub}/pkg.log"
+    _help=$(
+        HOME="${CI_HOME}" PREFIX="${_tx_prefix}" TERMUX_VERSION="0.118.0" \
+        env -u USER_BIN sh "${SCRIPT}" help 2>/dev/null
+    )
+    assert_not_contains "TP-TX-03 help must not recommend sudo on Termux" "$_help" "sudo curl"
+    assert_contains "TP-TX-03 help install names this login" "$_help" "this login"
+
+    _errf="${CI_HOME}/tx-zero-arg.err"
+    _out=$(
+        HOME="${CI_HOME}" PREFIX="${_tx_prefix}" TERMUX_VERSION="0.118.0" \
+        SCRIPT_URL="http://127.0.0.1:1/timer-unreachable" \
+        env -u USER_BIN sh "${SCRIPT}" </dev/null 2>"${_errf}"
+    )
+    _err=$(cat "${_errf}" 2>/dev/null || true)
+    _all="${_out}${_err}"
+    assert_not_contains "TP-TX-03 empty-argv recommend has no sudo curl" "$_all" "sudo curl"
+    assert_contains "TP-TX-03 empty-argv still shows curl | sh" "$_all" "curl -fsSL"
+    ci_cleanup_env
+    rm -rf "${_stub}"
 }

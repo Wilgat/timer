@@ -14,6 +14,31 @@ It defines lifecycle capabilities and safety rules for this shell project’s se
 
 **Must not confuse with:** OS package managers, domain product start/stop ops, dedicated system-user policy, or non-CLI “self-management.”
 
+### 1.1 Human-facing
+
+**In one sentence:** You can place, refresh, and remove the `timer` program itself without a distro package.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | User install dest | `~/.local/bin/timer` or Termux `$PREFIX/bin/timer` |
+| The other role | Root global dest on Linux/macOS | `/usr/local/bin/timer` — **not** Termux |
+| Not this file | Starting a named stopwatch | `timer start` |
+
+| Includes | Excludes |
+|----------|----------|
+| `version-check`, `self-update`, `self-uninstall`, `about` | Wrapping `apt` or Termux `pkg` |
+| Termux: user dest only; no `sudo curl \| sh` | Dedicated system user |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./timer` | ship unit | install helpers |
+| `timer about` | command | dest, Termux flag |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Put the program on PATH | Install as this login | `timer install` |
+| Check Termux dest | `about` shows `termux` | `timer --json about` |
+
 ---
 
 ## 2. Core Rules / Requirements (Mandatory)
@@ -105,7 +130,8 @@ Root may write global install path; non-root uses user path. Do not assume root 
 | **Install orchestrator SSOT** | `inst_perform_install` (+ prepare / download with or without checksum / atomic install) |
 | **Version compare** | `ver_gt` (pure POSIX); local version via `inst_get_version` |
 | **Install presence** | `inst_is_installed` |
-| **Paths** | `GLOBAL_BIN` default `/usr/local/bin`; `USER_BIN` default `${HOME}/.local/bin` |
+| **Paths** | `GLOBAL_BIN` default `/usr/local/bin`; `USER_BIN` default `${HOME}/.local/bin`; Termux: `$PREFIX/bin` when present |
+| **Termux** | `util_apply_termux_target`; about JSON `termux` / `user_bin` / `prefix`; no `sudo curl` recommend |
 | **Repository identity** | `REPO_USER` default `Wilgat`; `REPO_NAME` default `timer` |
 | **Release channel** | `SCRIPT_URL` Config default composed as `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${APP_NAME}` (this project: `https://raw.githubusercontent.com/Wilgat/timer/main/timer` — product channel SSOT; override `SCRIPT_URL` or `REPO_*` via env if needed) |
 | **Strict digest pin** | Runtime `CHECKSUM` when set in process env → `inst_perform_install_download_with_checksum` (secondary install-path only; **not** shown in `help`/`about`; see automatic-checksum requirement) |
@@ -114,7 +140,7 @@ Root may write global install path; non-root uses user path. Do not assume root 
 | **Uninstall steps** | `inst_self_uninstall_determine_bin` → `inst_self_uninstall_confirm_and_remove` → `inst_self_uninstall_cleanup_path` |
 | **PATH ensure** | `path_add_shell` / bash / zsh / fish helpers on user install |
 | **Privilege** | Type 0 only for self-management surface; no dedicated system user |
-| **Version SSOT** | `VERSION` in script config block (product SSOT; currently `VERSION="2.10.0"`) |
+| **Version SSOT** | `VERSION` in script config block (product SSOT; currently `VERSION="2.12.0"`) |
 
 #### Normative acceptance behaviors (this project)
 
@@ -211,6 +237,18 @@ Work claiming self-management support for timer is **not done** if any of the fo
 
 ---
 
+## Under command line for normal user only
+
+When the program runs on Termux, Git Bash, Windows cmd, or the same class, only **this login** may use it. Admin privilege and a dedicated system-user switch stay **unused**.
+
+**This requirement:** install / update / uninstall / about. On Termux, dest is `$PREFIX/bin` or `~/.local/bin`; about reports `termux`; recommended one-liner is `curl | sh` with no `sudo`.
+
+| MUST | MUST NOT |
+|------|----------|
+| User-only dest on Termux detect | Global `/usr/local/bin` dest on Termux |
+| About JSON `termux` / `user_bin` | Recommend `sudo curl \| sh` on detect |
+| Git Bash: same ceiling | Invoke Termux `pkg` because Git Bash was detected |
+
 ## Design-time verification
 
 **Requirement-ID:** `RQ-SHELL-SELF-MANAGEMENT`  
@@ -229,6 +267,7 @@ Work claiming self-management support for timer is **not done** if any of the fo
 | **TP-LC-11** version-check network failure | `tests/test_install_lifecycle.sh` | have |
 | **TP-LC-12** explicit `install --json` | `tests/test_install_lifecycle.sh` | have |
 | **TP-CLI-11** uninstall refuse (CLI suite) | `tests/test_cli.sh` | have |
+| **TP-TX-01..05** Termux target (detect, no sudo, PREFIX/bin, no pkg) | `tests/test_cli.sh` | have |
 | **TP-CURL-02,07** pipe install / pipe version | `tests/test_online_curl_install.sh` | have |
 
 

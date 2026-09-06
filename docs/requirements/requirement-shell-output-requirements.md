@@ -12,7 +12,31 @@ It implements **CIAO Principle 5 — Single Source of Output** (cloudgen/ciao **
 **Scope:** Central `out_*` system, mode contracts, channel rules, JSON purity, quiet filtering, TTY colors, fatal error emission, pipeline-SSOT remarks.  
 **Out of scope (cited, not re-owned):** Command catalog (`requirement-shell-cli-interface.md`); self-management semantics; modular prefix table (except that output owns `out_*`); interactive prompt logic beyond prompt output hooks.
 
-### 1.1 SSOT family (do not confuse)
+### 1.1 Human-facing
+
+**In one sentence:** Every message you see from `timer` goes through one output family — human lines and `--json` alike.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Human `[OK]` / `[ERROR]` | `timer start` |
+| The other role | Scripts | `timer --json status` |
+| Not this file | Which command exists | CLI interface |
+
+| Includes | Excludes |
+|----------|----------|
+| `out_*`; JSON purity; quiet | Command catalog |
+| Errors a person can act on | Privilege / install dest |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./timer` | ship unit | `out_text` / `out_json` |
+| `timer --json about` | command | machine object |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Script a status | JSON on stdout | `timer --json status work` |
+
+### 1.2 SSOT family (do not confuse)
 
 | Concept | Role in this product |
 |---------|----------------------|
@@ -269,6 +293,12 @@ Output-related work for timer is **not done** if any of the following fail:
 | `./timer` | Implementation under test |
 
 ---
+
+## Under command line for normal user only
+
+When the program runs on Termux, Git Bash, Windows cmd, or the same class, only **this login** may use it. Admin privilege and a dedicated system-user switch stay **unused**.
+
+**This requirement:** output helpers encode no privilege. They do not wrap `sudo`/`pkg`/`apt`. About may print Termux fields via `out_*`.
 
 ## Design-time verification
 

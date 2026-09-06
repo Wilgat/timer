@@ -1,8 +1,8 @@
 # Reviews index — timer
 
 **Registry** of review plan artifacts and run reports. Keep rows in sync with disk.  
-**Updated:** 2026-08-11  
-**Product:** timer **2.11.0** · **12** Active REQs · suite baseline **PASS=195 FAIL=0 SKIP=1**
+**Updated:** 2026-09-06  
+**Product:** timer **2.12.0** · **13** Active REQs · Termux target · suite **PASS=205 FAIL=0 SKIP=1**
 
 ## Plan artifacts
 
@@ -18,6 +18,11 @@
 
 | Date | File | Scope | Baseline | Verdict |
 |------|------|-------|----------|---------|
+| 2026-09-06 | `reports/2026-09-06-readme-req-coverage-termux-review.md` | README readability + REQ/checklist/test coverage + Termux target | suite this cut | **Pass** with implemented fixes |
+| 2026-08-19 | *(housekeeping — full cycle)* | H2 already current; REQ confirm-as-is; suite re-run | PASS=195 FAIL=0 SKIP=1 | **Pass** (source unchanged → no VCS) |
+| 2026-08-19 | `reports/2026-08-19-h2-sync-from-genesis.md` | H2 from RAM genesis + dest-SSOT map rebind | HK N=287; ship+12 REQs intact | **Pass** |
+| 2026-08-11 | `reports/2026-08-11-requirement-mold-full-fix.md` | Full fix all mold suggestions (P1+P2) on genesis + H2 to timer | 13 molds updated | **Pass** — all suggestion IDs closed |
+| 2026-08-11 | `reports/2026-08-11-h2-sync-and-requirement-mold-review.md` | H2 from genesis + requirement mold suggestions | harness SAME; maps rebound | **Pass** H2; mold suggestions later fully fixed |
 | 2026-08-11 | `reports/2026-08-11-timer-product-review.md` | Full product review (Type 0 + domain + law/maps) | PASS=195 FAIL=0 SKIP=1 | **Pass** — residuals fixed (L-CSUM-01 closed) |
 | 2026-08-11 | `reports/2026-08-11-review-and-test-plan-revision.md` | Revise living review plan + test plan/RTM after re-specialize + mold align | PASS=195 FAIL=0 SKIP=1 | **Pass** — maps honest; no new open bugs |
 | 2026-08-11 | `reports/2026-08-11-requirement-mold-coverage-review.md` | REQ coverage + LM/PM alignment | PASS=195 FAIL=0 SKIP=1 | **Pass** (aligned) |
@@ -33,7 +38,9 @@
 
 | ID | Severity | Status | One-line |
 |----|----------|--------|----------|
-| *(none)* | — | — | L-CSUM-01 closed; SECURITY version table + non-claim language fixed 2026-08-11 |
+| HK-REQ-01 | P3 | **closed** | §1.1 Human-facing on all live REQs (2026-09-06) |
+| HK-REQ-02 | P3 | **closed** | Class residual: considered — no dest approver / no dest fence (2026-09-06) |
+| HK-REQ-03 | P3 | deferred | Interactive REQ still allows live `[ -t` inside `prompt_*` vs new no-retest-tty mold |
 
 ## Notes
 

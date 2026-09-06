@@ -5,12 +5,12 @@ Maps **portable TP families** (proof molds) and product domain cases to product-
 | Field | Value |
 |-------|--------|
 | **Product** | timer |
-| **Ship unit** | `./timer` · `VERSION=2.11.0` |
+| **Ship unit** | `./timer` · `VERSION=2.12.0` |
 | **Companion** | `./timer.sha256` |
 | **Suite entry** | `./tests/run.sh` |
 | **RTM** | `reviews/requirement-test-matrix.md` |
-| **Live law** | **12** Active REQs — `docs/requirements/index.md` |
-| **Last update** | 2026-08-11 (revise: 2.11.0 baseline; shell storage + temp; mold peers) |
+| **Live law** | **13** Active REQs — `docs/requirements/index.md` |
+| **Last update** | 2026-09-06 (Termux target **TP-TX-***; coding-style REQ; 2.12.0) |
 
 Status: **have** = automated · **todo** = needed · **n/a** = not applicable · **optional** = gated
 
@@ -25,6 +25,7 @@ Status: **have** = automated · **todo** = needed · **n/a** = not applicable ·
 | **TP-CSUM** | `PM-CHECKSUM-TEST-PLAN` | CLI + lifecycle | RQ-SHELL-AUTOMATIC-CHECKSUM |
 | **TP-U** | `PM-SET-U-TEST-PLAN` | CLI + curl (partial) | set -u / defaults (cross-cutting) |
 | **TP-CURL** | `PM-ONLINE-CURL-INSTALL-TEST-PLAN` | `tests/test_online_curl_install.sh` | RQ-SHELL-CLI-ZERO-ARGUMENTS · RQ-SHELL-SELF-MANAGEMENT |
+| **TP-TX** | `PM-SHELL-TERMUX-ISH-TEST-PLAN` (detect/ceiling; pkg n/a) | `tests/test_cli.sh` | **RQ-SHELL-CLI-INTERFACE** · **RQ-SHELL-SELF-MANAGEMENT** · **RQ-SHELL-SCRIPT-CODING** |
 | **TP-TIMER** | `PM-DOMAIN-TEST-PLAN` (ops / subject catalog) | `tests/test_timer_domain.sh` | **RQ-DOMAIN-TIMER** · **LM-NAMED-TIMER-DOMAIN** |
 | **TP-STORAGE** | `PM-DOMAIN-TEST-PLAN` § shared dual-storage | `tests/test_timer_domain.sh` | **RQ-DOMAIN-TIMER** (domain *records*; not shell scratch) |
 | Umbrella | `PM-SHELL-CLI-SUITE-TEST-PLAN` | `tests/run.sh` | full Type 0 + domain |
@@ -46,6 +47,7 @@ Status: **have** = automated · **todo** = needed · **n/a** = not applicable ·
 | 2026-07-19 | PASS=133 FAIL=0 | Domain JSON number lock-in |
 | 2026-07-24 | PASS=187 FAIL=0 SKIP=1 | TP labels; lifecycle parity; TP-CURL local |
 | 2026-08-11 | **PASS=195 FAIL=0 SKIP=1** | Re-specialize + mold peers; full product review **Pass** (`reports/2026-08-11-timer-product-review.md`) |
+| 2026-09-06 | **PASS=205 FAIL=0 SKIP=1** | Termux target **TP-TX-01..05**; 13 REQs; **2.12.0** |
 
 **How to re-baseline:** `cd` product root → `./tests/run.sh` → paste summary line into this table when law/suite changes.
 
@@ -67,6 +69,21 @@ Status: **have** = automated · **todo** = needed · **n/a** = not applicable ·
 | **TP-CLI-10** | bashrc+sdkman under set -u | **n/a** | No product sdkman/source path |
 | **TP-CLI-11** | self-uninstall refuse without force | **have** | `confirm_required`; binary remains |
 | **TP-CLI-12** | `out_json` `@key` raw nested | **have** | extracted harness |
+
+---
+
+## TP-TX — Termux target (`PM-SHELL-TERMUX-ISH-TEST-PLAN` detect/ceiling; no pkg companion)
+
+This product does **not** wrap `pkg`. Cases prove **target system** detect + this-login dest.
+
+| TP-ID | Intent | Status | Evidence |
+|-------|--------|--------|----------|
+| **TP-TX-01** | Off detect: `about` `termux=false`; stub `pkg` not called | **have** | `tests/test_cli.sh` |
+| **TP-TX-02** | PREFIX/`TERMUX_VERSION` detect: `about` `termux=true` | **have** | `tests/test_cli.sh` |
+| **TP-TX-03** | Termux: no `sudo curl` in help / empty-argv recommend | **have** | `tests/test_cli.sh` |
+| **TP-TX-04** | Termux: `user_bin` is `$PREFIX/bin` when that dir exists | **have** | `tests/test_cli.sh` |
+| **TP-TX-05** | Termux: stub `pkg` still not invoked (no companion list) | **have** | `tests/test_cli.sh` |
+| **TP-LC-16** | Named `pkg install -y` | **n/a** | No package list |
 
 **Legacy product-local IDs (retired → family):**
 

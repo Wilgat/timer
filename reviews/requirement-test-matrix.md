@@ -2,8 +2,8 @@
 
 | Field | Value |
 |-------|--------|
-| **Product** | timer · `VERSION=2.11.0` |
-| **Updated** | 2026-08-11 |
+| **Product** | timer · `VERSION=2.12.0` |
+| **Updated** | 2026-09-06 |
 | **Map** | `reviews/test-plan.md` |
 | **Suite** | `./tests/run.sh` |
 | **Baseline** | PASS=195 FAIL=0 SKIP=1 |
@@ -19,7 +19,8 @@ Git-surface: versioned REQs list TP + `tests/*` + `reviews/*` only (no `docs/tem
 | Requirement-ID | Key | Specialized from (LM) | Proof mold (PM) | TP families | Suite files | Core status |
 |----------------|-----|----------------------|-----------------|-------------|-------------|-------------|
 | **RQ-CLASS-SOFTWARE-DEV** | requirement-class-software-dev | **LM-REQUIREMENT-CLASS-SOFTWARE-DEV** | — | TP-CLASS-01; suite green | static + `tests/run.sh` | **have** |
-| **RQ-SHELL-CLI-INTERFACE** | requirement-shell-cli-interface | **LM-CLI-INTERFACE** | **PM-SHELL-CLI-TEST-PLAN** | TP-CLI-*; TP-TIMER-01 | `test_cli.sh`, `test_timer_domain.sh` | **have** |
+| **RQ-SHELL-CLI-INTERFACE** | requirement-shell-cli-interface | **LM-CLI-INTERFACE** | **PM-SHELL-CLI-TEST-PLAN** | TP-CLI-*; TP-TIMER-01; **TP-TX-01..05** | `test_cli.sh`, `test_timer_domain.sh` | **have** |
+| **RQ-SHELL-SCRIPT-CODING** | requirement-shell-script-coding | **LM-SHELL-SCRIPT-CODING** | **PM-SHELL-TERMUX-ISH-TEST-PLAN** (detect) | TP-CLI-01; **TP-TX-01..05** | `test_cli.sh` | **have** |
 | **RQ-SHELL-CLI-STORAGE** | requirement-shell-cli-storage | **LM-SHELL-CLI-STORAGE** | **PM-SHELL-CLI-TEST-PLAN** | **TP-CLI-05** | `test_cli.sh` | **have** |
 | **RQ-SHELL-CLI-ZERO-ARGUMENTS** | requirement-shell-cli-zero-arguments | **LM-SHELL-CLI-ZERO-ARGUMENTS** | PM-SHELL-CLI · PM-INSTALL · PM-CURL | TP-CLI-09; TP-LC-01/09; TP-CURL-02/03/08; TP-U-02 | CLI, lifecycle, curl | **have** |
 | **RQ-SHELL-TEMP-FILE-SYSTEM** | requirement-shell-temp-file-system | **LM-TEMP-FILE-SYSTEM** | PM-INSTALL · PM-CHECKSUM · PM-SHELL-CLI | TP-LC-06/12; TP-CSUM-02..04; TP-CLI-05 | lifecycle, CLI | **have** |
@@ -54,6 +55,7 @@ Git-surface: versioned REQs list TP + `tests/*` + `reviews/*` only (no `docs/tem
 | **TP-STORAGE-03** | Corrupted-state path not claimed in suite |
 | Separate **LM-ONLINE-INSTALL** REQ | Online package covered by zero-arg + self-management + automatic-checksum (no dual local install) |
 | Type 1 TTY/sudo TP rows | Product does not claim Type 1 elevation |
+| **TP-LC-16** named `pkg install` | No Termux package list; detect/ceiling only |
 
 ---
 

@@ -15,6 +15,30 @@ This requirement is the **project Single Source of Truth** for **shell CLI stora
 
 **Bootstrap note:** Specialized from selfmanaged architecture inheritance + **`LM-SHELL-CLI-STORAGE`**. Domain timer files are a separate storage surface.
 
+### 1.1 Human-facing
+
+**In one sentence:** Scratch files for install live under a per-login folder; RAM disk first, then `/tmp`, then cache.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Isolated scratch | `/dev/shm/timer-<you>` or `/tmp/timer-<you>` |
+| The other role | Not used | No shared world-writable dump |
+| Not this file | Named-timer records | Domain requirement |
+
+| Includes | Excludes |
+|----------|----------|
+| `util_resolve_storage`; about `effective_storage` | Timer start/stop files |
+| Termux: `/dev/shm` usually missing → `/tmp` | Root-owned scratch |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `timer --json about` | command | `effective_storage` |
+| `./timer` | ship unit | resolver |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Ask where scratch is | About prints the folder | `timer about` |
+
 ---
 
 ## 2. Core Rules / Requirements (Mandatory)
@@ -127,6 +151,17 @@ Storage resolve work for timer is **not done** if any of the following fail:
 | `tests/test_cli.sh` | Storage diagnostics tests (**TP-CLI-05**) |
 
 ---
+
+## Under command line for normal user only
+
+When the program runs on Termux, Git Bash, Windows cmd, or the same class, only **this login** may use it. Admin privilege and a dedicated system-user switch stay **unused**.
+
+**This requirement:** scratch resolve. Termux usually has no `/dev/shm`; fall back to `/tmp` then cache. Isolation still includes app name and login.
+
+| MUST | MUST NOT |
+|------|----------|
+| Per-login scratch | Shared world-writable dump |
+| Survive missing `/dev/shm` | Require root to create scratch |
 
 ## Design-time verification
 

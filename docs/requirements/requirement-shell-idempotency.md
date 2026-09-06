@@ -14,6 +14,30 @@ It defines re-run safety for ensure-style shell lifecycle commands (install, PAT
 
 **Informal formula:** for ensure-style operation *f* and system state *x*, **f(f(x)) ≈ f(x)** for the **desired outcome** (logs and timestamps may differ).
 
+### 1.1 Human-facing
+
+**In one sentence:** Running install or update again must not wreck a working copy.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Re-run `timer install` | already installed → success |
+| The other role | Force reinstall | `--force` |
+| Not this file | Domain start overwrite | Domain requirement |
+
+| Includes | Excludes |
+|----------|----------|
+| Install / PATH / self-update / uninstall re-entry | Silent overwrite of a running timer |
+| Termux: same no-op dest | `sudo` to “fix” a second run |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./timer` | ship unit | ensure paths |
+| `timer install` | command | already-installed |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Install twice | Second run is a no-op | `timer install` |
+
 ---
 
 ## 2. Core Rules / Requirements (Mandatory)
@@ -171,6 +195,12 @@ A state-changing shell change for timer is **not done** if any of the following 
 | `./timer` | Implementation under test |
 
 ---
+
+## Under command line for normal user only
+
+When the program runs on Termux, Git Bash, Windows cmd, or the same class, only **this login** may use it. Admin privilege and a dedicated system-user switch stay **unused**.
+
+**This requirement:** re-run safety. Termux re-install stays this-login dest; do not escalate to `sudo` on a second run.
 
 ## Design-time verification
 

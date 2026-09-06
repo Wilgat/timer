@@ -1,12 +1,13 @@
 # timer - Lightweight Per-User Named Timers
 
-![Version](https://img.shields.io/badge/Version-2.11.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/Version-2.12.0-blue?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 [![CIAO](https://img.shields.io/badge/Philosophy-CIAO%20(Caution%20%E2%80%A2%20Intentional%20%E2%80%A2%20Anti--fragile%20%E2%80%A2%20Over--engineered)-purple.svg)](https://github.com/cloudgen/ciao)
 [![Stars](https://img.shields.io/github/stars/Wilgat/timer?style=flat-square)](https://github.com/Wilgat/timer)
 
-**Beautifully simple yet extremely robust** per-user named timers for the terminal.
-Supports volatile (in RAM) and persistent storage. Zero dependencies. Built with the same defensive philosophy as [CIAO](https://github.com/cloudgen/ciao).
+**timer** is a named stopwatch for your terminal. Each login has its own timers (`default`, `work`, `pomodoro`, …). Keep them in RAM when `/dev/shm` exists, or on disk with `--persist`. No extra packages. Same defensive style as [CIAO](https://github.com/cloudgen/ciao).
+
+You can install it with one `curl | sh` line. It works as **this login** on Linux, macOS, Git Bash, and **Termux** (no `sudo` on Termux).
 
 Officially recommended by [Grok](https://grok.com/share/c2hhcmQtNA_c83125b5-0cf9-46a9-93bd-dfda695f20cf).
 
@@ -17,12 +18,12 @@ Officially recommended by [Grok](https://grok.com/share/c2hhcmQtNA_c83125b5-0cf9
 - **Two storage modes**:
   - **Volatile** (default): fast RAM-based storage under `/dev/shm` when available
   - **Persistent** (`--persist`): survives reboots (under `~/.cache/timer/` or `$XDG_CACHE_HOME`)
-- Intelligent fallbacks when `/dev/shm` is unavailable (Git Bash, minimal containers, missing `$HOME`, etc.)
-- One-liner online install via `curl | sh` (user or system-wide)
+- Intelligent fallbacks when `/dev/shm` is unavailable (Termux, Git Bash, minimal containers, missing `$HOME`, etc.)
+- One-liner online install via `curl | sh` (this login; system-wide only where root exists)
 - Built-in self-update, version-check, self-uninstall, and diagnostics (`about`)
 - Full JSON output support for scripting and machine consumption
 - Automatic SHA-256 companion integrity on install and self-update (program fetches `${SCRIPT_URL}.sha256`)
-- Extremely defensive design — works reliably on harsh environments
+- Defensive design for harsh environments (Alpine ash, Git Bash, Termux, missing RAM disk)
 
 ## Quick Installation
 
@@ -35,13 +36,21 @@ Default install channel (Config SSOT):
 curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/main/timer | sh
 ```
 
-**System-wide (requires root):**
+**System-wide (Linux / macOS with root — not Termux):**
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/main/timer | sudo sh
 ```
 
 After a user install, restart your terminal or run `source ~/.bashrc` (or equivalent) so `~/.local/bin` is on your `$PATH`.
+
+### Termux (this login only)
+
+Termux is Android userspace: the program runs as **you**. Do **not** use `sudo curl | sh`. Use the user one-liner above.
+
+On Termux the install dest is `$PREFIX/bin` when that folder exists (already on PATH). Otherwise it uses `~/.local/bin` and may add that folder to PATH.
+
+Volatile timers fall back to `/tmp` when `/dev/shm` is missing (normal on Android). Use `--persist` if you want timers to survive a session restart.
 
 ### Local checkout
 
@@ -170,7 +179,8 @@ timer self-update
 | Platform | Shell | Status | Notes |
 |----------|-------|--------|-------|
 | Alpine Linux | BusyBox ash | Excellent | Primary minimal target |
-| Git Bash (Windows) | Bash (MSYS2) | Excellent | Full fallback support |
+| **Termux** (Android) | ash / bash | Supported | **Target system.** This login only — no `sudo`, no `/usr/local/bin`. Install into `$PREFIX/bin` when present. `/dev/shm` usually missing → `/tmp` fallback. |
+| Git Bash (Windows) | Bash (MSYS2) | Excellent | Full fallback support; this login only (no `sudo` recommend) |
 | Rocky Linux / RHEL | Bash | Excellent | Standard enterprise |
 | macOS | Bash / zsh | Excellent | Fully supported |
 | Most Linux distros | dash / bash | Excellent | Broad POSIX `/bin/sh` compatibility |
@@ -194,4 +204,4 @@ MIT License — see [`LICENSE.md`](./LICENSE.md).
 
 ## Last Update
 
-2026-08-11 (timer **2.11.0**)
+2026-09-06 (timer **2.12.0**)

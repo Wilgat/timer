@@ -35,6 +35,31 @@ It owns the **four domain pillars**:
 
 **Naming law:** Domain SSOT files use `requirement-domain-<subject>.md` where `<subject>` is the domain knowledge noun. This product’s subject is **`timer`** → `requirement-domain-timer.md` (not `requirement-shell-domain*`). Agents creating a **new** domain requirement for another product **MUST confirm** `<subject>` before writing the file.
 
+### 1.1 Human-facing
+
+**In one sentence:** You start, stop, and list named stopwatches that belong to **your** login.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Your timer files | `timer start work` |
+| The other role | Not a shared daemon | No system timer service |
+| Not this file | Installing the program | `timer install` |
+
+| Includes | Excludes |
+|----------|----------|
+| `start` `stop` `status` `list` `kill` `reset`; `--persist` | OS packages; sudo |
+| Termux: volatile falls back when `/dev/shm` is missing | Admin privilege for start/stop |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./timer` | ship unit | domain handlers |
+| `timer help` | command | Timer commands |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Time a meeting | Named timer as you | `timer start meeting` |
+| Keep it after reboot | Persistent file under cache | `timer start --persist meeting` |
+
 ---
 
 ## 2. Core Rules / Requirements (Mandatory)
@@ -258,6 +283,17 @@ This requirement is satisfied for timer when all of the following hold:
 | Root `README.md` | User-facing domain usage |
 
 ---
+
+## Under command line for normal user only
+
+When the program runs on Termux, Git Bash, Windows cmd, or the same class, only **this login** may use it. Admin privilege and a dedicated system-user switch stay **unused**.
+
+**This requirement:** domain start/stop. Timer files belong to this login. Volatile mode falls back when `/dev/shm` is missing (normal on Termux).
+
+| MUST | MUST NOT |
+|------|----------|
+| Per-login timer files | Root or dedicated-account timer dest |
+| `/tmp` fallback for volatile | Wrap `pkg`/`apt` to “fix” storage |
 
 ## Design-time verification
 

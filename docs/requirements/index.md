@@ -5,7 +5,7 @@
 **Class law:** `requirement-class-software-dev` / **`RQ-CLASS-SOFTWARE-DEV`**.  
 **Domain SSOT:** `requirement-domain-timer` / **`RQ-DOMAIN-TIMER`**.  
 **Bootstrap origin:** selfmanaged Type 0 (A→B specialize; re-specialized 2026-08-11 from selfmanaged **1.2.1**).  
-**Updated:** 2026-08-11 (mold alignment: storage DTV, domain LM, temp peer)
+**Updated:** 2026-09-06 (Termux target + coding-style REQ + human-facing)
 
 | Requirement-ID | Key | Title | Area | Status | Path | Updated |
 |----------------|-----|-------|------|--------|------|---------|
@@ -20,7 +20,8 @@
 | `RQ-SHELL-INTERACTIVE-VS-NONINTERACTIVE` | requirement-shell-interactive-vs-noninteractive | Interactive vs non-interactive / `curl|sh` behavior | shell | Active | `requirement-shell-interactive-vs-noninteractive.md` | 2026-07-24 |
 | `RQ-SHELL-MODULAR-FUNCTION-DESIGN` | requirement-shell-modular-function-design | Single-file modular function design (prefixes, zones) | shell | Active | `requirement-shell-modular-function-design.md` | 2026-07-24 |
 | `RQ-SHELL-OUTPUT-REQUIREMENTS` | requirement-shell-output-requirements | Central `out_*` output SSOT (stdout/stderr, modes; `@key` raw nested/numeric JSON) | shell | Active | `requirement-shell-output-requirements.md` | 2026-07-24 |
-| `RQ-SHELL-SELF-MANAGEMENT` | requirement-shell-self-management | Self-management lifecycle (version-check, update, uninstall, about) | shell | Active | `requirement-shell-self-management.md` | 2026-07-24 |
+| `RQ-SHELL-SELF-MANAGEMENT` | requirement-shell-self-management | Self-management lifecycle (version-check, update, uninstall, about) | shell | Active | `requirement-shell-self-management.md` | 2026-09-06 |
+| `RQ-SHELL-SCRIPT-CODING` | requirement-shell-script-coding | POSIX `/bin/sh` coding-style specialize-in home (Termux this-login helpers) | shell | Active | `requirement-shell-script-coding.md` | 2026-09-06 |
 
 **Rules for agents:**
 

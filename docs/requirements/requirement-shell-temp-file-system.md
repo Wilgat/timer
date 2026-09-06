@@ -15,6 +15,30 @@ This requirement is the **project Single Source of Truth** for **temporary / scr
 
 **Mandatory-peer note:** **`LM-NAMED-TIMER-DOMAIN`** requires this peer Active alongside CLI, shell storage, and output when domain named-timer is product law.
 
+### 1.1 Human-facing
+
+**In one sentence:** Download and install scratch files use unique `mktemp` names under the isolated storage folder — never a guessed `$$` path.
+
+| Box | Meaning | Example |
+|-----|---------|---------|
+| You / this login | Staging a new copy | install / self-update |
+| The other role | Not used | No world-writable `/tmp/timer-$$` |
+| Not this file | Named-timer records | Domain requirement |
+
+| Includes | Excludes |
+|----------|----------|
+| `mktemp`; `TMPDIR` from storage resolve | Domain timer files |
+| Termux: same mktemp under fallback scratch | `sudo` to create temps |
+
+| Surface | What you open | What for |
+|---------|---------------|----------|
+| `./timer` | ship unit | install staging |
+| `timer install` | command | temp then publish |
+
+| You do… | What it means | What you type |
+|---------|---------------|---------------|
+| Self-update | Unique temp, then replace | `timer self-update` |
+
 ---
 
 ## 2. Core Rules / Requirements (Mandatory)
@@ -117,6 +141,12 @@ Temp work for timer is **not done** if any of the following fail:
 | `tests/test_cli.sh` | Storage root for TMPDIR (**TP-CLI-05**) |
 
 ---
+
+## Under command line for normal user only
+
+When the program runs on Termux, Git Bash, Windows cmd, or the same class, only **this login** may use it. Admin privilege and a dedicated system-user switch stay **unused**.
+
+**This requirement:** temp leaves. `mktemp` under this-login scratch; Termux `/tmp` fallback is enough. Do not `sudo mkdir`.
 
 ## Design-time verification
 

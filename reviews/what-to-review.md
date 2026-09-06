@@ -2,10 +2,10 @@
 
 **Living checklist** (review plan). Product: **timer** Type 0 CLI + named-timer domain.  
 **Class:** software-development + **domain product** — Active class + domain SSOT required and present.  
-**Ship unit:** `./timer` · **VERSION=2.11.0**  
+**Ship unit:** `./timer` · **VERSION=2.12.0**  
 **Always load first:** `reviews/lessons.md`
 
-**Last plan update:** 2026-08-11 (revise after re-specialize + mold alignment; baseline PASS=195)
+**Last plan update:** 2026-09-06 (Termux target + REQ human-facing; 13 REQs)
 
 ---
 
@@ -13,7 +13,7 @@
 
 | # | Check | Notes |
 |---|--------|--------|
-| P1 | Read `docs/requirements/index.md` (live law only) | **12** Active: class + domain + shell (incl. storage + temp) |
+| P1 | Read `docs/requirements/index.md` (live law only) | **13** Active: class + domain + shell (incl. storage + temp + coding-style) |
 | P2 | Confirm domain SSOT present | **RQ-DOMAIN-TIMER** · `requirement-domain-timer.md` · **LM-NAMED-TIMER-DOMAIN** |
 | P2b | Confirm class law present | **RQ-CLASS-SOFTWARE-DEV** Active |
 | P2c | Named-timer mandatory peers | CLI · shell storage · temp · output — all Active |
@@ -42,6 +42,8 @@
 | Idempotency | **RQ-SHELL-IDEMPOTENCY** | Re-run ensure safety |
 | Interactive modes | **RQ-SHELL-INTERACTIVE-VS-NONINTERACTIVE** | TTY vs pipe / quiet / json |
 | Automatic checksum | **RQ-SHELL-AUTOMATIC-CHECKSUM** | Companion primary; CHECKSUM not help/about |
+| Coding-style | **RQ-SHELL-SCRIPT-CODING** | Specialize-in home; Termux helpers this-login |
+| Termux target | CLI + self-management | Detect; no sudo; `$PREFIX/bin`; about `termux` |
 
 ---
 
@@ -65,6 +67,7 @@
 | Ship unit ALIGNMENT header | Missing live REQ cites (domain/storage/temp) | L-CITE-01 · TP-CITE-01 |
 | Identity extractors (`APP_NAME` / `VERSION`) | Grep/SSOT shape | L-ID-01 · TP-ID-01 |
 | Mold peer set incomplete | Domain law without storage/temp/CLI/output | L-MOLD-01 · TP-MOLD-01 |
+| Termux detect / sudo recommend | `sudo curl` or `/usr/local/bin` on Termux | L-TX-01 · TP-TX-* |
 
 ---
 
