@@ -1,8 +1,8 @@
 # =============================================================================
 # tests/test_cli.sh — Type 0 CLI surface (PM-SHELL-CLI-TEST-PLAN / TP-CLI-*)
 # =============================================================================
-# Portable families: TP-CLI, TP-CSUM-01/05, TP-U-01, TP-TX-01..05, TP-TX-08.
-# Primary REQs: RQ-SHELL-CLI-INTERFACE, RQ-SHELL-OUTPUT-REQUIREMENTS, RQ-SHELL-AUTOMATIC-CHECKSUM, RQ-SHELL-CLI-ZERO-ARGUMENTS, RQ-SHELL-SCRIPT-CODING.
+# Portable families: TP-CLI, TP-CSUM-01/05, TP-U-01, TP-TX-01..05, TP-TX-08, TP-CLI-16/17/29/30.
+# Primary REQs: RQ-SHELL-CLI-INTERFACE, RQ-SHELL-CLI-DEFAULT-INTERACTION, RQ-SHELL-OUTPUT-REQUIREMENTS, RQ-SHELL-AUTOMATIC-CHECKSUM, RQ-SHELL-CLI-ZERO-ARGUMENTS, RQ-SHELL-SCRIPT-CODING.
 # Labels MUST include TP-IDs (policy-harness-id-notation / PM-SHELL-CLI-TEST-PLAN).
 # =============================================================================
 
@@ -306,11 +306,38 @@ run_test_cli() {
         assert_contains "TP-CLI-07 TTY --json no command is JSON help" "$_jout" '"type":"success"'
         assert_not_contains "TP-CLI-07 TTY --json no command not numbered list" "$_jout" "9. Exit"
         unset _jout _bold _italic _gray_italic _ident
+
+        # --- TP-CLI-30: TTY menu extra name field (Enter = default; list skips) ---
+        mkdir -p "${CI_HOME}/vol"
+        _vol="${CI_HOME}/vol"
+        _out=$(HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" VOLATILE_DIR="${_vol}" \
+            PTY_IN="4" ci_pty_capture "${SCRIPT}")
+        assert_contains "TP-CLI-30 TTY menu list still lists" "$_out" "4. list:"
+        assert_not_contains "TP-CLI-30 TTY menu list does not prompt for name" "$_out" "Timer name"
+        assert_contains "TP-CLI-30 TTY menu list runs without name" "$_out" "No running timers found."
+
+        _out=$(HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" VOLATILE_DIR="${_vol}" \
+            PTY_IN="1\\n" ci_pty_capture "${SCRIPT}")
+        assert_contains "TP-CLI-30 TTY menu start prompts for name" "$_out" "Timer name"
+        assert_contains "TP-CLI-30 TTY menu start shows default" "$_out" "Default: default"
+        assert_contains "TP-CLI-30 TTY menu start Enter uses default name" "$_out" "Timer 'default' started"
+
+        _out=$(HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" VOLATILE_DIR="${_vol}" \
+            PTY_IN="1\\nwork" ci_pty_capture "${SCRIPT}")
+        assert_contains "TP-CLI-30 TTY menu start typed name" "$_out" "Timer 'work' started"
+        assert_not_contains "TP-CLI-30 TTY menu start typed name not default" "$_out" "Timer 'default' started"
+
+        _out=$(HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" VOLATILE_DIR="${_vol}" \
+            PTY_IN="2\\nnosuch" ci_pty_capture "${SCRIPT}")
+        assert_contains "TP-CLI-30 TTY menu stop prompts for name" "$_out" "Timer name"
+        assert_contains "TP-CLI-30 TTY menu stop uses typed name" "$_out" "No timer 'nosuch' running"
+        unset _vol
     else
         t_skip "TP-CLI-07 TTY empty argv (no python3 for PTY)"
         t_skip "TP-CLI-17 TTY header (no python3 for PTY)"
         t_skip "TP-CLI-29 TTY --debug no command (no python3 for PTY)"
         t_skip "TP-CLI-07 TTY --json no command (no python3 for PTY)"
+        t_skip "TP-CLI-30 TTY menu name prompt (no python3 for PTY)"
     fi
     ci_cleanup_env
 

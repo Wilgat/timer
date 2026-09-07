@@ -159,14 +159,17 @@ ci_cleanup_timer_domain() {
     fi
 }
 
-# Run SCRIPT under a PTY. Sends PTY_IN (default "9") plus a trailing newline.
-# Kills the child after PTY_TIMEOUT seconds (default 6). Prints child output.
+# Run SCRIPT under a PTY. Sends PTY_IN (default "9"). The two-character
+# sequence \n in PTY_IN becomes a real newline (so PTY_IN="1\\n" is choice 1
+# then Enter). A trailing newline is added when missing. Kills the child after
+# PTY_TIMEOUT seconds (default 6). Prints child output.
 ci_pty_capture() {
     python3 - "$@" <<'PY'
 import os, pty, select, signal, sys, time
 script = sys.argv[1]
 cmd = sys.argv[2:]
-payload = (os.environ.get("PTY_IN", "9") + "\n").encode()
+raw = os.environ.get("PTY_IN", "9").replace("\\n", "\n")
+payload = (raw + "\n").encode()
 timeout = float(os.environ.get("PTY_TIMEOUT", "6"))
 pid, fd = pty.fork()
 if pid == 0:

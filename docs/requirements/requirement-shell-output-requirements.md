@@ -1,6 +1,6 @@
 **file**: docs/requirements/requirement-shell-output-requirements.md  
 **Requirement-ID**: `RQ-SHELL-OUTPUT-REQUIREMENTS`  
-**Status**: Active (Version 1.2.2 – `out_menu_choice` / menu_choice level)  
+**Status**: Active (Version 1.2.3 – `out_menu_choice`; `prompt_ask` not class B)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
 ## 1. Purpose
@@ -67,7 +67,7 @@ It implements **CIAO Principle 5 — Single Source of Output** (cloudgen/ciao **
 | Exception class | Rule | Live examples in `./timer` |
 |-----------------|------|-----------------------------------|
 | **A. Inside output SSOT** | Only `out_text`, `out_json`, and `out_json_error` may `printf` to fd 1/2 for **product** human or JSON lines. Nested `printf … \| sed` used only to escape strings for those emitters is part of the same SSOT. | `out_text` level cases (incl. `menu_choice`); `out_json` / `out_json_error` body builders |
-| **B. Function return-via-stdout** | A helper may `printf '%s' "$value"` **solely** so callers capture it with `$(…)`. Prefer `printf` over `echo`. Callers must capture; bare top-level invocation must not be used as the user-facing message path. | `inst_self_uninstall_determine_bin`, `util_get_install_bin_path`, `inst_get_version`, `util_resolve_storage`, `util_get_current_shell`, `util_app_ident`, `prompt_ask` (answer/default return only; prompt text still via `out_*`) |
+| **B. Function return-via-stdout** | A helper may `printf '%s' "$value"` **solely** so callers capture it with `$(…)`. Prefer `printf` over `echo`. Callers must capture; bare top-level invocation must not be used as the user-facing message path. **MUST NOT** class-B-capture a helper that contains `read`. | `inst_self_uninstall_determine_bin`, `util_get_install_bin_path`, `inst_get_version`, `util_resolve_storage`, `util_get_current_shell`, `util_app_ident` (`prompt_ask` is **not** class B — it assigns `PROMPT_ASK_VALUE`) |
 | **C. File I/O (redirected)** | `printf … >> "$file"` that appends config/content to a path is file mutation, not product stdout/stderr messaging. User-visible “what changed” lines still go through `out_*`. | `path_add_bashrc`, `path_add_zshrc`, `path_add_fish` |
 | **D. Tool protocol / computation pipes** | `printf` feeding another program (checksum verify, filters) with product status still reported via `out_*`. | `inst_perform_install_download_with_checksum` → `printf … \| sha256sum -c` |
 | **E. Command-sub fallbacks** | Prefer `${var:-default}` where possible; `cmd \|\| printf '%s' "unknown"` (or `echo`) assigned into a variable for logic only. | `USERNAME="$(id -un … \|\| echo "unknown")"`, remote version empty fallbacks, boolean strings built for `out_json` fields |
@@ -317,6 +317,6 @@ When the program runs on Termux, Git Bash, Windows cmd, or the same class, only 
 | **TP-TIMER-04** domain JSON numbers + `timers[]` | `tests/test_timer_domain.sh` | have |
 
 
-**Last Updated**: 2026-07-16
+**Last Updated**: 2026-09-07
 **Owner**: timer project maintainers  
 **Alignment**: Registry `docs/requirements/index.md`; CIAO Principles 1, 2, 3, 4, 5, 14, 20 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).

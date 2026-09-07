@@ -25,6 +25,7 @@
 #   volatile records use $PREFIX/tmp when /dev/shm and Android /tmp are unusable).
 # Default interaction: TTY empty argv / --debug → numbered menu; --json no
 #   command → JSON help; off-TTY empty argv → Type O install-ensure.
+#   Menu start/stop/status/kill/reset prompt for timer name (Enter = default).
 # Plus CIAO Protection Zones and "DO NOT MODIFY" rules.
 #
 # Philosophy: CIAO (Caution • Intentional • Anti-fragile • Over-engineered)
@@ -51,8 +52,8 @@ APP_NAME="timer"
 : "${SHORT_DESCRIPTION:=${APP_DESC}}"
 : "${DESCRIPTION:=POSIX /bin/sh Type 0 CLI: install, version-check, self-update, self-uninstall, about, plus timer start/stop/status/list.}"
 # Product version SSOT (semver). Extractors use: grep '^VERSION="'
-VERSION="2.13.0"
-: "${VERSION:=2.13.0}"
+VERSION="2.13.1"
+: "${VERSION:=2.13.1}"
 
 # Runtime flags (safe defaults)
 : "${QUIET:=0}"
@@ -474,7 +475,7 @@ out_plain() {
 #
 # CRITICAL RULE:
 # This is the ONLY allowed way to produce non-newline product prompt text.
-# Return values from prompt_ask use class-B printf (data return), not this helper.
+# prompt_ask assigns PROMPT_ASK_VALUE in the current shell (not $() / class B).
 # All product output must respect --quiet and --json (never shown in those modes).
 #
 # INTENTIONAL DESIGN:
@@ -2277,9 +2278,8 @@ util_resolve_storage() {
 #
 # GENERAL PURPOSE:
 # Displays a message, shows current/default values if available, and waits
-# for user input. Returns the answer (or the default if user presses Enter).
-# Fully respects --quiet, --json, and non-TTY environments.
-# Uses the centralized output system (out_info / out_msg_n).
+# for user input. Enter keeps the default. Fully respects --quiet, --json,
+# and non-TTY environments. Uses out_info / out_msg_n for prompt UI.
 #
 # This is the **Single Source of Truth** for all simple value prompts in the project.
 #
@@ -2293,35 +2293,35 @@ util_resolve_storage() {
 # Past AI assistants have repeatedly broken this by using raw printf/echo + read,
 # which violates the single output system, quiet/json handling, and TTY detection.
 #
-# PRINTF EXCEPTION (class B – function return-via-stdout only):
-# printf '%s' "${default|answer}" returns the chosen value for $(prompt_ask …)
-# capture. It is NOT the prompt UI. User-visible prompt text MUST stay on
-# out_info / out_msg_n. Do not replace those with raw printf + read.
-# See requirement-shell-output-requirements.md §2.1.1.
+# VALUE RETURN: assigns PROMPT_ASK_VALUE in the current shell.
+# MUST NOT wrap prompt_ask in command substitution (PP-A-22 / T1-PROMPT-CAPTURE).
+# Prompt UI stays on out_info / out_msg_n. Do not replace those with raw printf + read.
+# See requirement-shell-interactive-vs-noninteractive.md.
 #
-# Last reviewed: 2026-07-12
+# Last updated: 2026-09-07
 # =============================================================================
 
 prompt_ask() {
     # --- Safe Variable Defaults ---
     : "${JSON:=0}"
     : "${QUIET:=0}"
+    : "${PROMPT_ASK_VALUE:=}"
 
     # set -u safe: missing args become empty defaults (INC-20260713-001 class)
     local message="${1-}"
     local default="${2-}"
     local current="${3-}"
 
+    PROMPT_ASK_VALUE="${default}"
+
     # Never prompt in non-interactive modes
     if [ "${JSON}" -eq 1 ] || [ "${QUIET}" -eq 1 ]; then
-        printf '%s' "${default}"
         return 0
     fi
 
     # Must have a real TTY (unless caller explicitly set INTERACTIVE=1)
     if ! [ -t 0 ] || ! [ -t 1 ]; then
         if [ "${INTERACTIVE:-0}" -ne 1 ]; then
-            printf '%s' "${default}"
             return 0
         fi
     fi
@@ -2341,11 +2341,10 @@ prompt_ask() {
     local answer=""
     read -r answer || true
 
-    if [ -z "${answer}" ]; then
-        printf '%s' "${default}"
-    else
-        printf '%s' "${answer}"
+    if [ -n "${answer}" ]; then
+        PROMPT_ASK_VALUE="${answer}"
     fi
+    return 0
 }
 
 # =============================================================================
@@ -2789,7 +2788,7 @@ app_about() {
     : "${QUIET:=0}"
     : "${APP_NAME:=timer}"
     # Version comes from global SSOT (VERSION="…" hard-assign near top); default only if unset
-    : "${VERSION:=2.13.0}"
+    : "${VERSION:=2.13.1}"
     : "${GLOBAL_BIN:=/usr/local/bin}"
     : "${USER_BIN:=${HOME}/.local/bin}"
     : "${SCRIPT_URL:=}"
@@ -2933,7 +2932,7 @@ app_about() {
 
 app_version() {
     : "${APP_NAME:=timer}"
-    : "${VERSION:=2.13.0}"
+    : "${VERSION:=2.13.1}"
     : "${JSON:=0}"
     if [ "${JSON}" -eq 1 ]; then
         # Same machine contract as historical app_main inline path
@@ -3114,7 +3113,7 @@ app_default_print_menu() {
 # (caller reprints). Exit numbers are handled in app_default.
 #
 # WARNING — do-not-capture-read (PP-A-22): this function MUST NOT contain
-# read. The choice is read in app_default in the current shell.
+# read. Choice and extra name field are read in app_default (current shell).
 #
 # Last updated: 2026-09-07
 # =============================================================================
@@ -3144,8 +3143,10 @@ app_default_run_pick() {
 #
 # GENERAL PURPOSE:
 # Command menu / main / TTY empty argv. On a real terminal: ignore --json on
-# menu/main, show the numbered list, run one pick. Off-TTY: help (JSON help
-# when --json). Never hang. Choice is read in this shell (not $() of read).
+# menu/main, show the numbered list, prompt for timer name on start/stop/
+# status/kill/reset (Enter = default), run one pick. Off-TTY: help (JSON
+# help when --json). Never hang. Choice and name are read in this shell
+# (not $() of read / prompt_ask).
 #
 # ALIGNMENT (live requirements only):
 # - requirement-shell-cli-default-interaction.md
@@ -3196,6 +3197,15 @@ app_default() {
                 QUIET="${_menu_quiet}"
                 export JSON QUIET
                 return 0
+                ;;
+        esac
+        # Extra name field while JSON/QUIET stay 0 (TTY menu ignores --json).
+        # MUST NOT TIMER_NAME=$(prompt_ask …) — PP-A-22 / PROMPT_ASK_VALUE.
+        case "${_pick}" in
+            1|start|2|stop|3|status|5|kill|6|reset)
+                prompt_ask "Timer name" "default"
+                TIMER_NAME="${PROMPT_ASK_VALUE}"
+                : "${TIMER_NAME:=default}"
                 ;;
         esac
         JSON="${_menu_json}"

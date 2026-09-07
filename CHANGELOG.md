@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.13.1] - 2026-09-07
+
+### Changed
+
+- TTY main menu **start** / **stop** / **status** / **kill** / **reset** prompt for the timer name. Enter keeps **`default`**. **list** does not prompt.
+- `prompt_ask` assigns **`PROMPT_ASK_VALUE`** in the current shell (no `$()` capture; no stdout leak of the answer).
+- Ship-unit `VERSION` and README Version badge → **2.13.1**.
+- Law: default-interaction **1.1.0** (extra name field **MUST**); suite **TP-CLI-30**.
+
 ## [2.13.0] - 2026-09-07
 
 ### Added

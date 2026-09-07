@@ -5,12 +5,12 @@ Maps **portable TP families** (proof molds) and product domain cases to product-
 | Field | Value |
 |-------|--------|
 | **Product** | timer |
-| **Ship unit** | `./timer` · `VERSION=2.13.0` |
+| **Ship unit** | `./timer` · `VERSION=2.13.1` |
 | **Companion** | `./timer.sha256` |
 | **Suite entry** | `./tests/run.sh` |
 | **RTM** | `reviews/requirement-test-matrix.md` |
-| **Live law** | **13** Active REQs — `docs/requirements/index.md` |
-| **Last update** | 2026-09-07 (TTY menu **TP-CLI-07/16/17/29**; **2.13.0**) |
+| **Live law** | **14** Active REQs — `docs/requirements/index.md` |
+| **Last update** | 2026-09-07 (TTY menu name prompt **TP-CLI-30**; **2.13.1**) |
 
 Status: **have** = automated · **todo** = needed · **n/a** = not applicable · **optional** = gated
 
@@ -50,6 +50,7 @@ Status: **have** = automated · **todo** = needed · **n/a** = not applicable ·
 | 2026-09-06 | **PASS=205 FAIL=0 SKIP=1** | Termux target **TP-TX-01..05**; 13 REQs; **2.12.0** |
 | 2026-09-07 | **PASS=210 FAIL=0 SKIP=1** | Termux `$PREFIX/tmp` **TP-TX-08**; **2.12.1** |
 | 2026-09-07 | **PASS=246 FAIL=0 SKIP=1** | TTY numbered menu **TP-CLI-07/16/17/29**; **2.13.0** |
+| 2026-09-07 | **PASS=256 FAIL=0 SKIP=1** | TTY menu name prompt **TP-CLI-30**; **2.13.1** |
 
 **How to re-baseline:** `cd` product root → `./tests/run.sh` → paste summary line into this table when law/suite changes.
 
@@ -74,6 +75,7 @@ Status: **have** = automated · **todo** = needed · **n/a** = not applicable ·
 | **TP-CLI-16** | No `$()` of `prompt_*` (do-not-capture-read) | **have** | `tests/test_cli.sh` |
 | **TP-CLI-17** | Menu header nametag + gray italic explain | **have** | `tests/test_cli.sh` (PTY; skip if no python3) |
 | **TP-CLI-29** | Overlay `--debug`/`--quiet` follow empty argv; `--json` JSON help | **have** | `tests/test_cli.sh` |
+| **TP-CLI-30** | TTY menu name prompt; Enter = `default`; list skips | **have** | `tests/test_cli.sh` (PTY; skip if no python3) |
 
 ---
 

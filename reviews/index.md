@@ -2,7 +2,7 @@
 
 **Registry** of review plan artifacts and run reports. Keep rows in sync with disk.  
 **Updated:** 2026-09-07  
-**Product:** timer **2.13.0** · **14** Active REQs · TTY numbered menu · suite **PASS=246 FAIL=0 SKIP=1**
+**Product:** timer **2.13.1** · **14** Active REQs · TTY menu name prompt · suite **PASS=256 FAIL=0 SKIP=1**
 
 ## Plan artifacts
 

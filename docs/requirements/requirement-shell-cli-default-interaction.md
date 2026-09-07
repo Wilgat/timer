@@ -1,6 +1,6 @@
 **file**: docs/requirements/requirement-shell-cli-default-interaction.md  
 **Requirement-ID**: `RQ-SHELL-CLI-DEFAULT-INTERACTION`  
-**Status**: Active (Version 1.0.0 – TTY numbered start list)  
+**Status**: Active (Version 1.1.0 – TTY numbered start list; extra name prompt)  
 **Area**: shell  
 **Key**: `requirement-shell-cli-default-interaction`  
 **Philosophy**: CIAO **v2.10.2** / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
@@ -21,7 +21,7 @@ Actor/role: **considered** — no dest approver (Type 0 this-login only). Dest f
 
 | Box | Meaning | Example |
 |-----|---------|---------|
-| You / this login | Type `timer` or `timer --debug` at a prompt | Pick `1` to start |
+| You / this login | Type `timer` or `timer --debug` at a prompt | Pick `1`, then Enter for the default name |
 | The other role | CI / pipe | Empty argv ensures install; `timer --json` prints JSON help |
 | Not this file | How a timer file is stored | Domain requirement |
 
@@ -37,7 +37,7 @@ Actor/role: **considered** — no dest approver (Type 0 this-login only). Dest f
 
 | You do… | What it means | What you type |
 |---------|---------------|---------------|
-| Start daily work at a prompt | Numbered list; **start** is **1** | `timer` then `1` |
+| Start daily work at a prompt | Numbered list; **start** is **1**; then name (Enter = `default`) | `timer` then `1` then Enter |
 | Same list with diagnostics | Same list; `[DEBUG]` on stderr | `timer --debug` |
 | Ask for machine-readable usage | JSON help (empty argv **special case**) | `timer --json` |
 | Open the list by name | Same list as empty argv on a TTY | `timer menu` |
@@ -79,7 +79,7 @@ After flag parse, when the command token is `menu` or `main`, **or** when no com
 6. Accept a **number** or a **listed verb**. **9** / `exit` / `quit` returns 0.  
 7. The choice **MUST** be read in the **current shell**. **MUST NOT** `$()` / backticks a helper whose body contains `read` (do-not-capture-read / **PP-A-22**; current-shell `PROMPT_ASK_VALUE` or a direct `read` in `app_default`).  
 8. **Header (mandatory):** the first human line that names the program **MUST** be live **`APP_NAME(VERSION)`** with **bold** name and *italic* version, then the product short description. Typical: `out_info "$(util_app_ident) — ${SHORT_DESCRIPTION}"`. TTY: SGR 1 / SGR 3. Off-TTY: plain. **MUST NOT** a bare `APP_NAME` on that header.  
-9. Extra name field: picking **start** / **stop** / **status** / **kill** / **reset** **MAY** run with default name `default` (same as omitting the operand on the CLI). Persist overlay already parsed (`--persist`) **MUST** still apply. **MUST NOT** hang off-TTY asking for a name.
+9. Extra name field: picking **start** / **stop** / **status** / **kill** / **reset** **MUST** prompt for the timer name on a TTY (`prompt_ask "Timer name" "default"` in the current shell; value is **`PROMPT_ASK_VALUE`**). Empty answer / Enter **MUST** use `default` (same as omitting the operand on the CLI). **list** **MUST NOT** prompt. Persist overlay already parsed (`--persist`) **MUST** still apply. TTY `menu`/`main` extra fields **MUST** run with `JSON=0` / `QUIET=0` (ignore `--json` for the prompt; restore after the prompt). **MUST NOT** `$()` `prompt_ask`. **MUST NOT** hang off-TTY asking for a name.
 
 Normative **main** order:
 
@@ -104,12 +104,12 @@ Normative **main** order:
 | **Case** | **3** (zero-argument REQ exists; that REQ defers TTY empty argv here; off-TTY empty argv is Type O, not this file) |
 | **Empty argv** | TTY → this menu; off-TTY → Type O ensure (`requirement-shell-cli-zero-arguments`; not this handler) |
 | **Verb** | `menu` (alias `main`); TTY empty argv (including `--debug` with no command) sets `COMMAND=menu` |
-| **Handler** | `app_default` (`menu` / `main` / TTY empty argv); `app_default_print_menu` / `app_default_run_pick` / `timer_run_domain` |
+| **Handler** | `app_default` (`menu` / `main` / TTY empty argv); `app_default_print_menu` / `app_default_run_pick` / `timer_run_domain`; extra name via current-shell `prompt_ask` + `PROMPT_ASK_VALUE` |
 | **Label source** | `reviews/cli-routed-verb-table.md` **human-readable** for command rows |
 | **Interactive + `--json`** | Ignore json on `menu`/`main`; still the menu |
 | **Non-interactive `menu`/`main`** | `app_help` (human; `--quiet` still prints help) |
 | **Look** | **default CLI main menu style** — header `APP_NAME(VERSION)`; TTY explain *italic* + light gray (SGR 3+37) via `out_menu_choice` |
-| **Honesty** | **Implemented.** TTY empty argv (including `--debug` with no command) draws this menu. Off-TTY empty argv is Type O ensure. `--json` with no command is JSON help even on a TTY. |
+| **Honesty** | **Implemented.** TTY empty argv (including `--debug` with no command) draws this menu. Off-TTY empty argv is Type O ensure. `--json` with no command is JSON help even on a TTY. TTY menu start/stop/status/kill/reset prompt for the name; Enter keeps `default`; list does not prompt. |
 | **Actor/role** | Considered — no dest approver |
 | **Invocation samples** | `timer` · `timer --debug` · `timer --json` · `timer menu` · `timer main` |
 
@@ -154,7 +154,10 @@ When the program runs on Termux, Git Bash, Windows cmd, or the same class, only 
 4. Capture the menu choice with `$()` of a `read` helper.  
 5. Steal flags-only `--json` onto the numbered list.  
 6. Treat overlay `--debug` with no command as help.  
-7. Print a bare `APP_NAME` header without live `VERSION`, or unstyled explain on a TTY.
+7. Print a bare `APP_NAME` header without live `VERSION`, or unstyled explain on a TTY.  
+8. Skip the TTY name prompt for **start** / **stop** / **status** / **kill** / **reset** (immediate `default`).  
+9. Prompt for a name on **list**.  
+10. Hang off-TTY asking for a timer name.
 
 **Violating this rule is a critical dispatcher / menu regression.**
 
@@ -183,6 +186,7 @@ When the program runs on Termux, Git Bash, Windows cmd, or the same class, only 
 | **TP-CLI-16** no `$()` of `prompt_*` | `tests/test_cli.sh` | have |
 | **TP-CLI-17** header nametag + gray italic explain | `tests/test_cli.sh` | have |
 | **TP-CLI-29** overlay `--debug` / `--quiet` follow empty argv | `tests/test_cli.sh` | have |
+| **TP-CLI-30** TTY menu name prompt; Enter = `default`; list skips | `tests/test_cli.sh` | have |
 
 **Last Updated**: 2026-09-07  
 **Owner**: timer project maintainers  

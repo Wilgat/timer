@@ -1,6 +1,6 @@
 **file**: docs/requirements/requirement-shell-script-coding.md  
 **Requirement-ID**: `RQ-SHELL-SCRIPT-CODING`  
-**Status**: Active (Version 1.0.0 – coding-style specialize-in home; Termux target)  
+**Status**: Active (Version 1.0.1 – coding-style specialize-in home; do-not-capture-read)  
 **Area**: shell  
 **Key**: `requirement-shell-script-coding`  
 **Philosophy**: CIAO **v2.10.2** / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
@@ -45,7 +45,8 @@ This file is the **coding-style specialize-in home** for the timer POSIX `/bin/s
 4. **MUST** preserve CIAO Protection Zones and “DO NOT MODIFY” helpers unless the user orders a redesign.  
 5. **MUST NOT** wrap in-tool `sudo` or Linux `apt`/`dnf`/`yum`. This product has **no** sudo allow table.  
 6. **MUST NOT** wrap Termux `pkg` (no named package list). Detect Termux; keep this-login dest.  
-7. **MUST** point at peers instead of duplicating their bodies:
+7. **MUST NOT** capture `prompt_ask` / `prompt_yes_no` / any `read` helper with `$()` or backticks. Call in the current shell. Value prompts assign **`PROMPT_ASK_VALUE`**. Details: `requirement-shell-interactive-vs-noninteractive` and `requirement-shell-cli-default-interaction`.  
+8. **MUST** point at peers instead of duplicating their bodies:
 
 | Slice | Owner |
 |-------|--------|
@@ -56,6 +57,7 @@ This file is the **coding-style specialize-in home** for the timer POSIX `/bin/s
 | Temp leaves | `requirement-shell-temp-file-system` |
 | Self-update / about | `requirement-shell-self-management` |
 | TTY / prompt | `requirement-shell-interactive-vs-noninteractive` |
+| Default menu / extra fields | `requirement-shell-cli-default-interaction` |
 | Prefix table (full) | `requirement-shell-modular-function-design` |
 | Named timers | `requirement-domain-timer` |
 
@@ -98,7 +100,8 @@ When the program runs on Termux, Git Bash, Windows cmd, or the same class, only 
 3. Add in-tool `sudo` or Linux package wrappers without a new requirement.  
 4. Wrap Termux `pkg` without a named package table and an authorized companion requirement.  
 5. Strip Protection Zones or flatten prefixes.  
-6. Omit the section titled **Under command line for normal user only**.
+6. Omit the section titled **Under command line for normal user only**.  
+7. Capture `prompt_ask` / any `read` helper with `$()`. The answer is `PROMPT_ASK_VALUE`.
 
 ## 5. Related artifacts
 
@@ -126,8 +129,9 @@ When the program runs on Termux, Git Bash, Windows cmd, or the same class, only 
 | **TP-TX-04** `$PREFIX/bin` dest | `tests/test_cli.sh` | have |
 | **TP-TX-05** `pkg` not invoked | `tests/test_cli.sh` | have |
 | **TP-TX-08** Termux `$PREFIX/tmp` volatile records | `tests/test_cli.sh` | have |
+| **TP-CLI-16** no `$()` of `prompt_*` | `tests/test_cli.sh` | have |
 | **TP-LC-16** named `pkg install` | n/a — no package list | n/a |
 
-**Last Updated**: 2026-09-06  
+**Last Updated**: 2026-09-07  
 **Owner**: timer maintainers  
 **Alignment**: Registry `docs/requirements/index.md`; CIAO (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).

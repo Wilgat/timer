@@ -1,6 +1,6 @@
 **file**: docs/requirements/requirement-shell-interactive-vs-noninteractive.md  
 **Requirement-ID**: `RQ-SHELL-INTERACTIVE-VS-NONINTERACTIVE`  
-**Status**: Active (Version 1.0.2 – CIAO v2.10.2 Principles 16/20)  
+**Status**: Active (Version 1.0.3 – CIAO v2.10.2 Principles 16/20; `PROMPT_ASK_VALUE`)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
 ## 1. Purpose
@@ -152,6 +152,7 @@ interactive   non-interactive
 | `self-uninstall` | `prompt_yes_no` unless `--force` | Without force: fail closed with explicit “requires --force” (JSON: `out_json_error` / `confirm_required`); never pretend user cancelled; with `--force`: remove without confirm |
 | `self-update` / `version-check` | Human status messages | No prompts; fail loud if `SCRIPT_URL` missing; JSON structured results |
 | `about` / `version` / `help` | Human diagnostics / help | Quiet: suppress human; JSON: structured object only |
+| `menu` / TTY empty argv extra name | TTY: `prompt_ask "Timer name" "default"` then `${PROMPT_ASK_VALUE}`; Enter keeps `default`; **list** skips | Off-TTY: help; never hang on a name prompt |
 | Colors | When `TTY=1` and not quiet/json | No color under quiet/json |
 
 #### `prompt_yes_no` contract (this project)
@@ -166,11 +167,13 @@ interactive   non-interactive
 
 #### `prompt_ask` contract (this project)
 
+Call in the **current shell**. The chosen value is **`PROMPT_ASK_VALUE`**. **MUST NOT** `_x=$(prompt_ask …)` / `$()` this helper (do-not-capture-read / **PP-A-22**). Do not printf the answer on stdout (that leaks when uncaptured).
+
 | Condition | Behavior |
 |-----------|----------|
-| `JSON=1` or `QUIET=1` | Return **default** without `read` |
-| Not a TTY (and `INTERACTIVE` ≠ 1) | Return **default** without `read` |
-| TTY interactive | Show current/default via `out_*`, then `read` |
+| `JSON=1` or `QUIET=1` | Set `PROMPT_ASK_VALUE` to **default** without `read` |
+| Not a TTY (and `INTERACTIVE` ≠ 1) | Set `PROMPT_ASK_VALUE` to **default** without `read` |
+| TTY interactive | Show current/default via `out_*`, then `read`; Enter keeps default; assign `PROMPT_ASK_VALUE` |
 
 #### `inst_maybe_install` contract (this project)
 
@@ -216,7 +219,8 @@ This dual policy is intentional: **pipe install proceeds**; **destructive uninst
 6. Remove the zero-arg non-TTY auto-install path for classic `curl | sh` without an explicit requirement change.  
 7. Bypass `out_*` for prompt text (raw `echo`/`printf` user messages).  
 8. Scatter ad-hoc TTY/mode logic that contradicts the global flag SSOT and `prompt_*` contracts.  
-9. Hardcode project-specific secrets or release URLs into prompt strings.
+9. Hardcode project-specific secrets or release URLs into prompt strings.  
+10. Capture `prompt_ask` with `$()` / backticks. The answer is `PROMPT_ASK_VALUE` after a current-shell call.
 
 **Supporting non-interactive environments cleanly is mandatory for CIAO compliance.**
 
@@ -270,8 +274,10 @@ When the program runs on Termux, Git Bash, Windows cmd, or the same class, only 
 | **TP-LC-07** lifecycle uninstall refuse | `tests/test_install_lifecycle.sh` | have |
 | **TP-CURL-02** non-TTY first pipe | `tests/test_online_curl_install.sh` | have |
 | **TP-CURL-03** non-TTY second pipe | `tests/test_online_curl_install.sh` | have |
+| **TP-CLI-16** no `$()` of `prompt_*` | `tests/test_cli.sh` | have |
+| **TP-CLI-30** TTY menu name prompt | `tests/test_cli.sh` | have |
 
 
-**Last Updated**: 2026-07-14
+**Last Updated**: 2026-09-07
 **Owner**: timer project maintainers  
 **Alignment**: Registry `docs/requirements/index.md`; CIAO Principles 1, 2, 3, 4, 16, 20 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).

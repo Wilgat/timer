@@ -4,7 +4,8 @@
 
 | Version | Supported |
 |---------|-----------|
-| **2.13.0** (current) | Yes — full support |
+| **2.13.1** (current) | Yes — full support |
+| **2.13.0** | Upgrade recommended (menu name prompt in 2.13.1) |
 | **2.12.x** | Upgrade recommended (TTY menu + Termux `$PREFIX/tmp` in 2.13.0 / 2.12.1) |
 | **2.11.x** | Security fixes only; upgrade to current when possible |
 | **2.10.x** | Security fixes only; upgrade to current when possible |
