@@ -1,6 +1,6 @@
 **file**: docs/requirements/requirement-shell-cli-zero-arguments.md  
 **Requirement-ID**: `RQ-SHELL-CLI-ZERO-ARGUMENTS`  
-**Status**: Active (Version 1.1.1 – CIAO v2.10.2 principle map)  
+**Status**: Active (Version 1.2.0 – TTY menu / off-TTY Type O; `--json` JSON help)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
 ## 1. Purpose
@@ -11,8 +11,10 @@ This requirement is the **project Single Source of Truth** for **zero-argument (
 
 | Field | Value for timer |
 |-------|------------------------|
-| **Empty-argv type** | **Type O — Online-install** (not Type N) |
-| **Rationale** | Product advertises `curl … \| sh` one-liner install; empty argv is install-ensure, not help |
+| **Empty-argv type** | **Type O-S — Online script-alone** (off-TTY) **plus** TTY numbered menu |
+| **Rationale** | Product advertises `curl … \| sh`; pipe empty argv is install-ensure. A real terminal keeps the daily-work menu. |
+
+**Empty argv** means **no command token** after global-flag parse. Overlay switches (`--debug`, `--quiet`/`-q`, `--force`) **do not** disqualify empty argv. `timer --debug` **MUST** follow the same empty-argv law as `timer` and as `DEBUG=1 timer`. `$# -eq 0` at entry is **sufficient** but **not necessary**.
 
 Type N (non-online-install → empty argv = help) does **not** apply to this product.
 
@@ -24,18 +26,18 @@ curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/main/timer | /bin/sh
 
 ### 1.1 Human-facing
 
-**In one sentence:** If you run `timer` with no words, it makes sure the program is installed — it does not print help.
+**In one sentence:** Typing only `timer` at a prompt shows the numbered start list; piping the script (`curl | sh`) installs or reports already installed. `timer --json` is JSON help.
 
 | Box | Meaning | Example |
 |-----|---------|---------|
-| You / this login | First `curl \| sh` or a later no-arg run | already-installed → success |
-| The other role | Not a help desk | Help is `timer help` |
-| Not this file | Timer start/stop | Domain requirement |
+| You / this login | Type `timer` or `timer --debug` at a prompt | numbered list |
+| The other role | `curl \| sh` / a script with no command | install-ensure, not help |
+| Not this file | Menu row labels | Default-interaction requirement |
 
 | Includes | Excludes |
 |----------|----------|
-| Empty argv install-ensure | Empty argv = help |
-| Termux: same ensure; dest is this login; no `sudo curl` | Root dest on Termux |
+| TTY empty argv (including overlay switches) = numbered list; off-TTY = install-ensure | Help on a pipe; a hanging menu in a script; help because `--debug` was present |
+| Termux: same split; dest is this login; no `sudo curl` | Root dest on Termux |
 
 | Surface | What you open | What for |
 |---------|---------------|----------|
@@ -45,7 +47,8 @@ curl -fsSL https://raw.githubusercontent.com/Wilgat/timer/main/timer | /bin/sh
 | You do… | What it means | What you type |
 |---------|---------------|---------------|
 | Pipe the script | Install-ensure | `curl -fsSL …/timer \| sh` |
-| Run with no args later | Already installed → no-op | `timer` |
+| Start at a prompt | Numbered list | `timer` then `1` |
+| Ask for JSON usage | JSON help (empty argv special case) | `timer --json` |
 
 Empty argv means **install-ensure** for three detect cases:
 
@@ -55,7 +58,7 @@ Empty argv means **install-ensure** for three detect cases:
 | **Installed (local)** | Managed binary at the user path (`USER_BIN` / `${HOME}/.local/bin/timer`) |
 | **Installed (global)** | Managed binary at the global path (`GLOBAL_BIN` / `/usr/local/bin/timer`) |
 
-**Scope:** Empty-argv routing, detect cases (global / local / absent), messages, force boundary, exit status, interaction with TTY / quiet / json.  
+**Scope:** Empty-argv routing (no command token after flag parse), TTY vs off-TTY split, `--json` special case, detect cases (global / local / absent), messages, force boundary, exit status.  
 **Out of scope (own requirements):** Full command catalog (`requirement-shell-cli-interface.md`); download/checksum detail (`requirement-shell-automatic-checksum.md`); full self-update/uninstall lifecycle (`requirement-shell-self-management.md`); output function catalog (`requirement-shell-output-requirements.md`); general idempotency matrix beyond empty-argv rows (`requirement-shell-idempotency.md`).
 
 ---
@@ -66,21 +69,27 @@ Empty argv means **install-ensure** for three detect cases:
 
 | Term | Definition for timer |
 |------|----------------------------|
-| **Type O** | Online-install empty-argv product type: empty argv = install-ensure (this product). |
+| **Type O** | Online-install empty-argv product type: off-TTY empty argv = install-ensure (this product). |
 | **Type N** | Non-online-install empty-argv type: empty argv = help — **out of scope** for timer. |
-| **Empty argv / zero-arg** | `$# -eq 0` at entry to `app_main` (no command tokens; classic `curl \| sh` with no trailing args). |
+| **Empty argv / zero-arg** | After global-flag parse, **no command token**. Overlay `--debug` / `--quiet` / `--force` still empty argv. `$# -eq 0` is one form. |
 | **Install-ensure** | Converge to “managed `timer` binary present”; either perform install or success no-op. |
 | **Not installed** | `inst_is_installed` returns false (`inst_get_version` → `not installed`). |
 | **Installed (local)** | Executable at `${USER_BIN}/timer` (default `USER_BIN=${HOME}/.local/bin`) observed by install-detect SSOT. |
 | **Installed (global)** | Executable at `${GLOBAL_BIN}/timer` (default `GLOBAL_BIN=/usr/local/bin`) observed by install-detect SSOT. |
 | **Force / reinstall** | `FORCE_REINSTALL=1` from `--force` (and related force wiring in `app_main`). Required only for deliberate replace, not for ensure. |
 
-### 2.2 Single meaning of empty argv
+### 2.2 Split meaning of empty argv
 
-1. When **argv is empty**, `app_main` **MUST** run **install-ensure** — **MUST NOT** route to `app_help` / default `COMMAND=help`.  
-2. Explicit `timer help` remains the only full-usage path for help text.  
-3. Bootstrap **MUST** always call `app_main "$@"` so pipe one-liners reach this contract (no `${0##*/}` product-name gate).  
-4. Empty argv **MUST NOT** require the user to pass `install` or `install --force` merely because a previous ensure already succeeded.
+1. **Empty argv** is: after global-flag parse, **no command token** was present. `$# -eq 0` at entry to `app_main` is one form. Flags-only overlay argv (`timer --debug`, `timer --quiet`, `timer --force`) is the same form.  
+2. **Interactive** (`TTY=1`): route to `app_default` (numbered start list). **MUST NOT** install-ensure. **MUST NOT** print the help dump.  
+3. **Not interactive** (`TTY=0`): **Type O install-ensure**. **MUST NOT** print help. **MUST NOT** draw the numbered list. **MUST NOT** prompt. Not installed → download from `SCRIPT_URL` and place. Already installed → success no-op (no `--force` required). `--force` re-downloads.  
+4. Overlay switches with no command token **MUST** follow rules 2–3. `timer --debug` **MUST** match `DEBUG=1 timer`.  
+5. **`--json` special case:** `--json` with no command token **is** empty argv. Outcome **MUST** be JSON help on **TTY and off-TTY**. **MUST NOT** the numbered list. **MUST NOT** Type O ensure. `timer menu --json` on a TTY remains the list (`requirement-shell-cli-default-interaction`).  
+6. Explicit `timer help` remains full usage.  
+7. Explicit `timer install` remains ensure.  
+8. Explicit `timer menu` / `main` remain the numbered list (TTY) / help (off-TTY).  
+9. Script entry **MUST** always call `app_main "$@"` (no basename gate). Pipe-safe.  
+10. The dispatcher **MUST** decide empty argv **after** flag parse. **MUST NOT** use only `$# -eq 0` before parse so overlay flags fall through to default `COMMAND=help`.
 
 ### 2.3 Normative case matrix
 
@@ -98,13 +107,15 @@ Empty argv means **install-ensure** for three detect cases:
 4. JSON mode **MUST** use structured success (`out_json` success type) with already-installed message — **MUST NOT** emit help JSON.  
 5. Detect **MUST** treat either global or local managed binary as installed when that is how `inst_is_installed` / `inst_get_version` resolve paths (project SSOT today prefers global when executable there, else user path).
 
-### 2.4 Case A — not installed (modes)
+### 2.4 Case A — not installed (modes) — **off-TTY empty argv only**
+
+TTY empty argv is the numbered list (§2.2), not this table.
 
 | Mode | Required empty-argv behavior |
 |------|------------------------------|
-| **Interactive** (TTY stdin+stdout, not quiet/json) | `inst_maybe_install`: note + `prompt_yes_no`; yes → `inst_perform_install`; no → skip without help dump |
 | **Non-interactive** (non-TTY / `curl \| sh`) | Auto-install message + `inst_perform_install` (via `inst_maybe_install` non-TTY branch) |
-| **Quiet or JSON** | `inst_perform_install` directly (no prompt) |
+| **Quiet** (off-TTY, no `--json`) | `inst_perform_install` directly (no prompt) |
+| **`--json` with no command** | Empty argv **special case** (§2.2): JSON help on TTY **and** off-TTY — **MUST NOT** this Case A install |
 | **Failure** (network, checksum, I/O) | Non-zero exit; no fake success; no help-only output |
 
 **Placement privilege:**
@@ -118,7 +129,8 @@ Empty argv means **install-ensure** for three detect cases:
 
 | Invocation | Contract |
 |------------|----------|
-| Empty argv | Same ensure semantics as `install` for Cases A/B/C |
+| Off-TTY empty argv | Same ensure semantics as `install` for Cases A/B/C |
+| TTY empty argv | Numbered list (`requirement-shell-cli-default-interaction`) — **not** ensure |
 | `install` | Explicit ensure; same detect / no-op / force |
 | `install --force` | Deliberate reinstall |
 | `help` | Usage only — **not** empty-argv default |
@@ -136,10 +148,10 @@ Empty argv means **install-ensure** for three detect cases:
 
 | Item | Value for timer |
 |------|------------------------|
-| **Empty-argv type** | **Type O — Online-install** (install-ensure; not Type N help-default) |
+| **Empty-argv type** | **Type O-S** off-TTY; TTY menu (case 3) |
 | **Product / binary** | `timer` (`APP_NAME`) |
 | **Ship unit** | Repo root `./timer` |
-| **Dispatcher** | `app_main` — empty-argv block **before** flag/command parse default help |
+| **Dispatcher** | `app_main` — empty argv **after** flag parse (`_saw_command`); TTY → `menu`; off-TTY → `ensure`; `--json` → `help` |
 | **Install ensure** | `inst_perform_install` (quiet/json and already-installed no-op) |
 | **Friendly first install** | `inst_maybe_install` (TTY confirm / non-TTY auto) when not installed and not quiet/json |
 | **Detect SSOT** | `inst_is_installed` ← `inst_get_version` |
@@ -154,18 +166,15 @@ Empty argv means **install-ensure** for three detect cases:
 
 ```text
 app_main:
-  if [ $# -eq 0 ]; then
-    if JSON or QUIET:
-      inst_perform_install; exit $?
-    elif inst_is_installed:
-      inst_perform_install   # Case B/C success no-op
-      exit $?
-    else
-      inst_maybe_install     # Case A
-      exit $?
-    fi
-  fi
-  # else parse flags/commands; default COMMAND=help only when argv non-empty and command is help/absent token rules
+  parse flags + commands (_saw_command)
+  if no command token:
+    if JSON: COMMAND=help
+    elif TTY: COMMAND=menu
+    else: COMMAND=ensure
+  case COMMAND:
+    menu|main → app_default
+    ensure → inst_empty_argv_ensure
+    help → app_help
 ```
 
 #### Message contract (already installed, human)
@@ -188,9 +197,9 @@ app_main:
 ## 3. Design Principles (CIAO / CIAO-Lite)
 
 - **Caution:** Real failures non-zero; healthy re-runs success with clear text.  
-- **Intentional:** Help is never the empty-argv default for this install CLI.  
+- **Intentional:** Pipe empty argv is install; a prompt is the daily list. Overlay switches do not change that meaning.  
 - **Anti-fragile:** Global and local detect; idempotent second one-liner.  
-- **Over-protect:** Do not “simplify” empty-argv back to `COMMAND:=help` after first install.  
+- **Over-protect:** Do not send TTY empty argv to install-ensure. Do not treat overlay flags-only as help.  
 - **SSOT:** `inst_is_installed` / `inst_perform_install` / `inst_maybe_install` / `out_*`.  
 - **Idempotent ensure:** Case B/C force off → already installed, exit 0.
 
@@ -200,7 +209,7 @@ app_main:
 
 **Future AI assistants, Grok, or maintainers MUST NOT**:
 
-1. Route empty argv to `app_help` when Case B or C applies (or when Case A should install).  
+1. Route **off-TTY** empty argv to `app_help` when Case B or C applies (or when Case A should install).  
 2. Require `--force` for a healthy already-installed empty-argv re-run (local or global).  
 3. Handle only Case A and leave B/C as accidental help fallthrough.  
 4. Break dual-path detect so local or global installs are misclassified.  
@@ -208,7 +217,11 @@ app_main:
 6. Exit 0 with no install and no already-installed acknowledgment when detect says installed.  
 7. Reintroduce a basename-only gate that skips `app_main` under `curl \| sh`.  
 8. Bypass `out_*` for empty-argv user messages.  
-9. Contradict this file in peer requirements by documenting “already installed → help” as normative empty-argv behavior.
+9. Contradict this file in peer requirements by documenting “already installed → help” as off-TTY empty-argv behavior.  
+10. Replace TTY empty argv with help or with install-ensure.  
+11. Treat flags-only `--json` as Type O install-ensure, or as the TTY numbered list. It **is** empty argv; the special-case outcome is JSON help (TTY and off-TTY).  
+12. Treat overlay flags-only (`--debug`, `--quiet`/`-q`, `--force`) as help or as a third meaning. `timer --debug` **MUST** be empty argv.  
+13. Use only `$# -eq 0` before flag parse so overlay flags fall through to default `COMMAND=help`.
 
 **Violating this rule is a critical zero-arg / online-install regression.**
 
@@ -218,14 +231,15 @@ app_main:
 
 This requirement is satisfied when all of the following hold:
 
-1. Empty argv + not installed → Case A install path (TTY may confirm; non-TTY / quiet / json auto).  
-2. Empty argv + local install present + force off → already-installed success; not help; no re-download.  
-3. Empty argv + global install present + force off → already-installed success; not help; no re-download.  
-4. Empty argv + install failure → non-zero exit.  
-5. `--force` only for deliberate reinstall; not required for ensure.  
-6. `help` works when invoked explicitly.  
-7. Tests cover Case A failure (not installed, bad channel) and already-installed not-help for local (Case B) and global (Case C).  
-8. Changes cite `requirement-shell-cli-zero-arguments`.
+1. Off-TTY empty argv + not installed → Case A install path.  
+2. Off-TTY empty argv + local/global install present + force off → already-installed success; not help; no re-download.  
+3. TTY empty argv (including `--debug`) → numbered list (not ensure, not help dump).  
+4. `--json` with no command → JSON help on TTY and off-TTY.  
+5. Empty argv + install failure (off-TTY) → non-zero exit.  
+6. `--force` only for deliberate reinstall; not required for ensure.  
+7. `help` works when invoked explicitly.  
+8. Tests cover Case A failure, already-installed not-help (B/C), TTY menu, overlay `--debug`, flags-only `--json`.  
+9. Changes cite `requirement-shell-cli-zero-arguments`.
 
 ---
 
@@ -234,6 +248,7 @@ This requirement is satisfied when all of the following hold:
 | Artifact | Role |
 |----------|------|
 | `docs/requirements/requirement-shell-cli-interface.md` | Full command surface; empty-argv row must match this SSOT |
+| `docs/requirements/requirement-shell-cli-default-interaction.md` | TTY menu body; off-TTY `menu` help |
 | `docs/requirements/requirement-shell-idempotency.md` | Ensure re-run / force boundary |
 | `docs/requirements/requirement-shell-interactive-vs-noninteractive.md` | TTY vs pipe for Case A |
 | `docs/requirements/requirement-shell-self-management.md` | self-update / uninstall (not empty-argv default) |
@@ -250,16 +265,17 @@ This requirement is satisfied when all of the following hold:
 |------|--------|----------------|
 | 2026-07-14 | Initial Active v1.0.0: empty argv = install-ensure for not-installed / local / global; forbid help fallthrough | Grok (owner request) |
 | 2026-07-14 | v1.1.0: Classify product as Type O (online-install) under dual-type empty-argv template model | Grok |
+| 2026-09-07 | v1.2.0: TTY empty argv = numbered menu; off-TTY stays Type O; `--json` no-command = JSON help; overlay `--debug` follows empty argv | Grok |
 
 ## Under command line for normal user only
 
 When the program runs on Termux, Git Bash, Windows cmd, or the same class, only **this login** may use it. Admin privilege and a dedicated system-user switch stay **unused**.
 
-**This requirement:** empty argv install-ensure. On Termux the printed one-liner is `curl | sh` (no `sudo`); dest stays this login.
+**This requirement:** off-TTY install-ensure stays this-login place. TTY empty argv is the numbered list. It **MUST NOT** become a sudo/apt install path.
 
 | MUST | MUST NOT |
 |------|----------|
-| Empty argv still install-ensure | Recommend `sudo curl \| sh` on Termux |
+| Off-TTY empty argv still install-ensure | Recommend `sudo curl \| sh` on Termux |
 | Fail closed on bad channel | Hang for a password on a pipe |
 
 ## Design-time verification
@@ -272,10 +288,16 @@ When the program runs on Termux, Git Bash, Windows cmd, or the same class, only 
 | TP family / ID | Suite | Status |
 |----------------|-------|--------|
 | **TP-CLI-09** / **TP-LC-09** zero-arg fail loud | `tests/test_cli.sh` | have |
+| **TP-CLI-07** TTY empty argv list / TTY `--json` JSON help | `tests/test_cli.sh` | have |
+| **TP-CLI-29** overlay `--debug` / `--quiet` follow empty argv | `tests/test_cli.sh` | have |
 | **TP-LC-01** first ensure + already local/global | `tests/test_install_lifecycle.sh` | have |
 | **TP-CURL-02** first `curl\|sh` | `tests/test_online_curl_install.sh` | have |
 | **TP-CURL-03** second pipe | `tests/test_online_curl_install.sh` | have |
 | **TP-CURL-08** unreachable channel | `tests/test_online_curl_install.sh` | have |
 | **TP-U-02** nounset on zero-arg fail path | `tests/test_cli.sh` (with TP-CLI-09) | have |
 | **TP-PAYLOAD-*** / Type O-P domain ensure | n/a — Type O CLI, not Type O-P payload | n/a |
+
+**Last Updated**: 2026-09-07  
+**Owner**: timer project maintainers  
+**Alignment**: Registry `docs/requirements/index.md`; CIAO (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).
 

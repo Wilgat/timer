@@ -2,10 +2,10 @@
 
 **Living checklist** (review plan). Product: **timer** Type 0 CLI + named-timer domain.  
 **Class:** software-development + **domain product** — Active class + domain SSOT required and present.  
-**Ship unit:** `./timer` · **VERSION=2.12.1**  
+**Ship unit:** `./timer` · **VERSION=2.13.0**  
 **Always load first:** `reviews/lessons.md`
 
-**Last plan update:** 2026-09-07 (Termux `$PREFIX/tmp` volatile; **TP-TX-08**)
+**Last plan update:** 2026-09-07 (TTY numbered menu; **TP-CLI-07/16/17/29**)
 
 ---
 
@@ -69,6 +69,7 @@
 | Mold peer set incomplete | Domain law without storage/temp/CLI/output | L-MOLD-01 · TP-MOLD-01 |
 | Termux detect / sudo recommend | `sudo curl` or `/usr/local/bin` on Termux | L-TX-01 · TP-TX-* |
 | Termux volatile tmp | `/dev/shm`+`/tmp` only; write `/timer_*` on RO root | L-TX-02 · TP-TX-08 |
+| TTY empty argv / `--debug` | Help dump or install-ensure; `--json` installs | L-MENU-01 · TP-CLI-07/29 |
 
 ---
 

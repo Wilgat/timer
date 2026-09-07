@@ -56,6 +56,7 @@ run_test_cli() {
     assert_contains "TP-CLI-03 help lists start (domain)" "$_out" "start"
     assert_contains "TP-CLI-03 help lists stop (domain)" "$_out" "stop"
     assert_contains "TP-CLI-03 help lists list (domain)" "$_out" "list"
+    assert_contains "TP-CLI-03 help lists menu" "$_out" "menu"
     assert_contains "TP-CLI-03 help lists --persist" "$_out" "--persist"
     assert_contains "TP-CLI-03 help lists --json" "$_out" "--json"
     assert_contains "TP-CLI-03 help lists --force" "$_out" "--force"
@@ -232,6 +233,86 @@ run_test_cli() {
     assert_contains "TP-CLI-12 out_json plain string key" "$_out" '"plain":"v"'
     assert_contains "TP-CLI-12 out_json @nested unquoted object" "$_out" '"nested":{"a":1,"b":"x"}'
     assert_not_contains "TP-CLI-12 out_json must not double-quote nested blob" "$_out" '"nested":"{'
+
+    # --- TP-CLI-16: do-not-capture-read (no $() of prompt_* in live code) ---
+    _hits=$(grep -nE '\$\(prompt_|`prompt_' "${SCRIPT}" | grep -v '^[^:]*:[[:space:]]*#' || true)
+    if [ -z "${_hits}" ]; then
+        t_pass "TP-CLI-16 no live \$(prompt_ / backtick prompt_ capture"
+    else
+        t_fail "TP-CLI-16 live prompt capture: ${_hits}"
+    fi
+
+    # --- TP-CLI-29 / TP-CLI-07: empty argv overlay; --json is JSON help ---
+    _out=$(sh "${SCRIPT}" --json 2>/dev/null)
+    _ec=$?
+    assert_eq "TP-CLI-29 --json no command exit 0" 0 "$_ec"
+    assert_contains "TP-CLI-29 --json no command is JSON help" "$_out" '"type":"success"'
+    assert_contains "TP-CLI-29 --json no command help command field" "$_out" '"command":"help"'
+    assert_not_contains "TP-CLI-29 --json no command not numbered list" "$_out" "9. Exit"
+
+    ci_isolated_env
+    HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" sh "${SCRIPT}" install >/dev/null 2>&1 || true
+    _errf="${CI_HOME}/dbg-empty.err"
+    _out=$(HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" sh "${SCRIPT}" --debug </dev/null 2>"${_errf}")
+    _ec=$?
+    _err=$(cat "${_errf}" 2>/dev/null || true)
+    assert_eq "TP-CLI-29 --debug no command off-TTY exit 0" 0 "$_ec"
+    assert_contains "TP-CLI-29 --debug no command off-TTY ensure" "$_out" "already installed"
+    assert_not_contains "TP-CLI-29 --debug no command off-TTY not help dump" "$_out" "Usage:"
+    assert_not_contains "TP-CLI-29 --debug no command off-TTY not numbered list" "$_out" "9. Exit"
+    assert_contains "TP-CLI-29 --debug no command off-TTY debug tag" "$_err" "[DEBUG]"
+    assert_contains "TP-CLI-29 --debug no command off-TTY dispatch ensure" "$_err" "command=ensure"
+
+    _out=$(HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" sh "${SCRIPT}" --quiet </dev/null 2>/dev/null)
+    _ec=$?
+    assert_eq "TP-CLI-29 --quiet no command off-TTY exit 0" 0 "$_ec"
+    assert_not_contains "TP-CLI-29 --quiet no command off-TTY not help dump" "$_out" "Usage:"
+    assert_not_contains "TP-CLI-29 --quiet no command off-TTY not numbered list" "$_out" "9. Exit"
+
+    _out=$(HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" sh "${SCRIPT}" --json --debug 2>/dev/null)
+    _ec=$?
+    assert_eq "TP-CLI-29 --json --debug no command exit 0" 0 "$_ec"
+    assert_contains "TP-CLI-29 --json --debug no command is JSON help" "$_out" '"type":"success"'
+    assert_not_contains "TP-CLI-29 --json --debug no command not numbered list" "$_out" "9. Exit"
+
+    _out=$(HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" sh "${SCRIPT}" menu </dev/null 2>/dev/null)
+    _ec=$?
+    assert_eq "TP-CLI-17 off-TTY menu is help exit 0" 0 "$_ec"
+    assert_contains "TP-CLI-17 off-TTY menu is help" "$_out" "Usage:"
+    assert_not_contains "TP-CLI-17 off-TTY menu not CSI" "$_out" "$(printf '\033')"
+
+    if command -v python3 >/dev/null 2>&1; then
+        _bold=$(printf '\033[1m')
+        _italic=$(printf '\033[3m')
+        _gray_italic=$(printf '\033[3;37m')
+        _ident="${APP_NAME}(${APP_VERSION})"
+        _out=$(HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" PTY_IN="9" ci_pty_capture "${SCRIPT}")
+        _stripped=$(printf '%s' "$_out" | awk 'BEGIN{ORS=""} {gsub(/\033\[[0-9;]*m/,""); print}')
+        assert_contains "TP-CLI-07 TTY empty argv is numbered list" "$_out" "9. Exit"
+        assert_contains "TP-CLI-07 TTY empty argv start first" "$_out" "1. start:"
+        assert_not_contains "TP-CLI-07 TTY empty argv no install row" "$_out" "install:"
+        assert_not_contains "TP-CLI-07 TTY empty argv not help dump" "$_out" "Usage:"
+        assert_contains "TP-CLI-17 TTY header bold APP_NAME" "$_out" "${_bold}"
+        assert_contains "TP-CLI-17 TTY header italic VERSION" "$_out" "${_italic}"
+        assert_contains "TP-CLI-17 TTY header nametag APP_NAME(VERSION)" "$_stripped" "${_ident}"
+        assert_contains "TP-CLI-17 TTY number and short-descript unstyled" "$_out" "1. start: "
+        assert_contains "TP-CLI-17 TTY desc is italic + light gray (SGR 3+37)" "$_out" "${_gray_italic}"
+        _out=$(HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" PTY_IN="9" ci_pty_capture "${SCRIPT}" --debug)
+        assert_contains "TP-CLI-29 TTY --debug no command is numbered list" "$_out" "9. Exit"
+        assert_contains "TP-CLI-29 TTY --debug no command start first" "$_out" "1. start:"
+        assert_contains "TP-CLI-29 TTY --debug no command dispatch menu" "$_out" "command=menu"
+        assert_not_contains "TP-CLI-29 TTY --debug no command not help dump" "$_out" "Usage:"
+        _jout=$(HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" PTY_IN="9" ci_pty_capture "${SCRIPT}" --json)
+        assert_contains "TP-CLI-07 TTY --json no command is JSON help" "$_jout" '"type":"success"'
+        assert_not_contains "TP-CLI-07 TTY --json no command not numbered list" "$_jout" "9. Exit"
+        unset _jout _bold _italic _gray_italic _ident
+    else
+        t_skip "TP-CLI-07 TTY empty argv (no python3 for PTY)"
+        t_skip "TP-CLI-17 TTY header (no python3 for PTY)"
+        t_skip "TP-CLI-29 TTY --debug no command (no python3 for PTY)"
+        t_skip "TP-CLI-07 TTY --json no command (no python3 for PTY)"
+    fi
+    ci_cleanup_env
 
     # --- TP-TX-*: Termux target (command line for this login only) ---
     _stub=$(mktemp -d "${TMPDIR:-/tmp}/tm-pkgstub.XXXXXX")

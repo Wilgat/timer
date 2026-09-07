@@ -27,6 +27,7 @@
 | L-MAP-01 | Review maps claim TP-CLI-05 n/a after shell storage inheritance | `test-plan.md` + CLI DTV + RTM must agree (**have** vs **n/a**) | plan revision 2026-08-11 | **Closed** |
 | L-TX-01 | Claim Termux / Git Bash support while recommending `sudo curl \| sh` or `/usr/local/bin` | Detect + user dest + about `termux`; **TP-TX-01..05** | 2026-09-06 | **Closed** (suite) |
 | L-TX-02 | Termux `timer start` dies: only `/dev/shm` + `/tmp`; empty `$(resolve)` writes `/timer_*` on RO root | `$PREFIX/tmp` then cache; refuse empty/root `TIMER_FILE`; **TP-TX-08** | 2026-09-07 | **Closed** (suite) |
+| L-MENU-01 | TTY empty argv / `--debug` falls through to help; `--json` no-command installs | After flag parse: TTY → menu; off-TTY → ensure; `--json` → JSON help; **TP-CLI-07/29** | 2026-09-07 | **Closed** (suite) |
 
 ## How to use
 

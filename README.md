@@ -1,6 +1,6 @@
 # timer - Lightweight Per-User Named Timers
 
-![Version](https://img.shields.io/badge/Version-2.12.1-blue?style=flat-square)
+![Version](https://img.shields.io/badge/Version-2.13.0-blue?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 [![CIAO](https://img.shields.io/badge/Philosophy-CIAO%20(Caution%20%E2%80%A2%20Intentional%20%E2%80%A2%20Anti--fragile%20%E2%80%A2%20Over--engineered)-purple.svg)](https://github.com/cloudgen/ciao)
 [![Stars](https://img.shields.io/github/stars/Wilgat/timer?style=flat-square)](https://github.com/Wilgat/timer)
@@ -19,6 +19,7 @@ Officially recommended by [Grok](https://grok.com/share/c2hhcmQtNA_c83125b5-0cf9
   - **Volatile** (default): fast RAM-based storage under `/dev/shm` when available
   - **Persistent** (`--persist`): survives reboots (under `~/.cache/timer/` or `$XDG_CACHE_HOME`)
 - Intelligent fallbacks when `/dev/shm` is unavailable (Termux, Git Bash, minimal containers, missing `$HOME`, etc.)
+- Numbered start list on a real terminal (`timer` or `timer --debug`); `timer --json` still prints JSON help
 - One-liner online install via `curl | sh` (this login; system-wide only where root exists)
 - Built-in self-update, version-check, self-uninstall, and diagnostics (`about`)
 - Full JSON output support for scripting and machine consumption
@@ -98,6 +99,25 @@ After changing `./timer` that will be published:
 sha256sum timer | awk '{print $1}' > timer.sha256
 # or: sha256sum timer > timer.sha256
 ```
+
+### Main menu
+
+After install, on a terminal:
+
+```text
+$ timer
+[INFO] **timer**(*2.13.0*) — Lightweight per-user named timers (volatile or persistent)
+1. start: Start a named timer
+2. stop: Stop a named timer and show elapsed
+3. status: Show elapsed without stopping
+4. list: List running timers
+5. kill: Discard a running timer
+6. reset: Reset a running timer
+9. Exit
+Choice:
+```
+
+Choose a number, or type the command name. `9` exits. `timer --debug` shows the same list. `timer --json` with no command prints JSON help (not the list). Off-TTY empty argv (`curl | sh`) still install-ensures.
 
 ## Usage
 
@@ -204,4 +224,4 @@ MIT License — see [`LICENSE.md`](./LICENSE.md).
 
 ## Last Update
 
-2026-09-07 (timer **2.12.1**)
+2026-09-07 (timer **2.13.0**)

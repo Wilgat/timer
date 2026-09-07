@@ -5,12 +5,12 @@ Maps **portable TP families** (proof molds) and product domain cases to product-
 | Field | Value |
 |-------|--------|
 | **Product** | timer |
-| **Ship unit** | `./timer` · `VERSION=2.12.1` |
+| **Ship unit** | `./timer` · `VERSION=2.13.0` |
 | **Companion** | `./timer.sha256` |
 | **Suite entry** | `./tests/run.sh` |
 | **RTM** | `reviews/requirement-test-matrix.md` |
 | **Live law** | **13** Active REQs — `docs/requirements/index.md` |
-| **Last update** | 2026-09-07 (Termux `$PREFIX/tmp` **TP-TX-08**; **2.12.1**) |
+| **Last update** | 2026-09-07 (TTY menu **TP-CLI-07/16/17/29**; **2.13.0**) |
 
 Status: **have** = automated · **todo** = needed · **n/a** = not applicable · **optional** = gated
 
@@ -49,6 +49,7 @@ Status: **have** = automated · **todo** = needed · **n/a** = not applicable ·
 | 2026-08-11 | **PASS=195 FAIL=0 SKIP=1** | Re-specialize + mold peers; full product review **Pass** (`reports/2026-08-11-timer-product-review.md`) |
 | 2026-09-06 | **PASS=205 FAIL=0 SKIP=1** | Termux target **TP-TX-01..05**; 13 REQs; **2.12.0** |
 | 2026-09-07 | **PASS=210 FAIL=0 SKIP=1** | Termux `$PREFIX/tmp` **TP-TX-08**; **2.12.1** |
+| 2026-09-07 | **PASS=246 FAIL=0 SKIP=1** | TTY numbered menu **TP-CLI-07/16/17/29**; **2.13.0** |
 
 **How to re-baseline:** `cd` product root → `./tests/run.sh` → paste summary line into this table when law/suite changes.
 
@@ -64,12 +65,15 @@ Status: **have** = automated · **todo** = needed · **n/a** = not applicable ·
 | **TP-CLI-04** | Help/about JSON purity | **have** | help/about JSON; about no CHECKSUM |
 | **TP-CLI-05** | About shell storage resolve | **have** | `effective_storage` / `storage_dir` + isolation + dir exists + `STORAGE_DIR` override (**RQ-SHELL-CLI-STORAGE**) |
 | **TP-CLI-06** | Unknown command | **have** | human + JSON `out_error` |
-| **TP-CLI-07** | Quiet mode | **have** | `--quiet` and `-q` |
+| **TP-CLI-07** | Quiet mode; TTY empty argv numbered list; TTY `--json` JSON help | **have** | `--quiet`/`-q`; PTY empty argv / `--json` |
 | **TP-CLI-08** | `env -u HOME` under set -u | **have** | also **TP-U-01** |
 | **TP-CLI-09** | Zero-arg bad channel | **have** | non-zero; not silent; no binary |
 | **TP-CLI-10** | bashrc+sdkman under set -u | **n/a** | No product sdkman/source path |
 | **TP-CLI-11** | self-uninstall refuse without force | **have** | `confirm_required`; binary remains |
 | **TP-CLI-12** | `out_json` `@key` raw nested | **have** | extracted harness |
+| **TP-CLI-16** | No `$()` of `prompt_*` (do-not-capture-read) | **have** | `tests/test_cli.sh` |
+| **TP-CLI-17** | Menu header nametag + gray italic explain | **have** | `tests/test_cli.sh` (PTY; skip if no python3) |
+| **TP-CLI-29** | Overlay `--debug`/`--quiet` follow empty argv; `--json` JSON help | **have** | `tests/test_cli.sh` |
 
 ---
 

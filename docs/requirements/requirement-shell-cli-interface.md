@@ -75,7 +75,7 @@ Additional flags **MAY** be added only when documented here (or a superseding re
 
 1. **Single entry:** A single main dispatcher (e.g. `app_main`) **MUST** parse global flags and route commands.
 2. **Unknown command:** **MUST** fail loudly with a clear error and pointer to `help` (via output SSOT).
-3. **Zero-arg install-ensure:** Empty argv **MUST** mean install-ensure (not help). Not installed → install (TTY may confirm; non-interactive / quiet / json auto). Already installed (global or local) → success no-op (“already installed”), not help and not blind reinstall. Full contract: `requirement-shell-cli-zero-arguments.md`.
+3. **Zero-arg:** Empty argv is **no command token** after flag parse. Off-TTY **MUST** mean Type O install-ensure (not help). TTY **MUST** open the numbered menu (`requirement-shell-cli-default-interaction`). `--json` with no command **MUST** be JSON help (TTY and off-TTY). Overlay `--debug` / `--quiet` with no command follow empty argv. Full contract: `requirement-shell-cli-zero-arguments.md`.
 4. **Idempotent install skip:** Install **MUST** no-op when already installed unless force/reinstall policy is set.
 5. **No raw user I/O:** User-facing messages **MUST** go through the centralized `out_*` system (`requirement-shell-output-requirements.md`).
 
@@ -109,7 +109,7 @@ In JSON mode, help **MUST NOT** dump long human text; return a short structured 
 | **Primary executable** | Repo root `./timer` (POSIX `/bin/sh`, single-file for `curl \| sh`) |
 | **Dispatcher** | `app_main` (always invoked at end of script: `app_main "$@"` — no `${0##*/}` / APP_NAME basename gate; required for `curl \| sh`) |
 | **Output SSOT** | `out_text` + wrappers (`out_info`, `out_success`, `out_warn`, `out_error`, `out_die`, `out_plain`, `out_json`, …) |
-| **Version SSOT** | `VERSION` in script config block (product SSOT; currently `VERSION="2.12.1"`) |
+| **Version SSOT** | `VERSION` in script config block (product SSOT; currently `VERSION="2.13.0"`) |
 | **Install paths** | Global: `GLOBAL_BIN` default `/usr/local/bin` (Linux/macOS root). User: `USER_BIN` default `${HOME}/.local/bin`. **Termux:** `USER_BIN=$PREFIX/bin` when that directory exists; `IS_ROOT` forced 0 |
 | **Termux detect** | `util_is_termux` / `util_apply_termux_target` — `PREFIX` contains `com.termux`, `TERMUX_VERSION`, or Termux usr tree |
 | **Remote channel env (help surface)** | `REPO_USER` / `REPO_NAME` (defaults `Wilgat` / `timer`); `SCRIPT_URL` composed default `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${APP_NAME}` (literal product default: `https://raw.githubusercontent.com/Wilgat/timer/main/timer`; override via env). **`help` / `about` MUST list these operator channel vars as designed — MUST NOT list `CHECKSUM`** (install-path runtime pin only; see `requirement-shell-automatic-checksum.md`) |
@@ -121,7 +121,8 @@ In JSON mode, help **MUST NOT** dump long human text; return a short structured 
 
 | Command | Type | Handler (current) | Required behavior |
 |---------|------|-------------------|-------------------|
-| *(no args — empty argv)* | Type 0 | `app_main` → `inst_maybe_install` / `inst_perform_install` | **Type O install-ensure** (not Type N help): not-installed / local / global; never help; see `requirement-shell-cli-zero-arguments.md` |
+| *(no args — empty argv)* | Type 0 | TTY → `app_default`; off-TTY → `inst_empty_argv_ensure`; `--json` → `app_help` | **No command token** after flag parse. TTY numbered list; off-TTY Type O install-ensure; `--json` JSON help. See `requirement-shell-cli-zero-arguments.md` |
+| `menu` / `main` | Type 0 | `app_default` | TTY numbered list (ignore `--json`); off-TTY help. Dual mention: `requirement-shell-cli-default-interaction.md`. Sample: `timer menu` |
 | `install` | Type 0 | `inst_perform_install` | Install binary for current privilege (root→global, user→local); idempotent unless force reinstall |
 | `version` | Type 0 | `app_main` / `app_version` | Print local version; JSON object when `--json` |
 | `about` | Type 0 | `app_about` | Diagnostics: install presence, global/local paths, user, shell, TTY; domain command hints; JSON when `--json`; **no `CHECKSUM` field** |
@@ -149,8 +150,8 @@ In JSON mode, help **MUST NOT** dump long human text; return a short structured 
 #### Dispatcher acceptance criteria (this project)
 
 1. Unknown token after flag parse → `out_die` with pointer to `timer help`.  
-2. Zero-arg → install-ensure: not installed → install; already installed (local or global) → already-installed success (not help); failures non-zero.  
-3. Command routing table in `app_main` **must** include every row in the command table above.  
+2. Zero-arg after flag parse: TTY → menu; off-TTY → install-ensure; `--json` → JSON help; overlay `--debug` follows empty argv.  
+3. Command routing table in `app_main` **must** include every row in the command table above (`menu` / `main` included).  
 4. Help text **must** stay aligned with that table (no orphan commands, no listed-but-unrouted commands).  
 5. User-facing strings **must not** use raw `echo`/`printf` outside the `out_*` system (protected low-level helpers excepted only if already CIAO-marked and not for general messages).  
 6. Free token after a domain command is selected **must** be treated as timer name (not a second command). Domain semantics remain owned by `requirement-domain-timer.md`.
@@ -274,6 +275,10 @@ This product does **not** wrap Termux `pkg` (no named package list).
 | **TP-TX-04** `$PREFIX/bin` dest | `tests/test_cli.sh` | have |
 | **TP-TX-05** `pkg` not invoked | `tests/test_cli.sh` | have |
 | **TP-TX-08** Termux `$PREFIX/tmp` volatile records | `tests/test_cli.sh` | have |
+| **TP-CLI-07** TTY empty argv / TTY `--json` | `tests/test_cli.sh` | have |
+| **TP-CLI-16** do-not-capture-read | `tests/test_cli.sh` | have |
+| **TP-CLI-17** menu header nametag | `tests/test_cli.sh` | have |
+| **TP-CLI-29** overlay empty argv | `tests/test_cli.sh` | have |
 
 
 **Last Updated**: 2026-08-11  

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.13.0] - 2026-09-07
+
+### Added
+
+- **Numbered start list** on a real terminal: empty argv and overlay `--debug` (no command) open the same menu as `timer menu` / `main`. Domain rows **start** … **reset**, then **Exit 9**. Header is **timer**(*version*) with gray italic explains.
+- Suite **TP-CLI-16** (do-not-capture-read), **TP-CLI-17** (menu look), **TP-CLI-07** TTY empty argv / TTY `--json`, **TP-CLI-29** overlay flags-only.
+
+### Changed
+
+- Empty argv is **no command token after flag parse**. Off-TTY empty argv stays Type O install-ensure (`curl | sh`). `--json` with no command is empty argv **special case**: JSON help on a TTY and off-TTY (not the list, not install-ensure).
+- Ship-unit `VERSION` and README Version badge → **2.13.0**.
+- Active law **`RQ-SHELL-CLI-DEFAULT-INTERACTION`**; zero-arg REQ **1.2.0**.
+
 ## [2.12.1] - 2026-09-07
 
 ### Fixed

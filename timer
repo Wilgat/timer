@@ -23,6 +23,8 @@
 # - requirement-shell-script-coding.md       (coding-style specialize-in home)
 # Termux target: util_is_termux / util_apply_termux_target (user-only install;
 #   volatile records use $PREFIX/tmp when /dev/shm and Android /tmp are unusable).
+# Default interaction: TTY empty argv / --debug → numbered menu; --json no
+#   command → JSON help; off-TTY empty argv → Type O install-ensure.
 # Plus CIAO Protection Zones and "DO NOT MODIFY" rules.
 #
 # Philosophy: CIAO (Caution • Intentional • Anti-fragile • Over-engineered)
@@ -49,8 +51,8 @@ APP_NAME="timer"
 : "${SHORT_DESCRIPTION:=${APP_DESC}}"
 : "${DESCRIPTION:=POSIX /bin/sh Type 0 CLI: install, version-check, self-update, self-uninstall, about, plus timer start/stop/status/list.}"
 # Product version SSOT (semver). Extractors use: grep '^VERSION="'
-VERSION="2.12.1"
-: "${VERSION:=2.12.1}"
+VERSION="2.13.0"
+: "${VERSION:=2.13.0}"
 
 # Runtime flags (safe defaults)
 : "${QUIET:=0}"
@@ -273,9 +275,11 @@ out_text() {
             ;;
     esac
 
-    local RED='' GREEN='' YELLOW='' BLUE='' NC=''
+    local extra="${3-}"
+    local RED='' GREEN='' YELLOW='' BLUE='' DESC='' NC=''
     [ "${TTY:-0}" -eq 1 ] && [ "${QUIET}" -eq 0 ] && [ "${JSON}" -eq 0 ] && {
-        RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'; NC='\033[0m'
+        RED='\033[0;31m'; GREEN='\033[0;32m'; YELLOW='\033[1;33m'; BLUE='\033[0;34m'
+        DESC='\033[3;37m'; NC='\033[0m'
     }
 
     case "${level}" in
@@ -284,6 +288,7 @@ out_text() {
         out_debug)   printf >&2 "${BLUE}[DEBUG]${NC} %s\n" "${msg}" ;;
         out_info)    printf "${GREEN}[INFO]${NC} %s\n" "${msg}" ;;
         out_success) printf "${GREEN}[OK]${NC} %s\n" "${msg}" ;;
+        menu_choice) printf "%s${DESC}%s${NC}\n" "${msg}" "${extra}" ;;
         plain)       printf "%s\n" "${msg}" ;;
         plain_n)     printf "%s" "${msg}" ;;
         *)           printf "%s\n" "${msg}" ;;
@@ -338,6 +343,58 @@ out_success() { out_text out_success "$*"; }
 # Last reviewed: 2026-07-12
 # =============================================================================
 out_info() { out_text out_info "$*"; }
+
+# =============================================================================
+# out_menu_choice() - Numbered menu row; explain is italic + light gray on TTY
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Print one numbered list row as "N. command: desc" (default CLI main menu
+# style). Explain is italic and light gray (SGR 3+37) on a TTY and plain
+# off-TTY. Number and command name stay unstyled. Rows with no desc
+# (Exit) print "N. label" only.
+#
+# ALIGNMENT (live requirements only):
+# - requirement-shell-cli-default-interaction.md
+# - requirement-shell-output-requirements.md
+#
+# Last updated: 2026-09-07
+# =============================================================================
+out_menu_choice() {
+    _n="${1-}"
+    _label="${2-}"
+    _desc="${3-}"
+    if [ -n "${_desc}" ]; then
+        out_text menu_choice "${_n}. ${_label}: " "${_desc}"
+    else
+        out_plain "${_n}. ${_label}"
+    fi
+}
+
+# =============================================================================
+# util_app_ident() - Class B: APP_NAME(APP_VERSION) nametag
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Return the identity token for human banners: live APP_NAME immediately
+# followed by parenthesized VERSION. TTY: bold name (SGR 1), italic version
+# (SGR 3). Off-TTY: plain. Not a product UI line (callers print via out_*).
+#
+# ALIGNMENT (live requirements only):
+# - requirement-shell-cli-default-interaction.md
+#
+# Last updated: 2026-09-07
+# =============================================================================
+util_app_ident() {
+    : "${APP_NAME:=timer}"
+    : "${VERSION:=0}"
+    : "${TTY:=0}"
+    if [ "${TTY}" -eq 1 ]; then
+        printf '\033[1m%s\033[0m(\033[3m%s\033[0m)' "${APP_NAME}" "${VERSION}"
+    else
+        printf '%s(%s)' "${APP_NAME}" "${VERSION}"
+    fi
+}
 
 # =============================================================================
 # out_warn()
@@ -2732,7 +2789,7 @@ app_about() {
     : "${QUIET:=0}"
     : "${APP_NAME:=timer}"
     # Version comes from global SSOT (VERSION="…" hard-assign near top); default only if unset
-    : "${VERSION:=2.12.0}"
+    : "${VERSION:=2.13.0}"
     : "${GLOBAL_BIN:=/usr/local/bin}"
     : "${USER_BIN:=${HOME}/.local/bin}"
     : "${SCRIPT_URL:=}"
@@ -2876,7 +2933,7 @@ app_about() {
 
 app_version() {
     : "${APP_NAME:=timer}"
-    : "${VERSION:=2.12.0}"
+    : "${VERSION:=2.13.0}"
     : "${JSON:=0}"
     if [ "${JSON}" -eq 1 ]; then
         # Same machine contract as historical app_main inline path
@@ -2922,6 +2979,9 @@ app_help() {
     out_info "Usage:"
     out_plain "  ${APP_NAME} [command] [options]"
     out_empty_line
+    out_info "Empty argv on a real terminal shows the numbered list. Off-TTY empty argv is channel install-ensure (curl|sh)."
+    out_info "Switches without a command (--debug, --quiet) still follow empty argv. ${APP_NAME} --json with no command is empty argv special case: JSON help (even on a TTY)."
+    out_empty_line
 
     out_info "Timer commands:"
     out_plain "  start [--persist] [name]  Start a named timer (default name: default)"
@@ -2930,6 +2990,7 @@ app_help() {
     out_plain "  list [--persist]          List running timers (volatile or persistent)"
     out_plain "  kill [name]               Discard a running timer without elapsed report"
     out_plain "  reset [name]              Reset (discard) a running timer"
+    out_plain "  menu (or main)            Numbered list of timer commands (TTY); help off-TTY"
     out_empty_line
 
     out_info "Self-Management (this login):"
@@ -2976,15 +3037,216 @@ app_help() {
 
 
 # =============================================================================
+# timer_run_domain() - Resolve TIMER_FILE and run one domain command
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Shared path for dispatcher and the numbered menu. Sanitize name, resolve
+# storage, refuse empty/root paths, then call the domain handler.
+#
+# ALIGNMENT (live requirements only):
+# - requirement-domain-timer.md
+# - requirement-shell-cli-default-interaction.md
+#
+# Last updated: 2026-09-07
+# =============================================================================
+timer_run_domain() {
+    : "${COMMAND:=start}"
+    : "${TIMER_NAME:=default}"
+    : "${TIMER_PERSIST:=0}"
+    timer_sanitize_name
+    STORAGE_MODE="volatile"
+    [ "${TIMER_PERSIST}" -eq 1 ] && STORAGE_MODE="persistent"
+    TIMER_FILE=$(timer_get_file "$TIMER_NAME" "$STORAGE_MODE") || exit 1
+    if [ -z "${TIMER_FILE}" ]; then
+        out_die "Cannot create the timer file path (no writable storage). Next: mkdir -p \"\${PREFIX}/tmp\" or ${APP_NAME} start --persist"
+    fi
+    _tf_dir=$(dirname "${TIMER_FILE}")
+    if [ "${_tf_dir}" = "/" ]; then
+        out_die "Cannot create the timer file path (resolved to filesystem root). Next: mkdir -p \"\${PREFIX}/tmp\" or ${APP_NAME} start --persist"
+    fi
+    unset _tf_dir
+    case "${COMMAND}" in
+        start)  timer_start ;;
+        stop)   timer_stop ;;
+        status) timer_status ;;
+        list)   timer_list "$STORAGE_MODE" ;;
+        kill)   timer_kill_or_reset kill ;;
+        reset)  timer_kill_or_reset reset ;;
+        *)      out_die "Unknown timer command: ${COMMAND}. Next: ${APP_NAME} help" ;;
+    esac
+}
+
+# =============================================================================
+# app_default_print_menu() - Numbered main-menu list (TTY)
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Print timer daily-work list: APP_NAME(VERSION) header, six domain rows,
+# Exit 9. Labels match the routed-verb human-readable column.
+#
+# ALIGNMENT (live requirements only):
+# - requirement-shell-cli-default-interaction.md
+#
+# Last updated: 2026-09-07
+# =============================================================================
+app_default_print_menu() {
+    : "${APP_NAME:=timer}"
+    : "${SHORT_DESCRIPTION:=${APP_DESC:-Lightweight per-user named timers (volatile or persistent)}}"
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+    out_info "$(util_app_ident) — ${SHORT_DESCRIPTION}"
+    out_menu_choice "1" "start" "Start a named timer"
+    out_menu_choice "2" "stop" "Stop a named timer and show elapsed"
+    out_menu_choice "3" "status" "Show elapsed without stopping"
+    out_menu_choice "4" "list" "List running timers"
+    out_menu_choice "5" "kill" "Discard a running timer"
+    out_menu_choice "6" "reset" "Reset a running timer"
+    out_menu_choice "9" "Exit"
+}
+
+# =============================================================================
+# app_default_run_pick() - Run one main-menu choice (number or verb)
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Map 1–6 / domain verbs to timer_run_domain. Returns 1 for unknown picks
+# (caller reprints). Exit numbers are handled in app_default.
+#
+# WARNING — do-not-capture-read (PP-A-22): this function MUST NOT contain
+# read. The choice is read in app_default in the current shell.
+#
+# Last updated: 2026-09-07
+# =============================================================================
+app_default_run_pick() {
+    _pick="${1-}"
+    case "${_pick}" in
+        1|start)  COMMAND=start ;;
+        2|stop)   COMMAND=stop ;;
+        3|status) COMMAND=status ;;
+        4|list)   COMMAND=list ;;
+        5|kill)   COMMAND=kill ;;
+        6|reset)  COMMAND=reset ;;
+        *)
+            unset _pick
+            return 1
+            ;;
+    esac
+    unset _pick
+    : "${TIMER_NAME:=default}"
+    timer_run_domain
+    return 0
+}
+
+# =============================================================================
+# app_default() - Default interaction: TTY numbered menu / off-TTY help
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Command menu / main / TTY empty argv. On a real terminal: ignore --json on
+# menu/main, show the numbered list, run one pick. Off-TTY: help (JSON help
+# when --json). Never hang. Choice is read in this shell (not $() of read).
+#
+# ALIGNMENT (live requirements only):
+# - requirement-shell-cli-default-interaction.md
+# - requirement-shell-cli-zero-arguments.md
+# - requirement-shell-interactive-vs-noninteractive.md
+#
+# Last updated: 2026-09-07
+# =============================================================================
+app_default() {
+    : "${TTY:=0}"
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+    : "${APP_NAME:=timer}"
+    : "${TIMER_NAME:=default}"
+    : "${TIMER_PERSIST:=0}"
+
+    if [ "${TTY}" -ne 1 ]; then
+        _menu_quiet="${QUIET}"
+        if [ "${JSON}" -ne 1 ]; then
+            QUIET=0
+        fi
+        app_help
+        QUIET="${_menu_quiet}"
+        return 0
+    fi
+
+    _menu_json="${JSON}"
+    _menu_quiet="${QUIET}"
+    JSON=0
+    QUIET=0
+    export JSON QUIET
+
+    while true; do
+        app_default_print_menu
+        out_msg_n "Choice: "
+        _pick=""
+        # WARNING — do-not-capture-read (PP-A-22 / T1-PROMPT-CAPTURE)
+        # MUST NOT _pick=$(prompt_ask …) / $() any function that contains read.
+        if ! read -r _pick; then
+            JSON="${_menu_json}"
+            QUIET="${_menu_quiet}"
+            export JSON QUIET
+            return 0
+        fi
+        case "${_pick}" in
+            9|99|exit|quit|Exit|QUIT)
+                JSON="${_menu_json}"
+                QUIET="${_menu_quiet}"
+                export JSON QUIET
+                return 0
+                ;;
+        esac
+        JSON="${_menu_json}"
+        QUIET="${_menu_quiet}"
+        export JSON QUIET
+        if app_default_run_pick "${_pick}"; then
+            return 0
+        fi
+        JSON=0
+        QUIET=0
+        export JSON QUIET
+        out_warn "Not a menu choice. Type 1-6, 9 to leave, or a listed command name. Next: ${APP_NAME} menu"
+    done
+}
+
+# =============================================================================
+# inst_empty_argv_ensure() - Off-TTY empty argv / pipe: Type O install-ensure
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Curl|sh and script empty argv (no command token). Quiet/json or already
+# installed → inst_perform_install. Else TTY confirm via inst_maybe_install
+# (this helper is only called when TTY=0 from app_main, but keep the same
+# branch as the historical $# -eq 0 block).
+#
+# Last updated: 2026-09-07
+# =============================================================================
+inst_empty_argv_ensure() {
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+    if [ "${JSON}" -eq 1 ] || [ "${QUIET}" -eq 1 ]; then
+        inst_perform_install
+        return $?
+    elif inst_is_installed; then
+        inst_perform_install
+        return $?
+    else
+        inst_maybe_install
+        return $?
+    fi
+}
+
+# =============================================================================
 # app_main() - Main entrypoint and command dispatcher
 # =============================================================================
 #
 # GENERAL PURPOSE:
 # Thin dispatcher for the timer CLI (selfmanaged Type 0 + timer domain).
-# Handles:
-#   - Auto-install behavior for classic `curl | sh` one-liner (zero arguments)
-#   - Global flag parsing (--quiet, --json, --debug, --force)
-#   - Command routing for all Type 0 self-management commands
+# Empty argv = no command token after flag parse (overlay --debug/--quiet
+# follow). TTY numbered menu; off-TTY Type O install-ensure. --json with no
+# command is 0-argv special case: JSON help on TTY and off-TTY.
 #
 # This is the single entry point when the script is executed directly.
 #
@@ -3018,13 +3280,15 @@ app_help() {
 #   - TIMER_FILE=$(timer_get_file) must fail closed: out_die in the resolver
 #     only exits the command-substitution subshell; empty/root paths wrote
 #     /timer_<user>_<name> on a read-only filesystem (Termux).
+#   - Empty argv is no command token after flag parse. TTY → menu;
+#     off-TTY → Type O ensure; --json no-command → JSON help (even TTY).
 #
 # Last updated: 2026-09-07
 # =============================================================================
 
 app_main() {
     # --- Safe Variable Defaults ---
-    : "${COMMAND:=help}"
+    COMMAND=""
     : "${QUIET:=0}"
     : "${JSON:=0}"
     : "${DEBUG:=0}"
@@ -3043,36 +3307,16 @@ app_main() {
     export EFFECTIVE_STORAGE_DIR STORAGE_DIR
     export TMPDIR="${EFFECTIVE_STORAGE_DIR}"
 
-    # === ZERO-ARG = Type O install-ensure (curl | sh contract) ===
-    # Product type: Type O (online-install) — not Type N help-default.
-    # Empty argv always means "ensure installed", never help.
-    # Cases: not installed | installed local | installed global
-    # - not installed → install (TTY prompt via inst_maybe_install; non-TTY auto)
-    # - already installed → success no-op (inst_perform_install); no --force required
-    # - --force / FORCE_REINSTALL only for deliberate re-download/replace
-    # Exit status must reflect install outcome (failed download/checksum → non-zero).
-    # SSOT: docs/requirements/requirement-shell-cli-zero-arguments.md
-    if [ $# -eq 0 ]; then
-        if [ "${JSON}" -eq 1 ] || [ "${QUIET}" -eq 1 ]; then
-            inst_perform_install
-            exit $?
-        elif inst_is_installed; then
-            inst_perform_install
-            exit $?
-        else
-            inst_maybe_install
-            exit $?
-        fi
-    fi
-
     # Domain state for timer commands (safe defaults under set -u)
     : "${TIMER_NAME:=default}"
     : "${TIMER_PERSIST:=0}"
     : "${TIMER_FILE:=}"
     : "${STORAGE_MODE:=volatile}"
 
-    # === Argument parsing: flags and commands (order-independent) ===
-    # Timer name is a free token after a domain command is selected.
+    # Empty argv = no command token after flag parse (overlay --debug/--quiet
+    # follow). TTY → menu. Off-TTY → Type O ensure.
+    # --json no-command is 0-argv special case → JSON help (TTY and off-TTY).
+    _saw_command=0
     while [ $# -gt 0 ]; do
         case "$1" in
             --quiet|-q) QUIET=1 ;;
@@ -3080,11 +3324,13 @@ app_main() {
             --debug)    DEBUG=1 ;;
             --force)    FORCE=1; FORCE_REINSTALL=1 ;;
             --persist)  TIMER_PERSIST=1 ;;
-            version|about|help|version-check|self-update|self-uninstall|install)
+            version|about|help|menu|main|version-check|self-update|self-uninstall|install)
                 COMMAND="$1"
+                _saw_command=1
                 ;;
             start|stop|status|list|kill|reset)
                 COMMAND="$1"
+                _saw_command=1
                 ;;
             *)
                 # Free token: timer name when a domain command is active
@@ -3100,6 +3346,16 @@ app_main() {
         esac
         shift
     done
+
+    if [ "${_saw_command}" -eq 0 ]; then
+        if [ "${JSON}" -eq 1 ]; then
+            COMMAND=help
+        elif [ "${TTY}" -eq 1 ]; then
+            COMMAND=menu
+        else
+            COMMAND=ensure
+        fi
+    fi
 
     out_debug "dispatch command=${COMMAND} quiet=${QUIET} json=${JSON} force=${FORCE} persist=${TIMER_PERSIST}"
 
@@ -3122,27 +3378,15 @@ app_main() {
         install)
             inst_perform_install
             ;;
+        menu|main)
+            app_default
+            ;;
+        ensure)
+            inst_empty_argv_ensure
+            exit $?
+            ;;
         start|stop|status|list|kill|reset)
-            timer_sanitize_name
-            STORAGE_MODE="volatile"
-            [ "${TIMER_PERSIST}" -eq 1 ] && STORAGE_MODE="persistent"
-            TIMER_FILE=$(timer_get_file "$TIMER_NAME" "$STORAGE_MODE") || exit 1
-            if [ -z "${TIMER_FILE}" ]; then
-                out_die "Cannot create the timer file path (no writable storage). Next: mkdir -p \"\${PREFIX}/tmp\" or ${APP_NAME} start --persist"
-            fi
-            _tf_dir=$(dirname "${TIMER_FILE}")
-            if [ "${_tf_dir}" = "/" ]; then
-                out_die "Cannot create the timer file path (resolved to filesystem root). Next: mkdir -p \"\${PREFIX}/tmp\" or ${APP_NAME} start --persist"
-            fi
-            unset _tf_dir
-            case "${COMMAND}" in
-                start)  timer_start ;;
-                stop)   timer_stop ;;
-                status) timer_status ;;
-                list)   timer_list "$STORAGE_MODE" ;;
-                kill)   timer_kill_or_reset kill ;;
-                reset)  timer_kill_or_reset reset ;;
-            esac
+            timer_run_domain
             ;;
         help|*)
             app_help
