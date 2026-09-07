@@ -68,7 +68,7 @@ This file is the **coding-style specialize-in home** for the timer POSIX `/bin/s
 | **Termux helpers** | `util_is_termux` · `util_apply_termux_target` |
 | **In-tool sudo** | none |
 | **Termux pkg list** | none (not a Termux-first package companion) |
-| **Tests** | `tests/test_cli.sh` (**TP-CLI-01**, **TP-TX-01..05**) |
+| **Tests** | `tests/test_cli.sh` (**TP-CLI-01**, **TP-TX-01..05**, **TP-TX-08**) |
 
 ## Under command line for normal user only
 
@@ -125,6 +125,7 @@ When the program runs on Termux, Git Bash, Windows cmd, or the same class, only 
 | **TP-TX-03** no `sudo curl` on Termux | `tests/test_cli.sh` | have |
 | **TP-TX-04** `$PREFIX/bin` dest | `tests/test_cli.sh` | have |
 | **TP-TX-05** `pkg` not invoked | `tests/test_cli.sh` | have |
+| **TP-TX-08** Termux `$PREFIX/tmp` volatile records | `tests/test_cli.sh` | have |
 | **TP-LC-16** named `pkg install` | n/a — no package list | n/a |
 
 **Last Updated**: 2026-09-06  

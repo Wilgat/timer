@@ -28,7 +28,7 @@ This requirement is the **project Single Source of Truth** for **temporary / scr
 | Includes | Excludes |
 |----------|----------|
 | `mktemp`; `TMPDIR` from storage resolve | Domain timer files |
-| Termux: same mktemp under fallback scratch | `sudo` to create temps |
+| Termux: same mktemp under `$PREFIX/tmp` or cache scratch | `sudo` to create temps |
 
 | Surface | What you open | What for |
 |---------|---------------|----------|
@@ -146,7 +146,7 @@ Temp work for timer is **not done** if any of the following fail:
 
 When the program runs on Termux, Git Bash, Windows cmd, or the same class, only **this login** may use it. Admin privilege and a dedicated system-user switch stay **unused**.
 
-**This requirement:** temp leaves. `mktemp` under this-login scratch; Termux `/tmp` fallback is enough. Do not `sudo mkdir`.
+**This requirement:** temp leaves. `mktemp` under this-login scratch; Termux uses `$PREFIX/tmp` (Android `/tmp` is often read-only). Do not `sudo mkdir`.
 
 ## Design-time verification
 

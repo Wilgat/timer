@@ -1,6 +1,6 @@
 **file**: docs/requirements/requirement-shell-cli-storage.md  
 **Requirement-ID**: `RQ-SHELL-CLI-STORAGE`  
-**Status**: Active (Version 1.0.1 – mold-aligned DTV; inherited from selfmanaged 1.2.1 storage wire)  
+**Status**: Active (Version 1.0.2 – Termux `$PREFIX/tmp` scratch tier)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
 ## 1. Purpose
@@ -17,7 +17,7 @@ This requirement is the **project Single Source of Truth** for **shell CLI stora
 
 ### 1.1 Human-facing
 
-**In one sentence:** Scratch files for install live under a per-login folder; RAM disk first, then `/tmp`, then cache.
+**In one sentence:** Scratch files for install live under a per-login folder; RAM disk first, then Termux `$PREFIX/tmp`, then `/tmp`, then cache.
 
 | Box | Meaning | Example |
 |-----|---------|---------|
@@ -28,7 +28,7 @@ This requirement is the **project Single Source of Truth** for **shell CLI stora
 | Includes | Excludes |
 |----------|----------|
 | `util_resolve_storage`; about `effective_storage` | Timer start/stop files |
-| Termux: `/dev/shm` usually missing → `/tmp` | Root-owned scratch |
+| Termux: `/dev/shm` usually missing; Android `/tmp` often RO → `$PREFIX/tmp` then cache | Root-owned scratch |
 
 | Surface | What you open | What for |
 |---------|---------------|----------|
@@ -57,8 +57,9 @@ First match that is available and writable:
 | Order | Condition | Path shape |
 |-------|-----------|------------|
 | 1 | `/dev/shm` exists and is writable | `/dev/shm/${APP_NAME}-${USERNAME}` |
-| 2 | `/tmp` is writable | `/tmp/${APP_NAME}-${USERNAME}` |
-| 3 | Fallback | `STORAGE_DIR` (`${XDG_CACHE_HOME}/${APP_NAME}-${USERNAME}`, env-overridable) |
+| 2 | Termux (`IS_TERMUX=1`) and `$PREFIX/tmp` is writable (create if needed) | `${PREFIX}/tmp/${APP_NAME}-${USERNAME}` |
+| 3 | `/tmp` is writable | `/tmp/${APP_NAME}-${USERNAME}` |
+| 4 | Fallback | `STORAGE_DIR` (`${XDG_CACHE_HOME}/${APP_NAME}-${USERNAME}`, env-overridable) |
 
 **Create before return:** for the **chosen** tier, the resolver **MUST** `mkdir -p` the root (all tiers), then print the path. If create fails → **MUST** fail closed via `out_die`. **MUST NOT** return a path without creating it.
 
@@ -127,7 +128,7 @@ First match that is available and writable:
 Storage resolve work for timer is **not done** if any of the following fail:
 
 1. Exactly one authoritative resolver (`util_resolve_storage`) returns the chosen path on stdout after `mkdir -p` of that root.  
-2. Resolve priority matches this requirement (writable `/dev/shm` → `/tmp` → `STORAGE_DIR` fallback).  
+2. Resolve priority matches this requirement (writable `/dev/shm` → Termux `$PREFIX/tmp` → `/tmp` → `STORAGE_DIR` fallback).  
 3. Paths include `${APP_NAME}` and `${USERNAME}` isolation; no shared world-writable single dump for all users.  
 4. `app_main` sets `EFFECTIVE_STORAGE_DIR` / exports `TMPDIR` from the resolver once early.  
 5. `app_about` human + JSON expose effective storage fields and **omit** `CHECKSUM`.  
@@ -156,12 +157,12 @@ Storage resolve work for timer is **not done** if any of the following fail:
 
 When the program runs on Termux, Git Bash, Windows cmd, or the same class, only **this login** may use it. Admin privilege and a dedicated system-user switch stay **unused**.
 
-**This requirement:** scratch resolve. Termux usually has no `/dev/shm`; fall back to `/tmp` then cache. Isolation still includes app name and login.
+**This requirement:** scratch resolve. Termux usually has no `/dev/shm`; Android `/tmp` is often read-only. Fall back to `$PREFIX/tmp` then `/tmp` then cache. Isolation still includes app name and login.
 
 | MUST | MUST NOT |
 |------|----------|
 | Per-login scratch | Shared world-writable dump |
-| Survive missing `/dev/shm` | Require root to create scratch |
+| Survive missing `/dev/shm` and unusable `/tmp` | Require root to create scratch |
 
 ## Design-time verification
 
@@ -174,11 +175,12 @@ When the program runs on Termux, Git Bash, Windows cmd, or the same class, only 
 | TP family / ID | Suite | Status |
 |----------------|-------|--------|
 | **TP-CLI-05** about `effective_storage` / `storage_dir` + isolation + dir exists + `STORAGE_DIR` override | `tests/test_cli.sh` | have |
+| **TP-TX-08** Termux `$PREFIX/tmp` domain volatile (peer of domain law; scratch tier 2 is the same root family) | `tests/test_cli.sh` | have |
 | **TP-CLI-04** about JSON purity (no CHECKSUM) | `tests/test_cli.sh` | have (peer surface) |
 | **TP-LC-*** install staging under `TMPDIR` | `tests/test_install_lifecycle.sh` | have (via storage→TMPDIR wire) |
 
 ---
 
-**Last Updated**: 2026-08-11  
+**Last Updated**: 2026-09-07  
 **Owner**: timer project maintainers  
 **Alignment**: Registry `docs/requirements/index.md`; **`LM-SHELL-CLI-STORAGE`**; **`PM-SHELL-CLI-TEST-PLAN`**; CIAO Principles 1, 2, 3, 4, 5, 11, 19, 20 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).

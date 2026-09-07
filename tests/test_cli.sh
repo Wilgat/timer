@@ -1,7 +1,7 @@
 # =============================================================================
 # tests/test_cli.sh — Type 0 CLI surface (PM-SHELL-CLI-TEST-PLAN / TP-CLI-*)
 # =============================================================================
-# Portable families: TP-CLI, TP-CSUM-01/05, TP-U-01, TP-TX-01..05.
+# Portable families: TP-CLI, TP-CSUM-01/05, TP-U-01, TP-TX-01..05, TP-TX-08.
 # Primary REQs: RQ-SHELL-CLI-INTERFACE, RQ-SHELL-OUTPUT-REQUIREMENTS, RQ-SHELL-AUTOMATIC-CHECKSUM, RQ-SHELL-CLI-ZERO-ARGUMENTS, RQ-SHELL-SCRIPT-CODING.
 # Labels MUST include TP-IDs (policy-harness-id-notation / PM-SHELL-CLI-TEST-PLAN).
 # =============================================================================
@@ -244,7 +244,7 @@ run_test_cli() {
 
     ci_isolated_env
     _tx_prefix="${CI_HOME}/data/com.termux/files/usr"
-    mkdir -p "${_tx_prefix}/bin"
+    mkdir -p "${_tx_prefix}/bin" "${_tx_prefix}/tmp"
     _out=$(
         HOME="${CI_HOME}" PREFIX="${_tx_prefix}" TERMUX_VERSION="0.118.0" \
         PATH="${_stub}:${PATH}" \
@@ -260,6 +260,35 @@ run_test_cli() {
     )
     assert_not_contains "TP-TX-03 help must not recommend sudo on Termux" "$_help" "sudo curl"
     assert_contains "TP-TX-03 help install names this login" "$_help" "this login"
+
+    # --- TP-TX-08: Termux volatile records use $PREFIX/tmp when /dev/shm is unusable ---
+    # Real Termux: /dev/shm missing, Android /tmp often read-only. Simulate by
+    # pointing VOLATILE_DIR at a missing path; apply_termux retargets to PREFIX/tmp.
+    _tx_name="tx-pref-tmp"
+    _u=$(id -un 2>/dev/null || echo "unknown")
+    _tx_file="${_tx_prefix}/tmp/${APP_NAME}_${_u}_${_tx_name}"
+    _errf="${CI_HOME}/tx-stor.err"
+    rm -f "${_tx_file}"
+    _out=$(
+        HOME="${CI_HOME}" PREFIX="${_tx_prefix}" TERMUX_VERSION="0.118.0" \
+        VOLATILE_DIR="${CI_HOME}/no-such-shm" \
+        env -u USER_BIN sh "${SCRIPT}" start "${_tx_name}" 2>"${_errf}"
+    )
+    _ec=$?
+    _err=$(cat "${_errf}" 2>/dev/null || true)
+    _all="${_out}${_err}"
+    assert_eq "TP-TX-08 termux start with unusable VOLATILE_DIR exit 0" 0 "$_ec"
+    assert_not_contains "TP-TX-08 must not die on missing /dev/shm /tmp" "$_all" "No writable temporary storage"
+    assert_not_contains "TP-TX-08 must not write timer file at filesystem root" "$_all" "cannot create /${APP_NAME}_"
+    assert_file_exists "TP-TX-08 volatile file under PREFIX/tmp" "${_tx_file}"
+    _stop=$(
+        HOME="${CI_HOME}" PREFIX="${_tx_prefix}" TERMUX_VERSION="0.118.0" \
+        VOLATILE_DIR="${CI_HOME}/no-such-shm" \
+        env -u USER_BIN sh "${SCRIPT}" stop "${_tx_name}" 2>/dev/null
+    )
+    _sec=$?
+    assert_eq "TP-TX-08 termux stop of PREFIX/tmp timer exit 0" 0 "$_sec"
+    rm -f "${_tx_file}"
 
     _errf="${CI_HOME}/tx-zero-arg.err"
     _out=$(

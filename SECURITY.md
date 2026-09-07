@@ -4,7 +4,8 @@
 
 | Version | Supported |
 |---------|-----------|
-| **2.12.0** (current) | Yes — full support |
+| **2.12.1** (current) | Yes — full support |
+| **2.12.0** | Upgrade recommended (Termux `$PREFIX/tmp` volatile fix in 2.12.1) |
 | **2.11.x** | Security fixes only; upgrade to current when possible |
 | **2.10.x** | Security fixes only; upgrade to current when possible |
 | Older than 2.10 | Best-effort only; upgrade recommended |

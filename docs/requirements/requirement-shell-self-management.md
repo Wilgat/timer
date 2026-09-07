@@ -140,7 +140,7 @@ Root may write global install path; non-root uses user path. Do not assume root 
 | **Uninstall steps** | `inst_self_uninstall_determine_bin` → `inst_self_uninstall_confirm_and_remove` → `inst_self_uninstall_cleanup_path` |
 | **PATH ensure** | `path_add_shell` / bash / zsh / fish helpers on user install |
 | **Privilege** | Type 0 only for self-management surface; no dedicated system user |
-| **Version SSOT** | `VERSION` in script config block (product SSOT; currently `VERSION="2.12.0"`) |
+| **Version SSOT** | `VERSION` in script config block (product SSOT; currently `VERSION="2.12.1"`) |
 
 #### Normative acceptance behaviors (this project)
 
@@ -268,6 +268,7 @@ When the program runs on Termux, Git Bash, Windows cmd, or the same class, only 
 | **TP-LC-12** explicit `install --json` | `tests/test_install_lifecycle.sh` | have |
 | **TP-CLI-11** uninstall refuse (CLI suite) | `tests/test_cli.sh` | have |
 | **TP-TX-01..05** Termux target (detect, no sudo, PREFIX/bin, no pkg) | `tests/test_cli.sh` | have |
+| **TP-TX-08** Termux `$PREFIX/tmp` volatile records | `tests/test_cli.sh` | have |
 | **TP-CURL-02,07** pipe install / pipe version | `tests/test_online_curl_install.sh` | have |
 
 

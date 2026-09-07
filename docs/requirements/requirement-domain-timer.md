@@ -1,6 +1,6 @@
 **file**: docs/requirements/requirement-domain-timer.md  
 **Requirement-ID**: `RQ-DOMAIN-TIMER`  
-**Status**: Active (Version 1.0.2 – mold-aligned to LM-NAMED-TIMER-DOMAIN)  
+**Status**: Active (Version 1.0.3 – Termux `$PREFIX/tmp` volatile fallback)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
 ## 1. Purpose
@@ -48,7 +48,7 @@ It owns the **four domain pillars**:
 | Includes | Excludes |
 |----------|----------|
 | `start` `stop` `status` `list` `kill` `reset`; `--persist` | OS packages; sudo |
-| Termux: volatile falls back when `/dev/shm` is missing | Admin privilege for start/stop |
+| Termux: `$PREFIX/tmp` when `/dev/shm` and Android `/tmp` are unusable | Admin privilege for start/stop |
 
 | Surface | What you open | What for |
 |---------|---------------|----------|
@@ -101,8 +101,8 @@ Domain verbs **MUST** be stable unless this requirement is explicitly revised. D
 
 | Mode | Trigger | Preferred location | Fallback |
 |------|---------|--------------------|----------|
-| **Volatile** (default) | No `--persist` | Writable `/dev/shm` (or configured `VOLATILE_DIR`) | Writable `/tmp` (warn when not quiet/json) |
-| **Persistent** | `--persist` | `${XDG_CACHE_HOME:-$HOME/.cache}/${APP_NAME}` (or configured `PERSISTENT_DIR`) | Documented writable fallback under `/tmp` when home unusable; fail loud if no writable location |
+| **Volatile** (default) | No `--persist` | Writable `/dev/shm` (or configured `VOLATILE_DIR`) | Termux `$PREFIX/tmp` (when `PREFIX` is set); then writable `/tmp`; then `${XDG_CACHE_HOME:-$HOME/.cache}/${APP_NAME}`. Warn when not quiet/json. Fail closed if none are writable. |
+| **Persistent** | `--persist` | `${XDG_CACHE_HOME:-$HOME/.cache}/${APP_NAME}` (or configured `PERSISTENT_DIR`) | `$PREFIX/tmp/…_persistent` then `/tmp/…_persistent` when home unusable; fail loud if no writable location |
 
 **File record contract:**
 
@@ -193,7 +193,7 @@ JSON mode `help` **MUST NOT** dump long domain text (short structured note only 
 | **Dispatcher** | `app_main` routes `start\|stop\|status\|list\|kill\|reset` after sanitize + `TIMER_FILE` resolve |
 | **Persist flag** | Global `--persist` → `TIMER_PERSIST=1` → storage mode `persistent` |
 | **Default name** | `default` |
-| **Volatile default root** | `VOLATILE_DIR` default `/dev/shm` (fallback `/tmp`) |
+| **Volatile default root** | `VOLATILE_DIR` default `/dev/shm`; Termux retarget `$PREFIX/tmp`; then `/tmp`; then cache |
 | **Persistent default root** | `PERSISTENT_DIR` default `${XDG_CACHE_HOME:-$HOME/.cache}/timer` |
 | **File pattern** | `${base_dir}/${APP_NAME}_${USERNAME}_${name}` |
 | **Proof suite** | `tests/test_timer_domain.sh` (start/stop/status/list, JSON, persist, kill/reset, invalid name, already-running, no_timer) |
@@ -288,12 +288,13 @@ This requirement is satisfied for timer when all of the following hold:
 
 When the program runs on Termux, Git Bash, Windows cmd, or the same class, only **this login** may use it. Admin privilege and a dedicated system-user switch stay **unused**.
 
-**This requirement:** domain start/stop. Timer files belong to this login. Volatile mode falls back when `/dev/shm` is missing (normal on Termux).
+**This requirement:** domain start/stop. Timer files belong to this login. Volatile mode falls back when `/dev/shm` is missing (normal on Termux). Android `/tmp` is often read-only — use `$PREFIX/tmp`, then cache.
 
 | MUST | MUST NOT |
 |------|----------|
 | Per-login timer files | Root or dedicated-account timer dest |
-| `/tmp` fallback for volatile | Wrap `pkg`/`apt` to “fix” storage |
+| `$PREFIX/tmp` then `/tmp` then cache for volatile | Wrap `pkg`/`apt` to “fix” storage |
+| Refuse an empty base path (never write `/timer_*`) | Continue after `out_die` in `$(resolve)` |
 
 ## Design-time verification
 
@@ -314,10 +315,11 @@ When the program runs on Termux, Git Bash, Windows cmd, or the same class, only 
 | **TP-TIMER-07** `invalid_name` | `tests/test_timer_domain.sh` | have |
 | **TP-STORAGE-02** `--persist` (shared dual-storage) | `tests/test_timer_domain.sh` | have |
 | **TP-STORAGE-01** volatile storage path (shared) | `tests/test_timer_domain.sh` | have |
+| **TP-TX-08** Termux `$PREFIX/tmp` when `VOLATILE_DIR` unusable | `tests/test_cli.sh` | have |
 | **TP-STORAGE-03** corrupted state | n/a — not claimed in suite | n/a |
 | **TP-PAYLOAD-*** Type O-P scaffold | n/a — not Type O-P payload product | n/a |
 
 
-**Last Updated**: 2026-08-11  
+**Last Updated**: 2026-09-07  
 **Owner**: timer project maintainers  
 **Alignment**: Registry `docs/requirements/index.md`; **`LM-NAMED-TIMER-DOMAIN`**; **`PM-DOMAIN-TEST-PLAN`**; mandatory peers CLI/storage/temp/output; CIAO Principles 1, 2, 3, 4, 5, 6, 9, 10, 11, 20 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).

@@ -182,7 +182,7 @@ for k in ("minutes","seconds","elapsed"):
     _run start stor-path >/dev/null 2>&1
     _u=$(id -un 2>/dev/null || echo "unknown")
     _hit=0
-    for _base in /dev/shm /tmp; do
+    for _base in /dev/shm /tmp ${PREFIX:+${PREFIX}/tmp} "${HOME}/.cache/${APP_NAME}"; do
         if ls "${_base}/${APP_NAME}_${_u}"_*stor-path* >/dev/null 2>&1 \
             || ls "${_base}/${APP_NAME}_${_u}"*stor* >/dev/null 2>&1; then
             _hit=1
@@ -199,7 +199,7 @@ for k in ("minutes","seconds","elapsed"):
         [ "$_hit" -eq 1 ] && break
     done
     if [ "$_hit" -eq 1 ]; then
-        t_pass "TP-STORAGE-01 volatile storage file present under /dev/shm or /tmp"
+        t_pass "TP-STORAGE-01 volatile storage file present under /dev/shm, /tmp, PREFIX/tmp, or cache"
     else
         # fallback: status still works → storage resolved somehow
         _out=$(_run status stor-path 2>/dev/null)

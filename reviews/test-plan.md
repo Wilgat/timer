@@ -5,12 +5,12 @@ Maps **portable TP families** (proof molds) and product domain cases to product-
 | Field | Value |
 |-------|--------|
 | **Product** | timer |
-| **Ship unit** | `./timer` · `VERSION=2.12.0` |
+| **Ship unit** | `./timer` · `VERSION=2.12.1` |
 | **Companion** | `./timer.sha256` |
 | **Suite entry** | `./tests/run.sh` |
 | **RTM** | `reviews/requirement-test-matrix.md` |
 | **Live law** | **13** Active REQs — `docs/requirements/index.md` |
-| **Last update** | 2026-09-06 (Termux target **TP-TX-***; coding-style REQ; 2.12.0) |
+| **Last update** | 2026-09-07 (Termux `$PREFIX/tmp` **TP-TX-08**; **2.12.1**) |
 
 Status: **have** = automated · **todo** = needed · **n/a** = not applicable · **optional** = gated
 
@@ -48,6 +48,7 @@ Status: **have** = automated · **todo** = needed · **n/a** = not applicable ·
 | 2026-07-24 | PASS=187 FAIL=0 SKIP=1 | TP labels; lifecycle parity; TP-CURL local |
 | 2026-08-11 | **PASS=195 FAIL=0 SKIP=1** | Re-specialize + mold peers; full product review **Pass** (`reports/2026-08-11-timer-product-review.md`) |
 | 2026-09-06 | **PASS=205 FAIL=0 SKIP=1** | Termux target **TP-TX-01..05**; 13 REQs; **2.12.0** |
+| 2026-09-07 | **PASS=210 FAIL=0 SKIP=1** | Termux `$PREFIX/tmp` **TP-TX-08**; **2.12.1** |
 
 **How to re-baseline:** `cd` product root → `./tests/run.sh` → paste summary line into this table when law/suite changes.
 
@@ -83,6 +84,9 @@ This product does **not** wrap `pkg`. Cases prove **target system** detect + thi
 | **TP-TX-03** | Termux: no `sudo curl` in help / empty-argv recommend | **have** | `tests/test_cli.sh` |
 | **TP-TX-04** | Termux: `user_bin` is `$PREFIX/bin` when that dir exists | **have** | `tests/test_cli.sh` |
 | **TP-TX-05** | Termux: stub `pkg` still not invoked (no companion list) | **have** | `tests/test_cli.sh` |
+| **TP-TX-06** | One-shot `proot` reaper | **n/a** | No guest/proot dispatch |
+| **TP-TX-07** | One-shot without `proot` | **n/a** | No guest/proot dispatch |
+| **TP-TX-08** | Termux: unusable `VOLATILE_DIR` → file under `$PREFIX/tmp`; no `/timer_*` root write | **have** | `tests/test_cli.sh` |
 | **TP-LC-16** | Named `pkg install -y` | **n/a** | No package list |
 
 **Legacy product-local IDs (retired → family):**
@@ -187,7 +191,7 @@ Policy: `policy-harness-id-notation` §5.
 
 | TP-ID | Intent | Status | Evidence | Legacy alias |
 |-------|--------|--------|----------|--------------|
-| **TP-STORAGE-01** | Volatile domain record path | **have** | `/dev/shm` or `/tmp` timer file | was **TP-TIMER-09** |
+| **TP-STORAGE-01** | Volatile domain record path | **have** | `/dev/shm`, `/tmp`, `$PREFIX/tmp`, or cache | was **TP-TIMER-09** |
 | **TP-STORAGE-02** | `--persist` start/list/stop | **have** | domain suite | was **TP-TIMER-08** |
 | **TP-STORAGE-03** | Corrupted state fail-closed | **n/a** | product does not claim corruption code path in suite | — |
 

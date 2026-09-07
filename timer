@@ -21,7 +21,8 @@
 # - requirement-shell-interactive-vs-noninteractive.md
 # - requirement-shell-automatic-checksum.md
 # - requirement-shell-script-coding.md       (coding-style specialize-in home)
-# Termux target: util_is_termux / util_apply_termux_target (user-only install).
+# Termux target: util_is_termux / util_apply_termux_target (user-only install;
+#   volatile records use $PREFIX/tmp when /dev/shm and Android /tmp are unusable).
 # Plus CIAO Protection Zones and "DO NOT MODIFY" rules.
 #
 # Philosophy: CIAO (Caution • Intentional • Anti-fragile • Over-engineered)
@@ -48,8 +49,8 @@ APP_NAME="timer"
 : "${SHORT_DESCRIPTION:=${APP_DESC}}"
 : "${DESCRIPTION:=POSIX /bin/sh Type 0 CLI: install, version-check, self-update, self-uninstall, about, plus timer start/stop/status/list.}"
 # Product version SSOT (semver). Extractors use: grep '^VERSION="'
-VERSION="2.12.0"
-: "${VERSION:=2.12.0}"
+VERSION="2.12.1"
+: "${VERSION:=2.12.1}"
 
 # Runtime flags (safe defaults)
 : "${QUIET:=0}"
@@ -113,6 +114,47 @@ fi
 : "${SH:=sh}"
 
 # =============================================================================
+# util_ensure_writable_dir() - mkdir -p then test the directory is writable
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Shared probe for Termux/Android tmp and cache fallbacks. Creates the path
+# when missing, then returns 0 only if it is a writable directory.
+#
+# CIAO PRINCIPLES APPLIED:
+# - Caution: never treat a missing or read-only mount as usable storage.
+# - Intentional: one mkdir+writable check instead of copy-pasted probes.
+# - Anti-fragile: mkdir failure is not enough — re-test -d and -w.
+# - Over-protect: empty path is fail-closed (return 1).
+#
+# ALIGNMENT (live requirements only — never template-*.md or skill-*.md):
+# - requirement-shell-cli-storage.md
+# - requirement-domain-timer.md
+#
+# !!! DO NOT MODIFY OR SIMPLIFY THIS FUNCTION !!!
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-09-07: Termux $PREFIX/tmp is the userspace /tmp; Android /tmp is often
+#             missing or read-only. Shared probe so domain + scratch agree.
+#
+# Last updated: 2026-09-07
+# =============================================================================
+util_ensure_writable_dir() {
+    _uw_dir="${1-}"
+    if [ -z "${_uw_dir}" ]; then
+        unset _uw_dir
+        return 1
+    fi
+    mkdir -p "${_uw_dir}" 2>/dev/null
+    if [ -d "${_uw_dir}" ] && [ -w "${_uw_dir}" ]; then
+        unset _uw_dir
+        return 0
+    fi
+    unset _uw_dir
+    return 1
+}
+
+# =============================================================================
 # util_is_termux() / util_apply_termux_target() - Termux as a target system
 # =============================================================================
 #
@@ -120,6 +162,8 @@ fi
 # Detect Termux-like userspace (this login owns $PREFIX) and freeze install
 # to a normal-user dest. Termux has no Linux /usr/local/bin + sudo story.
 # Named pkg ensure is out of scope for this product (no package list).
+# When /dev/shm (VOLATILE_DIR) is missing or not writable, retarget domain
+# volatile storage to $PREFIX/tmp — Android /tmp is often read-only.
 #
 # Detect (any one): PREFIX contains com.termux; TERMUX_VERSION set;
 # /data/data/com.termux/files/usr exists.
@@ -127,6 +171,13 @@ fi
 # !!! DO NOT MODIFY OR SIMPLIFY THESE HELPERS !!!
 # Aligns with requirement-shell-cli-interface / self-management
 # "Under command line for normal user only".
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-09-07: timer start died on Termux — VOLATILE_DIR=/dev/shm and /tmp
+#             both unusable; empty base_dir wrote /timer_<user>_default
+#             on the read-only root. Retarget to $PREFIX/tmp.
+#
+# Last updated: 2026-09-07
 # =============================================================================
 util_is_termux() {
     [ -n "${PREFIX-}" ] && case "${PREFIX}" in *com.termux*) return 0 ;; esac
@@ -140,6 +191,7 @@ util_apply_termux_target() {
     : "${HOME:=/tmp}"
     : "${FORCE_GLOBAL:=0}"
     : "${FORCE_USER:=0}"
+    : "${VOLATILE_DIR:=/dev/shm}"
     IS_TERMUX=0
     if util_is_termux; then
         IS_TERMUX=1
@@ -156,6 +208,15 @@ util_apply_termux_target() {
         : "${USER_BIN:=${_default_user_bin}}"
         INSTALL_PATH="${USER_BIN}/${APP_NAME}"
         unset _default_user_bin
+        # Domain volatile: Android has no usable /dev/shm; /tmp is often RO.
+        # Termux scratch is $PREFIX/tmp (also the usual Termux TMPDIR).
+        if [ -n "${PREFIX-}" ]; then
+            if [ ! -d "${VOLATILE_DIR}" ] || [ ! -w "${VOLATILE_DIR}" ]; then
+                if util_ensure_writable_dir "${PREFIX}/tmp"; then
+                    VOLATILE_DIR="${PREFIX}/tmp"
+                fi
+            fi
+        fi
     fi
     : "${IS_TERMUX:=0}"
     : "${IS_ROOT:=0}"
@@ -2077,8 +2138,9 @@ util_backup() {
 #
 # GENERAL PURPOSE:
 # Returns the best available volatile storage directory for prompt files.
-# Prefers /dev/shm (fastest, in-memory) → /tmp → fallback to XDG_CACHE_HOME.
-# All paths include ${USERNAME} to isolate per-user storage.
+# Prefers /dev/shm (fastest, in-memory) → Termux $PREFIX/tmp → /tmp →
+# fallback to XDG_CACHE_HOME. All paths include ${USERNAME} to isolate
+# per-user storage.
 #
 # Safe Variable Defaults
 #
@@ -2117,8 +2179,9 @@ util_backup() {
 #             per-user ${APP_NAME}-${USERNAME} isolation under set -u.
 # 2026-07-16: Create chosen tier root before echo (fail-closed) for all tiers;
 #             wire from app_main (EFFECTIVE_STORAGE_DIR + TMPDIR). SM-STOR-01.
+# 2026-09-07: Termux $PREFIX/tmp before Linux /tmp (Android /tmp is often RO).
 #
-# Last reviewed: 2026-07-16
+# Last updated: 2026-09-07
 # SSOT: requirement-shell-cli-storage.md
 # =============================================================================
 util_resolve_storage() {
@@ -2128,11 +2191,14 @@ util_resolve_storage() {
     : "${APP_NAME:=app}"
     : "${HOME:=/tmp}"
     : "${XDG_CACHE_HOME:=${HOME}/.cache}"
+    : "${IS_TERMUX:=0}"
 
     # Pick first available tier, then create root (all tiers fail-closed)
     _storage_candidate=""
     if [ -d "/dev/shm" ] && [ -w "/dev/shm" ]; then
         _storage_candidate="/dev/shm/${APP_NAME}-${USERNAME}"
+    elif [ "${IS_TERMUX}" -eq 1 ] && [ -n "${PREFIX-}" ] && util_ensure_writable_dir "${PREFIX}/tmp"; then
+        _storage_candidate="${PREFIX}/tmp/${APP_NAME}-${USERNAME}"
     elif [ -w "/tmp" ]; then
         _storage_candidate="/tmp/${APP_NAME}-${USERNAME}"
     else
@@ -2351,6 +2417,14 @@ util_get_current_shell() {
 # Domain product law SSOT: docs/requirements/requirement-domain-timer.md
 #
 # !!! DO NOT SIMPLIFY fallback chains or name sanitization !!!
+#
+# Lessons Learned (CIAO Reflection):
+# 2026-09-07: Termux has no writable /dev/shm or /tmp. Chain is now
+#             VOLATILE_DIR → $PREFIX/tmp → /tmp → XDG cache. out_die inside
+#             $(timer_resolve_base_dir) only exits the subshell — parent must
+#             refuse an empty base so we never write /timer_<user>_<name>.
+#
+# Last updated: 2026-09-07
 # =============================================================================
 
 timer_resolve_base_dir() {
@@ -2364,35 +2438,53 @@ timer_resolve_base_dir() {
     : "${HOME:=/tmp}"
     : "${QUIET:=0}"
     : "${JSON:=0}"
-    : "${PERSISTENT_DIR:=${XDG_CACHE_HOME:-${HOME}/.cache}/${APP_NAME}}"
+    : "${XDG_CACHE_HOME:=${HOME}/.cache}"
+    : "${PERSISTENT_DIR:=${XDG_CACHE_HOME}/${APP_NAME}}"
 
     if [ "$requested_mode" = "volatile" ]; then
         if [ -d "$VOLATILE_DIR" ] && [ -w "$VOLATILE_DIR" ]; then
             base_dir="$VOLATILE_DIR"
-        elif [ -d "/tmp" ] && [ -w "/tmp" ]; then
-            actual_mode="fallback"
-            base_dir="/tmp"
-            if [ "${QUIET}" -eq 0 ] && [ "${JSON}" -eq 0 ]; then
-                out_warn "Volatile storage (/dev/shm) not available. Falling back to /tmp."
-            fi
         else
-            base_dir="/tmp/${APP_NAME}_${USERNAME}"
-            if ! mkdir -p "$base_dir" 2>/dev/null || [ ! -w "$base_dir" ]; then
-                out_die "No writable temporary storage available (/dev/shm, /tmp). ${APP_NAME} cannot start."
+            base_dir=""
+            # Termux userspace tmp (Android /tmp is often missing or read-only)
+            if [ -n "${PREFIX-}" ]; then
+                if util_ensure_writable_dir "${PREFIX}/tmp"; then
+                    base_dir="${PREFIX}/tmp"
+                fi
+            fi
+            if [ -z "$base_dir" ] && [ -d "/tmp" ] && [ -w "/tmp" ]; then
+                base_dir="/tmp"
+            fi
+            if [ -z "$base_dir" ]; then
+                if util_ensure_writable_dir "${XDG_CACHE_HOME}/${APP_NAME}"; then
+                    base_dir="${XDG_CACHE_HOME}/${APP_NAME}"
+                fi
+            fi
+            if [ -z "$base_dir" ]; then
+                out_die "No writable temporary storage available (/dev/shm, /tmp, \$PREFIX/tmp, or cache). ${APP_NAME} cannot start. Next: mkdir -p \"\${PREFIX}/tmp\" or ${APP_NAME} start --persist"
             fi
             actual_mode="fallback"
             if [ "${QUIET}" -eq 0 ] && [ "${JSON}" -eq 0 ]; then
-                out_warn "Volatile storage unavailable. Using fallback directory: $base_dir"
+                out_warn "Volatile storage (/dev/shm) not available. Using: $base_dir"
             fi
         fi
     else
         if [ -n "${HOME-}" ] && [ -d "${HOME}" ] && [ -w "${HOME}" ]; then
             base_dir="${PERSISTENT_DIR}"
-            mkdir -p "$base_dir" 2>/dev/null || true
+            mkdir -p "$base_dir" 2>/dev/null
+            if [ ! -d "$base_dir" ] || [ ! -w "$base_dir" ]; then
+                base_dir=""
+            fi
         else
-            base_dir="/tmp/${APP_NAME}_${USERNAME}_persistent"
-            if ! mkdir -p "$base_dir" 2>/dev/null || [ ! -w "$base_dir" ]; then
-                out_die "No writable location for persistent storage (no usable \$HOME and cannot write to /tmp). ${APP_NAME} cannot continue."
+            base_dir=""
+        fi
+        if [ -z "$base_dir" ]; then
+            if [ -n "${PREFIX-}" ] && util_ensure_writable_dir "${PREFIX}/tmp/${APP_NAME}_${USERNAME}_persistent"; then
+                base_dir="${PREFIX}/tmp/${APP_NAME}_${USERNAME}_persistent"
+            elif util_ensure_writable_dir "/tmp/${APP_NAME}_${USERNAME}_persistent"; then
+                base_dir="/tmp/${APP_NAME}_${USERNAME}_persistent"
+            else
+                out_die "No writable location for persistent timers (home cache, \$PREFIX/tmp, and /tmp are unusable). Next: mkdir -p \"\${HOME}/.cache/${APP_NAME}\" or export PERSISTENT_DIR to a writable folder."
             fi
             if [ "${QUIET}" -eq 0 ] && [ "${JSON}" -eq 0 ]; then
                 out_warn "No usable \$HOME detected. Persistent timers will use fallback directory: $base_dir"
@@ -2410,6 +2502,9 @@ timer_get_file() {
     : "${APP_NAME:=timer}"
     : "${USERNAME:=unknown}"
     base_dir=$(timer_resolve_base_dir "$requested_mode")
+    if [ -z "$base_dir" ]; then
+        return 1
+    fi
     printf '%s\n' "${base_dir}/${APP_NAME}_${USERNAME}_${name}"
 }
 
@@ -2919,8 +3014,12 @@ app_help() {
 #     Cases A/B/C (not installed / local / global). --force only for deliberate
 #     re-download/replace — not required for a second one-liner run.
 #     SSOT: requirement-shell-cli-zero-arguments.md (timer = Type O; specialized from selfmanaged).
+# 2026-09-07:
+#   - TIMER_FILE=$(timer_get_file) must fail closed: out_die in the resolver
+#     only exits the command-substitution subshell; empty/root paths wrote
+#     /timer_<user>_<name> on a read-only filesystem (Termux).
 #
-# Last reviewed: 2026-07-14
+# Last updated: 2026-09-07
 # =============================================================================
 
 app_main() {
@@ -2933,7 +3032,7 @@ app_main() {
     : "${FORCE_REINSTALL:=0}"
 
     # Effective scratch/cache root for this run (requirement-shell-cli-storage).
-    # Priority: /dev/shm → /tmp → STORAGE_DIR (persistent cache fallback).
+    # Priority: /dev/shm → Termux $PREFIX/tmp → /tmp → STORAGE_DIR (cache).
     # Resolver creates root fail-closed. Export TMPDIR so mktemp -t (install
     # download stage) lands under the isolated product root.
     : "${USERNAME:=unknown}"
@@ -3027,7 +3126,15 @@ app_main() {
             timer_sanitize_name
             STORAGE_MODE="volatile"
             [ "${TIMER_PERSIST}" -eq 1 ] && STORAGE_MODE="persistent"
-            TIMER_FILE=$(timer_get_file "$TIMER_NAME" "$STORAGE_MODE")
+            TIMER_FILE=$(timer_get_file "$TIMER_NAME" "$STORAGE_MODE") || exit 1
+            if [ -z "${TIMER_FILE}" ]; then
+                out_die "Cannot create the timer file path (no writable storage). Next: mkdir -p \"\${PREFIX}/tmp\" or ${APP_NAME} start --persist"
+            fi
+            _tf_dir=$(dirname "${TIMER_FILE}")
+            if [ "${_tf_dir}" = "/" ]; then
+                out_die "Cannot create the timer file path (resolved to filesystem root). Next: mkdir -p \"\${PREFIX}/tmp\" or ${APP_NAME} start --persist"
+            fi
+            unset _tf_dir
             case "${COMMAND}" in
                 start)  timer_start ;;
                 stop)   timer_stop ;;

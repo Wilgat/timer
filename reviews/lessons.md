@@ -2,7 +2,7 @@
 
 **Prior-report failure modes** to re-check on every product review.  
 **Mandatory load** before findings.  
-**Last update:** 2026-09-06 (Termux target; L-TX-01)
+**Last update:** 2026-09-07 (Termux `$PREFIX/tmp`; L-TX-02)
 
 | L-ID | Failure mode | Re-check | Source | Open? |
 |------|--------------|----------|--------|-------|
@@ -26,6 +26,7 @@
 | L-MOLD-01 | Domain law without named-timer mandatory peers (CLI/storage/temp/output) | Registry Active peers; domain DTV cites **LM-NAMED-TIMER-DOMAIN**; **TP-MOLD-01** | mold coverage 2026-08-11 | **Closed** |
 | L-MAP-01 | Review maps claim TP-CLI-05 n/a after shell storage inheritance | `test-plan.md` + CLI DTV + RTM must agree (**have** vs **n/a**) | plan revision 2026-08-11 | **Closed** |
 | L-TX-01 | Claim Termux / Git Bash support while recommending `sudo curl \| sh` or `/usr/local/bin` | Detect + user dest + about `termux`; **TP-TX-01..05** | 2026-09-06 | **Closed** (suite) |
+| L-TX-02 | Termux `timer start` dies: only `/dev/shm` + `/tmp`; empty `$(resolve)` writes `/timer_*` on RO root | `$PREFIX/tmp` then cache; refuse empty/root `TIMER_FILE`; **TP-TX-08** | 2026-09-07 | **Closed** (suite) |
 
 ## How to use
 

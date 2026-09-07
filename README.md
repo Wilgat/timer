@@ -1,6 +1,6 @@
 # timer - Lightweight Per-User Named Timers
 
-![Version](https://img.shields.io/badge/Version-2.12.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/Version-2.12.1-blue?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 [![CIAO](https://img.shields.io/badge/Philosophy-CIAO%20(Caution%20%E2%80%A2%20Intentional%20%E2%80%A2%20Anti--fragile%20%E2%80%A2%20Over--engineered)-purple.svg)](https://github.com/cloudgen/ciao)
 [![Stars](https://img.shields.io/github/stars/Wilgat/timer?style=flat-square)](https://github.com/Wilgat/timer)
@@ -50,7 +50,7 @@ Termux is Android userspace: the program runs as **you**. Do **not** use `sudo c
 
 On Termux the install dest is `$PREFIX/bin` when that folder exists (already on PATH). Otherwise it uses `~/.local/bin` and may add that folder to PATH.
 
-Volatile timers fall back to `/tmp` when `/dev/shm` is missing (normal on Android). Use `--persist` if you want timers to survive a session restart.
+Volatile timers use `$PREFIX/tmp` when `/dev/shm` is missing and Android `/tmp` is not writable (normal on Termux). Cache is the last resort. Use `--persist` if you want timers to survive a session restart.
 
 ### Local checkout
 
@@ -179,7 +179,7 @@ timer self-update
 | Platform | Shell | Status | Notes |
 |----------|-------|--------|-------|
 | Alpine Linux | BusyBox ash | Excellent | Primary minimal target |
-| **Termux** (Android) | ash / bash | Supported | **Target system.** This login only — no `sudo`, no `/usr/local/bin`. Install into `$PREFIX/bin` when present. `/dev/shm` usually missing → `/tmp` fallback. |
+| **Termux** (Android) | ash / bash | Supported | **Target system.** This login only — no `sudo`, no `/usr/local/bin`. Install into `$PREFIX/bin` when present. `/dev/shm` usually missing; Android `/tmp` often read-only → `$PREFIX/tmp` then cache. |
 | Git Bash (Windows) | Bash (MSYS2) | Excellent | Full fallback support; this login only (no `sudo` recommend) |
 | Rocky Linux / RHEL | Bash | Excellent | Standard enterprise |
 | macOS | Bash / zsh | Excellent | Fully supported |
@@ -204,4 +204,4 @@ MIT License — see [`LICENSE.md`](./LICENSE.md).
 
 ## Last Update
 
-2026-09-06 (timer **2.12.0**)
+2026-09-07 (timer **2.12.1**)

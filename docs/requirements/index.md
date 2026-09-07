@@ -5,17 +5,17 @@
 **Class law:** `requirement-class-software-dev` / **`RQ-CLASS-SOFTWARE-DEV`**.  
 **Domain SSOT:** `requirement-domain-timer` / **`RQ-DOMAIN-TIMER`**.  
 **Bootstrap origin:** selfmanaged Type 0 (A→B specialize; re-specialized 2026-08-11 from selfmanaged **1.2.1**).  
-**Updated:** 2026-09-06 (Termux target + coding-style REQ + human-facing)
+**Updated:** 2026-09-07 (Termux `$PREFIX/tmp` volatile/scratch fallback)
 
 | Requirement-ID | Key | Title | Area | Status | Path | Updated |
 |----------------|-----|-------|------|--------|------|---------|
 | `RQ-CLASS-SOFTWARE-DEV` | requirement-class-software-dev | Software-development class law + residual stack (posix-sh Type 0) | class | Active | `requirement-class-software-dev.md` | 2026-07-24 |
 | `RQ-SHELL-AUTOMATIC-CHECKSUM` | requirement-shell-automatic-checksum | Automatic companion-digest integrity (transparent link/value/result; CHECKSUM not help/about) | shell | Active | `requirement-shell-automatic-checksum.md` | 2026-07-24 |
 | `RQ-SHELL-CLI-INTERFACE` | requirement-shell-cli-interface | Shell CLI interface (commands, flags, dispatch, modes) | shell | Active | `requirement-shell-cli-interface.md` | 2026-07-24 |
-| `RQ-SHELL-CLI-STORAGE` | requirement-shell-cli-storage | Scratch/cache storage resolve (per-user isolation, main wire, about fields) | shell | Active | `requirement-shell-cli-storage.md` | 2026-08-11 |
+| `RQ-SHELL-CLI-STORAGE` | requirement-shell-cli-storage | Scratch/cache storage resolve (per-user isolation, main wire, about fields) | shell | Active | `requirement-shell-cli-storage.md` | 2026-09-07 |
 | `RQ-SHELL-CLI-ZERO-ARGUMENTS` | requirement-shell-cli-zero-arguments | Empty argv Type O install-ensure (not installed / local / global) | shell | Active | `requirement-shell-cli-zero-arguments.md` | 2026-07-24 |
 | `RQ-SHELL-TEMP-FILE-SYSTEM` | requirement-shell-temp-file-system | Temp leaf policy (mktemp, TMPDIR inheritance, install staging hygiene) | shell | Active | `requirement-shell-temp-file-system.md` | 2026-08-11 |
-| `RQ-DOMAIN-TIMER` | requirement-domain-timer | Named-timer domain product law (subcommands, storage, help/about domain rows) | domain | Active | `requirement-domain-timer.md` | 2026-08-11 |
+| `RQ-DOMAIN-TIMER` | requirement-domain-timer | Named-timer domain product law (subcommands, storage, help/about domain rows) | domain | Active | `requirement-domain-timer.md` | 2026-09-07 |
 | `RQ-SHELL-IDEMPOTENCY` | requirement-shell-idempotency | Shell idempotency / re-run safety for ensure-style ops | shell | Active | `requirement-shell-idempotency.md` | 2026-07-24 |
 | `RQ-SHELL-INTERACTIVE-VS-NONINTERACTIVE` | requirement-shell-interactive-vs-noninteractive | Interactive vs non-interactive / `curl|sh` behavior | shell | Active | `requirement-shell-interactive-vs-noninteractive.md` | 2026-07-24 |
 | `RQ-SHELL-MODULAR-FUNCTION-DESIGN` | requirement-shell-modular-function-design | Single-file modular function design (prefixes, zones) | shell | Active | `requirement-shell-modular-function-design.md` | 2026-07-24 |

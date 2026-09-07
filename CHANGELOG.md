@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.12.1] - 2026-09-07
+
+### Fixed
+
+- **Termux volatile storage:** `timer start` no longer dies with `No writable temporary storage available (/dev/shm, /tmp)` when Android `/tmp` is missing or read-only. Domain records use `$PREFIX/tmp` (then cache). Empty resolve no longer writes `/timer_<user>_<name>` on the read-only root.
+- Shell scratch resolve (`util_resolve_storage`) prefers Termux `$PREFIX/tmp` after `/dev/shm` and before Linux `/tmp`.
+
+### Changed
+
+- Ship-unit `VERSION` and README Version badge → **2.12.1**.
+- Suite **TP-TX-08** (Termux `$PREFIX/tmp` when `VOLATILE_DIR` is unusable).
+
 ## [2.12.0] - 2026-09-06
 
 ### Added

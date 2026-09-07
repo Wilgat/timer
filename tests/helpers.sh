@@ -154,6 +154,9 @@ ci_cleanup_timer_domain() {
     _u=$(id -un 2>/dev/null || echo "unknown")
     rm -f /dev/shm/${APP_NAME}_"${_u}"_* 2>/dev/null || true
     rm -f /tmp/${APP_NAME}_"${_u}"_* 2>/dev/null || true
+    if [ -n "${PREFIX-}" ]; then
+        rm -f "${PREFIX}/tmp/${APP_NAME}_${_u}_"* 2>/dev/null || true
+    fi
 }
 
 ci_run() {
