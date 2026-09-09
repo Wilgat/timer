@@ -140,7 +140,7 @@ Root may write global install path; non-root uses user path. Do not assume root 
 | **Uninstall steps** | `inst_self_uninstall_determine_bin` → `inst_self_uninstall_confirm_and_remove` → `inst_self_uninstall_cleanup_path` |
 | **PATH ensure** | `path_add_shell` after user-local install **only for a user drawer** — bodies + Termux skip: `requirement-shell-path-and-shell-support.md` |
 | **Privilege** | Type 0 only for self-management surface; no dedicated system user |
-| **Version SSOT** | `VERSION` in script config block (product SSOT; currently `VERSION="2.14.0"`) |
+| **Version SSOT** | `VERSION` in script config block (product SSOT; currently `VERSION="2.14.1"`) |
 
 #### Normative acceptance behaviors (this project)
 

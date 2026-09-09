@@ -4,7 +4,8 @@
 
 | Version | Supported |
 |---------|-----------|
-| **2.14.0** (current) | Yes — full support |
+| **2.14.1** (current) | Yes — full support |
+| **2.14.0** | Upgrade recommended (self-update heal of Termux `$PREFIX/bin` PATH in 2.14.1) |
 | **2.13.2** | Upgrade recommended (Termux PATH/rc skip + `rc-test` in 2.14.0) |
 | **2.13.1** | Upgrade recommended (running-timer pick on stop/status/kill/reset in 2.13.2) |
 | **2.13.0** | Upgrade recommended (menu name prompt in 2.13.1) |

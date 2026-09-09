@@ -22,7 +22,7 @@
 | `RQ-SHELL-MODULAR-FUNCTION-DESIGN` | requirement-shell-modular-function-design | Single-file modular function design (prefixes, zones) | shell | Active | `requirement-shell-modular-function-design.md` | 2026-07-24 |
 | `RQ-SHELL-OUTPUT-REQUIREMENTS` | requirement-shell-output-requirements | Central `out_*` output SSOT (stdout/stderr, modes; `@key` raw nested/numeric JSON) | shell | Active | `requirement-shell-output-requirements.md` | 2026-09-07 |
 | `RQ-SHELL-SELF-MANAGEMENT` | requirement-shell-self-management | Self-management lifecycle (version-check, update, uninstall, about) | shell | Active | `requirement-shell-self-management.md` | 2026-09-09 |
-| `RQ-SHELL-PATH-AND-SHELL-SUPPORT` | requirement-shell-path-and-shell-support | Shell path integration (bashrc PATH ensure; Termux skip system bin; `rc-test`) | shell | Active | `requirement-shell-path-and-shell-support.md` | 2026-09-09 |
+| `RQ-SHELL-PATH-AND-SHELL-SUPPORT` | requirement-shell-path-and-shell-support | Shell path integration (bashrc PATH ensure; Termux skip system bin; `rc-test`; heal) | shell | Active | `requirement-shell-path-and-shell-support.md` | 2026-09-09 |
 | `RQ-SHELL-SCRIPT-CODING` | requirement-shell-script-coding | POSIX `/bin/sh` coding-style specialize-in home (Termux this-login helpers) | shell | Active | `requirement-shell-script-coding.md` | 2026-09-07 |
 
 **Rules for agents:**

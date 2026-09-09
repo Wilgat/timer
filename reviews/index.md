@@ -2,7 +2,7 @@
 
 **Registry** of review plan artifacts and run reports. Keep rows in sync with disk.  
 **Updated:** 2026-09-07  
-**Product:** timer **2.14.0** · **15** Active REQs · PATH/rc skip `$PREFIX/bin` · suite **PASS=284 FAIL=0 SKIP=1**
+**Product:** timer **2.14.1** · **15** Active REQs · PATH heal `$PREFIX/bin` · suite **PASS=289 FAIL=0 SKIP=1**
 
 ## Plan artifacts
 

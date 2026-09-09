@@ -5,8 +5,8 @@
 **Not:** Product law (`docs/requirements/`). Not harness blank checklists. Not session `/tmp` scratch (promote durable outcomes here).
 
 **Product class:** **software-development** + **domain product** (Active class + domain SSOT **`RQ-DOMAIN-TIMER`** · **`LM-NAMED-TIMER-DOMAIN`**).  
-**Ship unit:** `./timer` · **VERSION=2.14.0**  
-**Tests:** `./tests/run.sh` (baseline **PASS=284 FAIL=0 SKIP=1** as of 2026-09-09)
+**Ship unit:** `./timer` · **VERSION=2.14.1**  
+**Tests:** `./tests/run.sh` (baseline **PASS=289 FAIL=0 SKIP=1** as of 2026-09-09)
 
 ## Layout
 

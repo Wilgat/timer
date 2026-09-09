@@ -180,7 +180,7 @@ function_name() {
 | `out_` | `out_text`, `out_success`, `out_info`, `out_warn`, `out_error`, `out_die`, `out_plain`, `out_msg_n`, `out_empty_line`, `out_double_line`, `out_json`, `out_json_error` |
 | `inst_` | `inst_perform_install`, `inst_perform_install_prepare_target`, `inst_perform_install_download_with_checksum`, `inst_perform_install_download_without_checksum`, `inst_perform_install_atomic_install`, `inst_maybe_install`, `inst_self_update`, `inst_self_uninstall` (+ determine_bin / confirm_and_remove / cleanup_path), `inst_is_installed`, `inst_get_version` |
 | `ver_` | `ver_gt`, `ver_check` |
-| `path_` | `path_add_bashrc`, `path_add_zshrc`, `path_add_fish`, `path_add_shell`, `path_is_system_bin`, `path_rc_test` |
+| `path_` | `path_add_bashrc`, `path_add_zshrc`, `path_add_fish`, `path_add_shell`, `path_is_system_bin`, `path_heal_file`, `path_heal_system_bin_rc`, `path_rc_test` |
 | `util_` | `util_json_escape`, `util_sha256_file`, `util_fetch_remote_version`, `util_get_install_bin_path`, `util_backup`, `util_resolve_storage`, `util_get_current_shell` |
 | `prompt_` | `prompt_ask`, `prompt_yes_no` |
 | `timer_` | `timer_resolve_base_dir`, `timer_get_file`, `timer_sanitize_name`, `timer_domain_fail`, `timer_start`, `timer_stop`, `timer_status`, `timer_kill_or_reset`, `timer_list` |

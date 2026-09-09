@@ -5,7 +5,7 @@ Maps **portable TP families** (proof molds) and product domain cases to product-
 | Field | Value |
 |-------|--------|
 | **Product** | timer |
-| **Ship unit** | `./timer` · `VERSION=2.14.0` |
+| **Ship unit** | `./timer` · `VERSION=2.14.1` |
 | **Companion** | `./timer.sha256` |
 | **Suite entry** | `./tests/run.sh` |
 | **RTM** | `reviews/requirement-test-matrix.md` |
@@ -53,6 +53,7 @@ Status: **have** = automated · **todo** = needed · **n/a** = not applicable ·
 | 2026-09-07 | **PASS=256 FAIL=0 SKIP=1** | TTY menu name prompt **TP-CLI-30**; **2.13.1** |
 | 2026-09-07 | **PASS=264 FAIL=0 SKIP=1** | TTY running-timer pick **TP-CLI-30**; **2.13.2** |
 | 2026-09-09 | **PASS=284 FAIL=0 SKIP=1** | PATH/rc **TP-LC-20..22** **TP-TX-09**; **2.14.0** |
+| 2026-09-09 | **PASS=289 FAIL=0 SKIP=1** | self-update PATH heal **TP-TX-10**; **2.14.1** |
 
 **How to re-baseline:** `cd` product root → `./tests/run.sh` → paste summary line into this table when law/suite changes.
 
@@ -96,6 +97,7 @@ This product does **not** wrap `pkg`. Cases prove **target system** detect + thi
 | **TP-TX-07** | One-shot without `proot` | **n/a** | No guest/proot dispatch |
 | **TP-TX-08** | Termux: unusable `VOLATILE_DIR` → file under `$PREFIX/tmp`; no `/timer_*` root write | **have** | `tests/test_cli.sh` |
 | **TP-TX-09** | Termux: `$PREFIX/bin` dest does not write PATH into rc | **have** | `tests/test_cli.sh` |
+| **TP-TX-10** | Heal removes timer `$PREFIX/bin` PATH pair; keeps sibling PATH | **have** | `tests/test_cli.sh` |
 | **TP-LC-16** | Named `pkg install -y` | **n/a** | No package list |
 
 **Legacy product-local IDs (retired → family):**

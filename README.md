@@ -1,6 +1,6 @@
 # timer - Lightweight Per-User Named Timers
 
-![Version](https://img.shields.io/badge/Version-2.14.0-blue?style=flat-square)
+![Version](https://img.shields.io/badge/Version-2.14.1-blue?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 [![CIAO](https://img.shields.io/badge/Philosophy-CIAO%20(Caution%20%E2%80%A2%20Intentional%20%E2%80%A2%20Anti--fragile%20%E2%80%A2%20Over--engineered)-purple.svg)](https://github.com/cloudgen/ciao)
 [![Stars](https://img.shields.io/github/stars/Wilgat/timer?style=flat-square)](https://github.com/Wilgat/timer)
@@ -106,7 +106,7 @@ After install, on a terminal:
 
 ```text
 $ timer
-[INFO] **timer**(*2.14.0*) — Lightweight per-user named timers (volatile or persistent)
+[INFO] **timer**(*2.14.1*) — Lightweight per-user named timers (volatile or persistent)
 1. start: Start a named timer
 2. stop: Stop a named timer and show elapsed
 3. status: Show elapsed without stopping
@@ -227,4 +227,4 @@ MIT License — see [`LICENSE.md`](./LICENSE.md).
 
 ## Last Update
 
-2026-09-09 (timer **2.14.0**)
+2026-09-09 (timer **2.14.1**)

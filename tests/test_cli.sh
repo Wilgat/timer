@@ -443,6 +443,32 @@ run_test_cli() {
     assert_contains "TP-TX-09 skip names system bin" "$_out" "system bin"
     rm -rf "${_txrc}"
 
+    # --- TP-TX-10: heal strips timer $PREFIX/bin PATH pair; keeps sibling PATH ---
+    _txrc=$(mktemp -d "${TMPDIR:-/tmp}/tm-txheal.XXXXXX")
+    _txbashrc="${_txrc}/.bashrc"
+    _sys_line=$(printf 'export PATH="%s/bin:$PATH"' "${_tx_prefix}")
+    _sib_line='export PATH="/data/data/com.termux/files/home/.local/bin:$PATH"'
+    {
+        printf 'export PS1=test\n'
+        printf '# Added by sshd-cli installer (1.3.0)\n'
+        printf '%s\n' "${_sib_line}"
+        printf '\n# Added by timer installer (2.13.1)\n'
+        printf '%s\n' "${_sys_line}"
+    } > "${_txbashrc}"
+    _out=$(
+        HOME="${CI_HOME}" PREFIX="${_tx_prefix}" TERMUX_VERSION="0.118.0" \
+        BASHRC="${_txbashrc}" USER_BIN="${_tx_prefix}/bin" \
+        sh "${SCRIPT}" --json about 2>/dev/null
+    )
+    _ec=$?
+    assert_eq "TP-TX-10 about with planted system-bin PATH exit 0" 0 "$_ec"
+    _body=$(cat "${_txbashrc}" 2>/dev/null || true)
+    assert_contains "TP-TX-10 keeps sibling ~/.local/bin PATH" "$_body" "${_sib_line}"
+    assert_contains "TP-TX-10 keeps sshd-cli comment" "$_body" "sshd-cli"
+    assert_not_contains "TP-TX-10 removes timer PREFIX/bin PATH" "$_body" "${_sys_line}"
+    assert_not_contains "TP-TX-10 removes timer installer comment for that PATH" "$_body" "timer installer (2.13.1)"
+    rm -rf "${_txrc}"
+
     ci_cleanup_env
     rm -rf "${_stub}"
 }

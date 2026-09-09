@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.14.1] - 2026-09-09
+
+### Fixed
+
+- **`self-update` from 2.13.x re-added `$PREFIX/bin` to `.bashrc`.** The running process is still the old script after `mv`; 2.13.1 `path_add` ran in memory and wrote `…/usr/bin` again (comment stayed `2.13.1`). 2.14.1 runs PATH ensure/heal as the **new dest file**, and ordinary commands **heal** a leftover timer `$PREFIX/bin` PATH pair without touching sibling lines (`~/.local/bin`, `~/.grok/bin`).
+- Suite **TP-TX-10** (heal keeps sibling PATH; strips timer system-bin pair).
+
+### Changed
+
+- Ship-unit `VERSION` and README Version badge → **2.14.1**.
+
 ## [2.14.0] - 2026-09-09
 
 ### Added

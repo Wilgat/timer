@@ -2,7 +2,7 @@
 
 **Living checklist** (review plan). Product: **timer** Type 0 CLI + named-timer domain.  
 **Class:** software-development + **domain product** — Active class + domain SSOT required and present.  
-**Ship unit:** `./timer` · **VERSION=2.14.0**  
+**Ship unit:** `./timer` · **VERSION=2.14.1**  
 **Always load first:** `reviews/lessons.md`
 
 **Last plan update:** 2026-09-09 (PATH/rc `rc-test`; **TP-LC-20..22** **TP-TX-09**)

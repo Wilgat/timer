@@ -1,6 +1,6 @@
 **file**: docs/requirements/requirement-shell-path-and-shell-support.md  
 **Requirement-ID**: `RQ-SHELL-PATH-AND-SHELL-SUPPORT`  
-**Status**: Active (Version 1.0.0 – bashrc PATH ensure; Termux skip system bin; `rc-test --root`)  
+**Status**: Active (Version 1.0.1 – heal system-bin PATH; self-update runs PATH ensure as new dest)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
 ## 1. Purpose
@@ -46,6 +46,8 @@ It does **not** re-own binary place/remove (`requirement-shell-self-management.m
 | MUST | MUST NOT |
 |------|----------|
 | Call `path_add_shell` after a **successful user-local** install (`IS_ROOT=0`) **only when** `USER_BIN` is a **user drawer** | PATH-integrate a **system bin** (below) |
+| After atomic replace, run PATH ensure/heal as the **new dest file** (child process), not in-memory old `self-update` | Assume `mv` onto `$0` refreshes functions already loaded |
+| **Heal:** remove this product’s `# Added by ${APP_NAME} installer` comment **paired with** a system-bin `export PATH=` | Delete sibling PATH lines (`~/.local/bin`, `~/.grok/bin`) |
 | Honor `BASHRC` (default `${HOME}/.bashrc`), `ZSHRC`, `FISH_CONFIG` as write paths | Hard-code only `${HOME}/.bashrc` so tests cannot retarget |
 | Keep prior rc body; append PATH if the **exact** export is absent | Replace / truncate an existing dongle or user rc |
 
@@ -93,10 +95,10 @@ Live PATH membership is **not** a skip by itself (CI and one-shot `PATH=` prefix
 |------|-----------------|
 | **Product / binary** | `timer` (`APP_NAME`) |
 | **Implementation file** | Repo root `./timer` |
-| **Helpers** | `path_is_system_bin`, `path_add_bashrc`, `path_add_zshrc`, `path_add_fish`, `path_add_shell`, `path_rc_test` |
+| **Helpers** | `path_is_system_bin`, `path_heal_file`, `path_heal_system_bin_rc`, `path_add_bashrc`, `path_add_zshrc`, `path_add_fish`, `path_add_shell`, `path_rc_test` |
 | **Config** | `USER_BIN` default `${HOME}/.local/bin`; `BASHRC` default `${HOME}/.bashrc`; `ZSHRC`; `FISH_CONFIG` |
 | **Termux dest** | `USER_BIN=$PREFIX/bin` when that directory exists — **PATH ensure skipped** |
-| **Call site** | `inst_perform_install_atomic_install` → `path_add_shell` when non-root |
+| **Call site** | `inst_perform_install_atomic_install` → child `${INSTALL_PATH}` with `TIMER_INTERNAL_PATH_ENSURE=1` (new bytes); fallback in-process heal + `path_add_shell`. `app_main` heals on ordinary commands (not `rc-test`) |
 | **Reverse** | `inst_self_uninstall_cleanup_path` — this product’s comments; exact PATH only if user drawer empty |
 | **Tester** | `path_rc_test`; flags `--root`, `--case`; dual mention `RQ-SHELL-CLI-INTERFACE` |
 | **Version SSOT** | `VERSION` in script config (installer comment) |
@@ -157,7 +159,8 @@ When the program runs on Termux, Git Bash, Windows cmd, or the same class, only 
 7. Strip a system bin from rc on uninstall, or delete another product’s installer comments.  
 8. Claim bashrc PATH ensure without **TP-LC-20** / **TP-LC-21** / **TP-LC-22**.  
 9. Claim path-ensure without dual-mentioning Type 0 **`rc-test --root`**.  
-10. Use `install` as the only PATH tester, or write this login’s real `~/.bashrc` from the tester.
+10. Use `install` as the only PATH tester, or write this login’s real `~/.bashrc` from the tester.  
+11. Run PATH ensure after `self-update` `mv` using **in-memory old functions** (that is how 2.13.1 re-added `$PREFIX/bin` after installing 2.14.0).
 
 **Violating this rule is a PATH/rc regression** (Termux `usr/bin` prepend is the named failure).
 
@@ -204,8 +207,9 @@ Work claiming PATH/rc support for timer is **not done** if any of the following 
 | **TP-LC-12** first user install PATH prep | `tests/test_install_lifecycle.sh` | have |
 | **TP-LC-07** uninstall PATH reverse when user drawer empty | `tests/test_install_lifecycle.sh` | have |
 | **TP-TX-09** Termux `$PREFIX/bin` dest does not write PATH into rc | `tests/test_cli.sh` | have |
+| **TP-TX-10** heal removes timer `$PREFIX/bin` PATH pair; keeps sibling PATH | `tests/test_cli.sh` | have |
 | **TP-CLI-03** help lists `rc-test` apart from Self-Management | `tests/test_cli.sh` | have |
 
-**Last Updated**: 2026-09-09  
+**Last Updated**: 2026-09-09 (1.0.1 heal + dest-child PATH ensure)  
 **Owner**: timer project maintainers  
 **Alignment**: Registry `docs/requirements/index.md`; peer live requirements in §6; **`LM-PATH-AND-SHELL-SUPPORT`**; CIAO Principles 1, 2, 3, 4, 9, 10, 20 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).

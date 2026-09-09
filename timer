@@ -54,7 +54,7 @@ APP_NAME="timer"
 : "${SHORT_DESCRIPTION:=${APP_DESC}}"
 : "${DESCRIPTION:=POSIX /bin/sh Type 0 CLI: install, version-check, self-update, self-uninstall, about, plus timer start/stop/status/list.}"
 # Product version SSOT (semver). Extractors use: grep '^VERSION="'
-VERSION="2.14.0"
+VERSION="2.14.1"
 : "${VERSION:=2.13.2}"
 
 # Runtime flags (safe defaults)
@@ -1095,10 +1095,33 @@ inst_perform_install_atomic_install() {
         return 1
     fi
 
-    # PATH ensure for user-drawer installs only (not $PREFIX/bin / OS bin).
+    # PATH ensure / heal MUST run as the NEW dest bytes. Self-update keeps the
+    # old script in memory after mv; 2.13.1 path_add re-wrote $PREFIX/bin into
+    # .bashrc after replacing the file with 2.14.0.
     # requirement-shell-path-and-shell-support.md
     if [ "$IS_ROOT" -eq 0 ]; then
-        path_add_shell
+        _pe=0
+        if [ -x "${INSTALL_PATH}" ]; then
+            if TIMER_INTERNAL_PATH_ENSURE=1 \
+                HOME="${HOME}" \
+                USER_BIN="${USER_BIN}" \
+                BASHRC="${BASHRC:-${HOME}/.bashrc}" \
+                ZSHRC="${ZSHRC:-${HOME}/.zshrc}" \
+                FISH_CONFIG="${FISH_CONFIG:-${HOME}/.config/fish/config.fish}" \
+                PREFIX="${PREFIX-}" \
+                TERMUX_VERSION="${TERMUX_VERSION-}" \
+                TMPDIR="${TMPDIR-}" \
+                JSON="${JSON}" \
+                QUIET="${QUIET}" \
+                "${INSTALL_PATH}"; then
+                _pe=1
+            fi
+        fi
+        if [ "${_pe}" -eq 0 ]; then
+            path_heal_system_bin_rc
+            path_add_shell
+        fi
+        unset _pe
     fi
     
     if [ "${JSON}" -eq 1 ]; then
@@ -1844,18 +1867,132 @@ ver_check() {
 path_is_system_bin() {
     : "${USER_BIN:=${HOME}/.local/bin}"
     : "${GLOBAL_BIN:=/usr/local/bin}"
-    case "${USER_BIN}" in
+    _ub="${USER_BIN}"
+    case "${_ub}" in
+        */) _ub="${_ub%/}" ;;
+    esac
+    case "${_ub}" in
         /usr/bin|/bin|/usr/local/bin|"${GLOBAL_BIN}")
+            unset _ub
             return 0
             ;;
-        */com.termux/files/usr/bin)
+        */com.termux/files/usr/bin|*/com.termux/files/usr/bin/)
+            unset _ub
             return 0
             ;;
     esac
-    if [ -n "${PREFIX-}" ] && [ "${USER_BIN}" = "${PREFIX}/bin" ]; then
+    if [ -n "${PREFIX-}" ]; then
+        _pb="${PREFIX}/bin"
+        case "${_pb}" in
+            */) _pb="${_pb%/}" ;;
+        esac
+        if [ "${_ub}" = "${_pb}" ]; then
+            unset _ub _pb
+            return 0
+        fi
+        unset _pb
+    fi
+    unset _ub
+    return 1
+}
+
+# =============================================================================
+# path_heal_system_bin_rc() - Strip this product's system-bin PATH lines
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Remove `# Added by timer installer` + following export PATH="<sysbin>:$PATH`
+# when sysbin is $PREFIX/bin or Termux usr/bin. Self-update from an older
+# in-memory script can re-add that line after mv; the next run of the new
+# dest heals it. Does not touch sibling PATH lines (~/.local/bin, ~/.grok/bin).
+#
+# ALIGNMENT (live requirements only):
+# - requirement-shell-path-and-shell-support.md
+#
+# Last reviewed: 2026-09-09
+# =============================================================================
+path_heal_file() {
+    _hf="${1-}"
+    : "${APP_NAME:=timer}"
+    [ -n "${_hf}" ] && [ -f "${_hf}" ] && [ -w "${_hf}" ] || return 1
+
+    if ! grep -q "Added by ${APP_NAME} installer" "${_hf}" 2>/dev/null; then
+        return 1
+    fi
+
+    _ht=$(mktemp "${TMPDIR:-/tmp}/tm-heal.XXXXXX") || return 1
+    if ! awk -v app="${APP_NAME}" -v prefix="${PREFIX-}" '
+        function is_sys_path(line,   exp_line, fish_line) {
+            if (line ~ /^export PATH=".*\/com\.termux\/files\/usr\/bin:\$PATH"$/) return 1
+            if (line ~ /^set -gx PATH .*\/com\.termux\/files\/usr\/bin /) return 1
+            if (prefix != "") {
+                exp_line = sprintf("export PATH=\"%s/bin:$PATH\"", prefix)
+                fish_line = sprintf("set -gx PATH %s/bin $PATH", prefix)
+                if (line == exp_line) return 1
+                if (line == fish_line) return 1
+            }
+            return 0
+        }
+        BEGIN { comment_re = "^# Added by " app " installer" }
+        {
+            if (hold != "") {
+                if (is_sys_path($0)) { changed=1; hold=""; next }
+                print hold
+                hold=""
+            }
+            if ($0 ~ comment_re) { hold=$0; next }
+            print
+        }
+        END {
+            if (hold != "") print hold
+        }
+    ' "${_hf}" > "${_ht}"; then
+        rm -f "${_ht}"
+        unset _hf _ht
+        return 1
+    fi
+
+    _hold=$(util_sha256_file "${_hf}" 2>/dev/null || echo "")
+    _hnew=$(util_sha256_file "${_ht}" 2>/dev/null || echo "x")
+    if [ -n "${_hold}" ] && [ "${_hold}" = "${_hnew}" ]; then
+        rm -f "${_ht}"
+        unset _hf _ht _hold _hnew
+        return 1
+    fi
+    unset _hold _hnew
+    if ! mv "${_ht}" "${_hf}"; then
+        rm -f "${_ht}"
+        unset _hf _ht
+        return 1
+    fi
+    chmod 0644 "${_hf}" 2>/dev/null || true
+    unset _hf _ht
+    return 0
+}
+
+path_heal_system_bin_rc() {
+    : "${HOME:=/tmp}"
+    : "${BASHRC:=${HOME}/.bashrc}"
+    : "${ZSHRC:=${HOME}/.zshrc}"
+    : "${FISH_CONFIG:=${HOME}/.config/fish/config.fish}"
+    : "${APP_NAME:=timer}"
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+
+    # rc-test owns the fixture; do not strip planted lines.
+    if [ -n "${RC_TEST_CASE-}" ]; then
         return 0
     fi
-    return 1
+
+    _healed=0
+    path_heal_file "${BASHRC}" && _healed=1
+    path_heal_file "${ZSHRC}" && _healed=1
+    path_heal_file "${FISH_CONFIG}" && _healed=1
+    if [ "${_healed}" -eq 1 ] && [ "${JSON}" -eq 0 ] && [ "${QUIET}" -eq 0 ]; then
+        out_plain "→ Removed ${APP_NAME} system-bin PATH line from shell rc (already on PATH)"
+    fi
+    unset _healed
+    return 0
 }
 
 # =============================================================================
@@ -2057,6 +2194,8 @@ path_add_shell() {
     : "${ZSHRC:=${HOME}/.zshrc}"
     : "${FISH_CONFIG:=${HOME}/.config/fish/config.fish}"
     : "${JSON:=0}"
+
+    path_heal_system_bin_rc
 
     if path_is_system_bin; then
         return 0
@@ -3665,6 +3804,15 @@ app_main() {
     : "${FORCE_REINSTALL:=0}"
     : "${RC_TEST_ROOT:=}"
     : "${RC_TEST_CASE:=}"
+    : "${TIMER_INTERNAL_PATH_ENSURE:=0}"
+    : "${BASHRC:=${HOME}/.bashrc}"
+
+    # Child of atomic install: NEW dest bytes (not in-memory old self-update).
+    if [ "${TIMER_INTERNAL_PATH_ENSURE}" = 1 ]; then
+        path_heal_system_bin_rc
+        path_add_shell
+        exit 0
+    fi
 
     # Effective scratch/cache root for this run (requirement-shell-cli-storage).
     # Priority: /dev/shm → Termux $PREFIX/tmp → /tmp → STORAGE_DIR (cache).
@@ -3743,6 +3891,11 @@ app_main() {
     fi
 
     out_debug "dispatch command=${COMMAND} quiet=${QUIET} json=${JSON} force=${FORCE} persist=${TIMER_PERSIST}"
+
+    # Repair installer-added $PREFIX/bin PATH lines (self-update in-memory old path_add).
+    if [ "${COMMAND}" != "rc-test" ]; then
+        path_heal_system_bin_rc
+    fi
 
     case "${COMMAND}" in
         version)
