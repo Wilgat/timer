@@ -2,7 +2,7 @@
 
 Human-readable column is **`{{short-descript}}: {{explain}}`**. Menu labels **MUST** match this column.
 
-**Last update:** 2026-09-07
+**Last update:** 2026-09-09
 
 | Verb | Handler | Privilege | Live since | Human-readable |
 |------|---------|-----------|------------|----------------|
@@ -21,5 +21,6 @@ Human-readable column is **`{{short-descript}}: {{explain}}`**. Menu labels **MU
 | version-check | `ver_check` | you (Type 0) | 2026-07-14 | *(off main menu — self-managed)* |
 | self-update | `inst_self_update` | you (Type 0) | 2026-07-14 | *(off main menu — self-managed)* |
 | self-uninstall | `inst_self_uninstall` | you (Type 0) | 2026-07-14 | *(off main menu — self-managed)* |
+| rc-test | `path_rc_test` | you (Type 0, test-purpose) | 2026-09-09 | *(off main menu — testers)* |
 
 Main menu lists **start … reset** then **Exit 9**. **MUST NOT** list install / self-managed / version / about / help / menu / main.

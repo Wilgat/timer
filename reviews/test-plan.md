@@ -5,12 +5,12 @@ Maps **portable TP families** (proof molds) and product domain cases to product-
 | Field | Value |
 |-------|--------|
 | **Product** | timer |
-| **Ship unit** | `./timer` · `VERSION=2.13.1` |
+| **Ship unit** | `./timer` · `VERSION=2.14.0` |
 | **Companion** | `./timer.sha256` |
 | **Suite entry** | `./tests/run.sh` |
 | **RTM** | `reviews/requirement-test-matrix.md` |
-| **Live law** | **14** Active REQs — `docs/requirements/index.md` |
-| **Last update** | 2026-09-07 (TTY menu name prompt **TP-CLI-30**; **2.13.1**) |
+| **Live law** | **15** Active REQs — `docs/requirements/index.md` |
+| **Last update** | 2026-09-09 (PATH/rc **TP-LC-20..22** **TP-TX-09**; **2.14.0**) |
 
 Status: **have** = automated · **todo** = needed · **n/a** = not applicable · **optional** = gated
 
@@ -21,7 +21,7 @@ Status: **have** = automated · **todo** = needed · **n/a** = not applicable ·
 | Family | Proof mold-ID | Suite file(s) | Primary product law |
 |--------|---------------|---------------|---------------------|
 | **TP-CLI** | `PM-SHELL-CLI-TEST-PLAN` | `tests/test_cli.sh` | RQ-SHELL-CLI-INTERFACE · RQ-SHELL-CLI-STORAGE · RQ-SHELL-OUTPUT-REQUIREMENTS |
-| **TP-LC** | `PM-INSTALL-LIFECYCLE-TEST-PLAN` | `tests/test_install_lifecycle.sh` | RQ-SHELL-SELF-MANAGEMENT · RQ-SHELL-IDEMPOTENCY · RQ-SHELL-TEMP-FILE-SYSTEM |
+| **TP-LC** | `PM-INSTALL-LIFECYCLE-TEST-PLAN` | `tests/test_install_lifecycle.sh` | RQ-SHELL-SELF-MANAGEMENT · RQ-SHELL-IDEMPOTENCY · RQ-SHELL-PATH-AND-SHELL-SUPPORT · RQ-SHELL-TEMP-FILE-SYSTEM |
 | **TP-CSUM** | `PM-CHECKSUM-TEST-PLAN` | CLI + lifecycle | RQ-SHELL-AUTOMATIC-CHECKSUM |
 | **TP-U** | `PM-SET-U-TEST-PLAN` | CLI + curl (partial) | set -u / defaults (cross-cutting) |
 | **TP-CURL** | `PM-ONLINE-CURL-INSTALL-TEST-PLAN` | `tests/test_online_curl_install.sh` | RQ-SHELL-CLI-ZERO-ARGUMENTS · RQ-SHELL-SELF-MANAGEMENT |
@@ -51,6 +51,8 @@ Status: **have** = automated · **todo** = needed · **n/a** = not applicable ·
 | 2026-09-07 | **PASS=210 FAIL=0 SKIP=1** | Termux `$PREFIX/tmp` **TP-TX-08**; **2.12.1** |
 | 2026-09-07 | **PASS=246 FAIL=0 SKIP=1** | TTY numbered menu **TP-CLI-07/16/17/29**; **2.13.0** |
 | 2026-09-07 | **PASS=256 FAIL=0 SKIP=1** | TTY menu name prompt **TP-CLI-30**; **2.13.1** |
+| 2026-09-07 | **PASS=264 FAIL=0 SKIP=1** | TTY running-timer pick **TP-CLI-30**; **2.13.2** |
+| 2026-09-09 | **PASS=284 FAIL=0 SKIP=1** | PATH/rc **TP-LC-20..22** **TP-TX-09**; **2.14.0** |
 
 **How to re-baseline:** `cd` product root → `./tests/run.sh` → paste summary line into this table when law/suite changes.
 
@@ -75,7 +77,7 @@ Status: **have** = automated · **todo** = needed · **n/a** = not applicable ·
 | **TP-CLI-16** | No `$()` of `prompt_*` (do-not-capture-read) | **have** | `tests/test_cli.sh` |
 | **TP-CLI-17** | Menu header nametag + gray italic explain | **have** | `tests/test_cli.sh` (PTY; skip if no python3) |
 | **TP-CLI-29** | Overlay `--debug`/`--quiet` follow empty argv; `--json` JSON help | **have** | `tests/test_cli.sh` |
-| **TP-CLI-30** | TTY menu name prompt; Enter = `default`; list skips | **have** | `tests/test_cli.sh` (PTY; skip if no python3) |
+| **TP-CLI-30** | TTY menu start name prompt; stop/status/kill/reset numbered running list | **have** | `tests/test_cli.sh` (PTY; skip if no python3) |
 
 ---
 
@@ -93,6 +95,7 @@ This product does **not** wrap `pkg`. Cases prove **target system** detect + thi
 | **TP-TX-06** | One-shot `proot` reaper | **n/a** | No guest/proot dispatch |
 | **TP-TX-07** | One-shot without `proot` | **n/a** | No guest/proot dispatch |
 | **TP-TX-08** | Termux: unusable `VOLATILE_DIR` → file under `$PREFIX/tmp`; no `/timer_*` root write | **have** | `tests/test_cli.sh` |
+| **TP-TX-09** | Termux: `$PREFIX/bin` dest does not write PATH into rc | **have** | `tests/test_cli.sh` |
 | **TP-LC-16** | Named `pkg install -y` | **n/a** | No package list |
 
 **Legacy product-local IDs (retired → family):**
@@ -127,7 +130,10 @@ Also proves install **temp leaves** / staging (**RQ-SHELL-TEMP-FILE-SYSTEM**): d
 | **TP-LC-09** | Bad channel empty argv | **have** | same class as **TP-CLI-09** |
 | **TP-LC-10** | Idempotent re-install | **have** | “already installed” |
 | **TP-LC-11** | version-check network failure | **have** | `network_error` |
-| **TP-LC-12** | Explicit `install --json` | **have** | first install path (**mktemp** stage) |
+| **TP-LC-12** | Explicit `install --json` | **have** | first install path (**mktemp** stage); exact USER_BIN PATH in `.bashrc` |
+| **TP-LC-20** | `rc-test --root` create-if-missing | **have** | fixture `.bashrc`; exact PATH; login/CI home untouched |
+| **TP-LC-21** | `rc-test --root` modify dongle | **have** | dongle body kept; exact PATH once |
+| **TP-LC-22** | `rc-test --root` VERSION+exact-PATH no-op | **have** | bytes unchanged; JSON success |
 
 ---
 

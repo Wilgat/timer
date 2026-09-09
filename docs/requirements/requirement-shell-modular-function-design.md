@@ -66,7 +66,7 @@ Optional multi-file layout under `src/` for future authoring **MAY** exist only 
 | `util_` | General utilities | Reusable helpers (backup, path resolve, storage) | `util_backup`, `util_resolve_storage`, `util_get_install_bin_path` |
 | `app_` | General app CLI surface (product-neutral) | Entry, dispatch, about/help/version presentation | `app_main`, `app_about`, `app_help`, `app_version` |
 | `ver_` | Version comparison | Semantic version handling | `ver_gt`, `ver_check` |
-| `path_` | Shell PATH & environment | PATH manipulation and shell config | `path_add_shell`, `path_add_bashrc` |
+| `path_` | Shell PATH & environment | PATH manipulation and shell config | `path_add_shell`, `path_add_bashrc`, `path_rc_test` |
 | `prompt_` | Interactive prompts | TTY-safe confirmations and questions | `prompt_yes_no`, `prompt_ask` |
 | `{{APP_NAME}}_` | Domain / product business logic | Product-specific ops (start, configure, deploy) | *Required when domain ops exist — see Implementation Notes* |
 
@@ -180,7 +180,7 @@ function_name() {
 | `out_` | `out_text`, `out_success`, `out_info`, `out_warn`, `out_error`, `out_die`, `out_plain`, `out_msg_n`, `out_empty_line`, `out_double_line`, `out_json`, `out_json_error` |
 | `inst_` | `inst_perform_install`, `inst_perform_install_prepare_target`, `inst_perform_install_download_with_checksum`, `inst_perform_install_download_without_checksum`, `inst_perform_install_atomic_install`, `inst_maybe_install`, `inst_self_update`, `inst_self_uninstall` (+ determine_bin / confirm_and_remove / cleanup_path), `inst_is_installed`, `inst_get_version` |
 | `ver_` | `ver_gt`, `ver_check` |
-| `path_` | `path_add_bashrc`, `path_add_zshrc`, `path_add_fish`, `path_add_shell` |
+| `path_` | `path_add_bashrc`, `path_add_zshrc`, `path_add_fish`, `path_add_shell`, `path_is_system_bin`, `path_rc_test` |
 | `util_` | `util_json_escape`, `util_sha256_file`, `util_fetch_remote_version`, `util_get_install_bin_path`, `util_backup`, `util_resolve_storage`, `util_get_current_shell` |
 | `prompt_` | `prompt_ask`, `prompt_yes_no` |
 | `timer_` | `timer_resolve_base_dir`, `timer_get_file`, `timer_sanitize_name`, `timer_domain_fail`, `timer_start`, `timer_stop`, `timer_status`, `timer_kill_or_reset`, `timer_list` |

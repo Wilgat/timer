@@ -16,6 +16,7 @@
 # - requirement-domain-timer.md              (named-timer domain; LM-NAMED-TIMER-DOMAIN)
 # - requirement-shell-idempotency.md
 # - requirement-shell-self-management.md
+# - requirement-shell-path-and-shell-support.md  (PATH/rc; Termux skip $PREFIX/bin; rc-test)
 # - requirement-shell-modular-function-design.md
 # - requirement-shell-output-requirements.md
 # - requirement-shell-interactive-vs-noninteractive.md
@@ -25,7 +26,8 @@
 #   volatile records use $PREFIX/tmp when /dev/shm and Android /tmp are unusable).
 # Default interaction: TTY empty argv / --debug → numbered menu; --json no
 #   command → JSON help; off-TTY empty argv → Type O install-ensure.
-#   Menu start/stop/status/kill/reset prompt for timer name (Enter = default).
+#   Menu start prompts for timer name (Enter = default). stop/status/kill/reset
+#   pick from a numbered list of running timers (0 leaves).
 # Plus CIAO Protection Zones and "DO NOT MODIFY" rules.
 #
 # Philosophy: CIAO (Caution • Intentional • Anti-fragile • Over-engineered)
@@ -52,8 +54,8 @@ APP_NAME="timer"
 : "${SHORT_DESCRIPTION:=${APP_DESC}}"
 : "${DESCRIPTION:=POSIX /bin/sh Type 0 CLI: install, version-check, self-update, self-uninstall, about, plus timer start/stop/status/list.}"
 # Product version SSOT (semver). Extractors use: grep '^VERSION="'
-VERSION="2.13.1"
-: "${VERSION:=2.13.1}"
+VERSION="2.14.0"
+: "${VERSION:=2.13.2}"
 
 # Runtime flags (safe defaults)
 : "${QUIET:=0}"
@@ -91,7 +93,12 @@ if [ -z "${HOME-}" ]; then
 fi
 : "${HOME:=/tmp}"
 : "${USER_BIN:=${HOME}/.local/bin}"
+: "${BASHRC:=${HOME}/.bashrc}"
+: "${ZSHRC:=${HOME}/.zshrc}"
+: "${FISH_CONFIG:=${HOME}/.config/fish/config.fish}"
 : "${INSTALL_PATH:=${GLOBAL_BIN}/${APP_NAME}}"
+: "${RC_TEST_ROOT:=}"
+: "${RC_TEST_CASE:=}"
 # Repository identity → install channel (Option B: raw.githubusercontent.com)
 : "${REPO_USER:=Wilgat}"
 : "${REPO_NAME:=timer}"
@@ -1088,7 +1095,8 @@ inst_perform_install_atomic_install() {
         return 1
     fi
 
-    # Add ~/.local/bin to PATH for normal user installs
+    # PATH ensure for user-drawer installs only (not $PREFIX/bin / OS bin).
+    # requirement-shell-path-and-shell-support.md
     if [ "$IS_ROOT" -eq 0 ]; then
         path_add_shell
     fi
@@ -1481,46 +1489,63 @@ inst_self_uninstall_cleanup_path() {
 
     : "${HOME:=/tmp}"
     : "${USER_BIN:=${HOME}/.local/bin}"
+    : "${BASHRC:=${HOME}/.bashrc}"
+    : "${ZSHRC:=${HOME}/.zshrc}"
+    : "${FISH_CONFIG:=${HOME}/.config/fish/config.fish}"
+    : "${APP_NAME:=timer}"
     local bin_dir="${USER_BIN}"
     local should_clean_path=1
+    local strip_shared_path=1
 
-    # === SAFETY CHECK: Only clean PATH if USER_BIN is empty ===
+    # Never strip an OS / Termux prefix bin from rc.
+    # requirement-shell-path-and-shell-support.md
+    if path_is_system_bin; then
+        return 0
+    fi
+
+    # === SAFETY CHECK: Only strip shared PATH if USER_BIN is empty ===
     if [ -d "$bin_dir" ]; then
         if [ -n "$(ls -A "$bin_dir" 2>/dev/null)" ]; then
-            # Directory exists and is not empty → keep PATH for other tools
-            should_clean_path=0
+            strip_shared_path=0
+            should_clean_path=1
             if [ "${JSON}" -eq 0 ]; then
                 out_warn "Keeping ${bin_dir} in PATH because it still contains files."
             fi
         fi
     fi
 
-    if [ "$should_clean_path" -eq 0 ]; then
-        return 0
-    fi
-
-    # Directory is empty or missing → safe to remove our PATH entries
     local cleaned=0
     local escaped_bin
-    # Escape sed | delimiter characters in USER_BIN for path-line removal
+    local escaped_app
     escaped_bin=$(printf '%s' "${bin_dir}" | sed 's/[\\/&|]/\\&/g')
+    escaped_app=$(printf '%s' "${APP_NAME}" | sed 's/[\\/&|]/\\&/g')
 
-    for config in "${HOME}/.bashrc" "${HOME}/.zshrc" "${HOME}/.config/fish/config.fish"; do
+    for config in "${BASHRC}" "${ZSHRC}" "${FISH_CONFIG}"; do
         if [ -f "$config" ]; then
-            if sed -i.bak \
-                -e '/# Added by .* installer/d' \
-                -e "\|${escaped_bin}|d" \
-                "$config" 2>/dev/null; then
-                cleaned=1
+            if [ "$strip_shared_path" -eq 1 ]; then
+                if sed -i.bak \
+                    -e "/# Added by ${escaped_app} installer/d" \
+                    -e "/# Interactive rc created by ${escaped_app} installer/d" \
+                    -e "\|${escaped_bin}|d" \
+                    "$config" 2>/dev/null; then
+                    cleaned=1
+                fi
+            else
+                if sed -i.bak \
+                    -e "/# Added by ${escaped_app} installer/d" \
+                    "$config" 2>/dev/null; then
+                    cleaned=1
+                fi
             fi
             rm -f "${config}.bak" 2>/dev/null || true
         fi
     done
 
-    if [ "$cleaned" -eq 1 ] && [ "${JSON}" -eq 0 ]; then
+    if [ "$cleaned" -eq 1 ] && [ "${JSON}" -eq 0 ] && [ "$strip_shared_path" -eq 1 ]; then
         out_plain "→ Cleaned ${APP_NAME} PATH entries from shell config files"
         out_plain "→ You may want to restart your terminal"
     fi
+    : "${should_clean_path:=1}"
 }
 
 # =============================================================================
@@ -1804,41 +1829,113 @@ ver_check() {
 
 
 # =============================================================================
-# path_add_bashrc() - Add ~/.local/bin to ~/.bashrc
+# path_is_system_bin() - True when USER_BIN is an OS / Termux prefix bin
 # =============================================================================
 #
 # GENERAL PURPOSE:
-# Appends the PATH export to ~/.bashrc only if not already present.
+# PATH ensure must not prepend Termux $PREFIX/bin or Linux /usr/bin into
+# .bashrc — those directories are already on PATH from login.
 #
-# Returns 0 if added (or was already present), 1 if file missing or failed.
+# ALIGNMENT (live requirements only):
+# - requirement-shell-path-and-shell-support.md
+#
+# Last reviewed: 2026-09-09
+# =============================================================================
+path_is_system_bin() {
+    : "${USER_BIN:=${HOME}/.local/bin}"
+    : "${GLOBAL_BIN:=/usr/local/bin}"
+    case "${USER_BIN}" in
+        /usr/bin|/bin|/usr/local/bin|"${GLOBAL_BIN}")
+            return 0
+            ;;
+        */com.termux/files/usr/bin)
+            return 0
+            ;;
+    esac
+    if [ -n "${PREFIX-}" ] && [ "${USER_BIN}" = "${PREFIX}/bin" ]; then
+        return 0
+    fi
+    return 1
+}
+
+# =============================================================================
+# path_add_bashrc() - Ensure USER_BIN on PATH in BASHRC (default ~/.bashrc)
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Create BASHRC if missing, then append the exact export PATH line only if
+# absent. Skip OS / Termux prefix bins. Returns 0 if created or PATH (or
+# this-product comment) was added, 1 if the exact line is already present
+# with this VERSION comment, write failed, or dest is a system bin.
+#
+# BASHRC defaults to ${HOME}/.bashrc. Tests/CI override BASHRC or use
+# rc-test --root so this login's real interactive rc is not touched.
 #
 # PRINTF EXCEPTION (class C – file I/O redirect):
 # printf … >> "$bashrc" writes shell config content to a file, not product
 # stdout/stderr. User-visible “→ Added …” lines use out_plain.
 # See requirement-shell-output-requirements.md §2.1.1.
 #
-# Last reviewed: 2026-07-12
+# ALIGNMENT (live requirements only):
+# - requirement-shell-path-and-shell-support.md
+#
+# Last reviewed: 2026-09-09
 # =============================================================================
 
 path_add_bashrc() {
     : "${HOME:=/tmp}"
     : "${USER_BIN:=${HOME}/.local/bin}"
-    local bashrc="${HOME}/.bashrc"
-    local path_line
-    path_line=$(printf 'export PATH="%s:$PATH"' "${USER_BIN}")
-    if [ ! -f "$bashrc" ]; then
+    : "${BASHRC:=${HOME}/.bashrc}"
+    : "${APP_NAME:=timer}"
+    : "${VERSION:=0.0.0}"
+    : "${JSON:=0}"
+
+    if path_is_system_bin; then
         return 1
     fi
 
-    if ! grep -qF "${USER_BIN}" "$bashrc" 2>/dev/null; then
-        printf "\n# Added by %s installer (%s)\n" "$APP_NAME" "$VERSION" >> "$bashrc"
-        printf '%s\n' "${path_line}" >> "$bashrc"
+    local bashrc="${BASHRC}"
+    local path_line
+    local created=0
+    local our_comment
+    path_line=$(printf 'export PATH="%s:$PATH"' "${USER_BIN}")
+    our_comment=$(printf '# Added by %s installer (%s)' "${APP_NAME}" "${VERSION}")
+
+    if [ ! -f "$bashrc" ]; then
+        if ! printf '# Interactive rc created by %s installer (%s)\n' "$APP_NAME" "$VERSION" > "$bashrc"; then
+            if [ "${JSON}" -eq 0 ]; then
+                out_warn "Could not create ${bashrc}. Next: create that file as this login, then re-run ${APP_NAME} install."
+            fi
+            return 1
+        fi
+        created=1
         if [ "${JSON}" -eq 0 ]; then
-            out_plain "→ Added ${USER_BIN} to PATH for bash"
+            out_plain "→ Created ${bashrc}"
+        fi
+        chmod 0644 "$bashrc" 2>/dev/null || true
+    fi
+
+    if grep -qF "${path_line}" "$bashrc" 2>/dev/null; then
+        if grep -qF "${our_comment}" "$bashrc" 2>/dev/null; then
+            if [ "$created" -eq 1 ]; then
+                return 0
+            fi
+            return 1
+        fi
+        printf "\n%s\n" "${our_comment}" >> "$bashrc"
+        if [ "${JSON}" -eq 0 ]; then
+            out_plain "→ Noted ${APP_NAME} installer on existing PATH line"
         fi
         return 0
     fi
-    return 1  # already present
+
+    printf "\n%s\n" "${our_comment}" >> "$bashrc"
+    printf '%s\n' "${path_line}" >> "$bashrc"
+    chmod 0644 "$bashrc" 2>/dev/null || true
+    if [ "${JSON}" -eq 0 ]; then
+        out_plain "→ Added ${USER_BIN} to PATH for bash"
+    fi
+    return 0
 }
 
 # =============================================================================
@@ -1861,14 +1958,23 @@ path_add_bashrc() {
 path_add_zshrc() {
     : "${HOME:=/tmp}"
     : "${USER_BIN:=${HOME}/.local/bin}"
-    local zshrc="${HOME}/.zshrc"
+    : "${ZSHRC:=${HOME}/.zshrc}"
+    : "${APP_NAME:=timer}"
+    : "${VERSION:=0.0.0}"
+    : "${JSON:=0}"
+
+    if path_is_system_bin; then
+        return 1
+    fi
+
+    local zshrc="${ZSHRC}"
     local path_line
     path_line=$(printf 'export PATH="%s:$PATH"' "${USER_BIN}")
     if [ ! -f "$zshrc" ]; then
         return 1
     fi
 
-    if ! grep -qF "${USER_BIN}" "$zshrc" 2>/dev/null; then
+    if ! grep -qF "${path_line}" "$zshrc" 2>/dev/null; then
         printf "\n# Added by %s installer (%s)\n" "$APP_NAME" "$VERSION" >> "$zshrc"
         printf '%s\n' "${path_line}" >> "$zshrc"
         if [ "${JSON}" -eq 0 ]; then
@@ -1876,7 +1982,7 @@ path_add_zshrc() {
         fi
         return 0
     fi
-    return 1  # already present
+    return 1  # exact export already present
 }
 
 # =============================================================================
@@ -1900,17 +2006,27 @@ path_add_zshrc() {
 path_add_fish() {
     : "${HOME:=/tmp}"
     : "${USER_BIN:=${HOME}/.local/bin}"
-    local fish_config="${HOME}/.config/fish/config.fish"
-    local path_line
-    path_line=$(printf 'set -gx PATH %s $PATH' "${USER_BIN}")
+    : "${FISH_CONFIG:=${HOME}/.config/fish/config.fish}"
+    : "${APP_NAME:=timer}"
+    : "${VERSION:=0.0.0}"
+    : "${JSON:=0}"
 
-    # Ensure directory exists
-    if [ ! -d "${HOME}/.config/fish" ] && ! mkdir -p "${HOME}/.config/fish" 2>/dev/null; then
+    if path_is_system_bin; then
         return 1
     fi
 
-    if [ -f "$fish_config" ] && grep -qF "${USER_BIN}" "$fish_config" 2>/dev/null; then
-        return 1  # already present
+    local fish_config="${FISH_CONFIG}"
+    local path_line
+    path_line=$(printf 'set -gx PATH %s $PATH' "${USER_BIN}")
+    local fish_dir
+    fish_dir=$(dirname "${fish_config}")
+
+    if [ ! -d "${fish_dir}" ] && ! mkdir -p "${fish_dir}" 2>/dev/null; then
+        return 1
+    fi
+
+    if [ -f "$fish_config" ] && grep -qF "${path_line}" "$fish_config" 2>/dev/null; then
+        return 1
     fi
 
     printf "\n# Added by %s installer (%s)\n" "$APP_NAME" "$VERSION" >> "$fish_config"
@@ -1936,38 +2052,143 @@ path_add_fish() {
 # =============================================================================
 
 path_add_shell() {
+    : "${HOME:=/tmp}"
+    : "${BASHRC:=${HOME}/.bashrc}"
+    : "${ZSHRC:=${HOME}/.zshrc}"
+    : "${FISH_CONFIG:=${HOME}/.config/fish/config.fish}"
+    : "${JSON:=0}"
+
+    if path_is_system_bin; then
+        return 0
+    fi
+
     local added=0
     local shell_config="N/A"
 
-    # Bash
     if path_add_bashrc; then
         added=1
-        shell_config="${HOME}/.bashrc"
+        shell_config="${BASHRC}"
     fi
 
-    # Zsh
     if path_add_zshrc; then
         added=1
         if [ "$shell_config" = "N/A" ]; then
-            shell_config="${HOME}/.zshrc"
+            shell_config="${ZSHRC}"
         else
-            shell_config="${shell_config} ${HOME}/.zshrc"
+            shell_config="${shell_config} ${ZSHRC}"
         fi
     fi
 
-    # Fish
     if path_add_fish; then
         added=1
         if [ "$shell_config" = "N/A" ]; then
-            shell_config="${HOME}/.config/fish/config.fish"
+            shell_config="${FISH_CONFIG}"
         else
-            shell_config="${shell_config} ${HOME}/.config/fish/config.fish"
+            shell_config="${shell_config} ${FISH_CONFIG}"
         fi
     fi
 
     if [ "$added" -eq 1 ] && [ "${JSON}" -eq 0 ]; then
         out_plain "→ Restart your terminal or run: source ${shell_config}"
     fi
+}
+
+# =============================================================================
+# path_rc_test() - Type 0 tester: PATH rc create/modify/no-op under --root
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Prove path_add_bashrc against a disposable folder. Does not write this
+# login's real ~/.bashrc. HOME stays the login home; BASHRC is retargeted
+# to ${RC_TEST_ROOT}/.bashrc.
+#
+# ALIGNMENT (live requirements only):
+# - requirement-shell-path-and-shell-support.md
+# - requirement-shell-cli-interface.md
+#
+# Last reviewed: 2026-09-09
+# =============================================================================
+path_rc_test() {
+    : "${JSON:=0}"
+    : "${APP_NAME:=timer}"
+    : "${VERSION:=0.0.0}"
+    : "${HOME:=/tmp}"
+    : "${USER_BIN:=${HOME}/.local/bin}"
+    : "${RC_TEST_ROOT:=}"
+    : "${RC_TEST_CASE:=}"
+
+    if [ -z "${RC_TEST_ROOT}" ] || [ "${RC_TEST_ROOT}" = "/" ] || [ "${RC_TEST_ROOT}" = "${HOME}" ]; then
+        out_die "rc-test --root must be a tmp/cache folder, not / or this login home. Next: ${APP_NAME} rc-test --root DIR --case create|modify|noop"
+    fi
+    case "${RC_TEST_CASE}" in
+        create|modify|noop) ;;
+        *)
+            out_die "rc-test --case must be create, modify, or noop. Next: ${APP_NAME} rc-test --root DIR --case create|modify|noop"
+            ;;
+    esac
+    if ! mkdir -p "${RC_TEST_ROOT}" 2>/dev/null; then
+        out_die "Could not create rc-test --root ${RC_TEST_ROOT}. Next: mkdir -p that folder as this login."
+    fi
+
+    BASHRC="${RC_TEST_ROOT}/.bashrc"
+    export BASHRC
+
+    if path_is_system_bin; then
+        if [ "${JSON}" -eq 1 ]; then
+            out_json "success" "rc-test skipped PATH ensure for system bin" \
+                "command" "rc-test" "case" "${RC_TEST_CASE}" "bashrc" "${BASHRC}" \
+                "user_bin" "${USER_BIN}" "skipped" "system_bin"
+        else
+            out_success "rc-test ${RC_TEST_CASE}: skipped PATH ensure for system bin ${USER_BIN}"
+        fi
+        return 0
+    fi
+
+    local path_line
+    local our_comment
+    path_line=$(printf 'export PATH="%s:$PATH"' "${USER_BIN}")
+    our_comment=$(printf '# Added by %s installer (%s)' "${APP_NAME}" "${VERSION}")
+
+    case "${RC_TEST_CASE}" in
+        create)
+            rm -f "${BASHRC}"
+            if ! path_add_bashrc; then
+                out_die "rc-test create did not write ${BASHRC}. Next: check USER_BIN is a user drawer, not \$PREFIX/bin."
+            fi
+            if [ ! -f "${BASHRC}" ] || ! grep -qF "${path_line}" "${BASHRC}"; then
+                out_die "rc-test create missing exact PATH line in ${BASHRC}. Next: re-run ${APP_NAME} rc-test --root DIR --case create"
+            fi
+            ;;
+        modify)
+            printf '# dongle-keep\nexport PS1=test\n' > "${BASHRC}"
+            if ! path_add_bashrc; then
+                out_die "rc-test modify did not append PATH to ${BASHRC}. Next: check the dongle file is writable."
+            fi
+            if ! grep -qF "dongle-keep" "${BASHRC}" || ! grep -qF "${path_line}" "${BASHRC}"; then
+                out_die "rc-test modify must keep the dongle body and append PATH. Next: re-run ${APP_NAME} rc-test --root DIR --case modify"
+            fi
+            ;;
+        noop)
+            printf '%s\n%s\n' "${our_comment}" "${path_line}" > "${BASHRC}"
+            _before=$(util_sha256_file "${BASHRC}" 2>/dev/null || echo "")
+            path_add_bashrc || true
+            _after=$(util_sha256_file "${BASHRC}" 2>/dev/null || echo "")
+            if [ -z "${_before}" ] || [ "${_before}" != "${_after}" ]; then
+                unset _before _after
+                out_die "rc-test noop must leave VERSION comments and exact PATH unchanged. Next: re-run ${APP_NAME} rc-test --root DIR --case noop"
+            fi
+            unset _before _after
+            ;;
+    esac
+
+    if [ "${JSON}" -eq 1 ]; then
+        out_json "success" "rc-test ${RC_TEST_CASE} ok" \
+            "command" "rc-test" "case" "${RC_TEST_CASE}" "bashrc" "${BASHRC}" \
+            "user_bin" "${USER_BIN}"
+    else
+        out_success "rc-test ${RC_TEST_CASE}: ${BASHRC}"
+    fi
+    return 0
 }
 
 # =============================================================================
@@ -2788,7 +3009,7 @@ app_about() {
     : "${QUIET:=0}"
     : "${APP_NAME:=timer}"
     # Version comes from global SSOT (VERSION="…" hard-assign near top); default only if unset
-    : "${VERSION:=2.13.1}"
+    : "${VERSION:=2.13.2}"
     : "${GLOBAL_BIN:=/usr/local/bin}"
     : "${USER_BIN:=${HOME}/.local/bin}"
     : "${SCRIPT_URL:=}"
@@ -2932,7 +3153,7 @@ app_about() {
 
 app_version() {
     : "${APP_NAME:=timer}"
-    : "${VERSION:=2.13.1}"
+    : "${VERSION:=2.13.2}"
     : "${JSON:=0}"
     if [ "${JSON}" -eq 1 ]; then
         # Same machine contract as historical app_main inline path
@@ -2963,7 +3184,7 @@ app_help() {
     if [ "${JSON}" -eq 1 ]; then
         out_json "success" "Help text available in human-readable mode. Run without --json." \
             "command" "help" \
-            "note" "Use --json with version, about, version-check, install, self-update, self-uninstall, start, stop, status, list."
+            "note" "Use --json with version, about, version-check, install, self-update, self-uninstall, start, stop, status, list, rc-test."
         return 0
     fi
 
@@ -3006,12 +3227,19 @@ app_help() {
     out_plain "  help                 Show this help"
     out_empty_line
 
+    out_info "Test helpers (local fixture only):"
+    out_plain "  rc-test --root DIR --case create|modify|noop"
+    out_plain "                       Prove PATH rc write on a temp folder (does not edit this login's ~/.bashrc)"
+    out_empty_line
+
     out_info "Global Options:"
     out_plain "  --persist            Use persistent storage (survives reboot) for timer ops"
     out_plain "  --quiet, -q          Suppress info/success (errors and warnings still shown)"
     out_plain "  --json               Machine-readable JSON (implies --quiet)"
     out_plain "  --force              Force reinstall / skip uninstall confirm / allow downgrade"
     out_plain "  --debug              Debug diagnostics on stderr"
+    out_plain "  --root DIR           Fixture folder for rc-test (tmp/cache; not this login home)"
+    out_plain "  --case NAME          rc-test case: create, modify, or noop"
     out_empty_line
 
     # Effective channel values (Config SSOT / env override) so help is actionable.
@@ -3113,7 +3341,7 @@ app_default_print_menu() {
 # (caller reprints). Exit numbers are handled in app_default.
 #
 # WARNING — do-not-capture-read (PP-A-22): this function MUST NOT contain
-# read. Choice and extra name field are read in app_default (current shell).
+# read. Choice, start name, and running-timer pick are read in app_default.
 #
 # Last updated: 2026-09-07
 # =============================================================================
@@ -3138,15 +3366,114 @@ app_default_run_pick() {
 }
 
 # =============================================================================
+# app_default_print_running() - Numbered list of running timers (TTY pick)
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Print running timers as N. name: running for M min S sec. Sets
+# TIMER_PICK_COUNT and TIMER_PICK_LIST (newline-separated names). Cancel row
+# is 0 (not 9 — row 9 can be a timer). Returns 1 when none are running.
+#
+# WARNING — do-not-capture-read (PP-A-22): this function MUST NOT contain read.
+#
+# ALIGNMENT (live requirements only):
+# - requirement-shell-cli-default-interaction.md
+# - requirement-domain-timer.md
+#
+# Last updated: 2026-09-07
+# =============================================================================
+app_default_print_running() {
+    TIMER_PICK_COUNT=0
+    TIMER_PICK_LIST=""
+    : "${APP_NAME:=timer}"
+    : "${USERNAME:=unknown}"
+    : "${TIMER_PERSIST:=0}"
+    : "${JSON:=0}"
+    : "${QUIET:=0}"
+    _mode="volatile"
+    [ "${TIMER_PERSIST}" -eq 1 ] && _mode="persistent"
+    _base=$(timer_resolve_base_dir "${_mode}") || _base=""
+    unset _mode
+    if [ -z "${_base}" ] || [ ! -d "${_base}" ]; then
+        unset _base
+        out_plain "No running timers found."
+        return 1
+    fi
+    for _file in "${_base}"/${APP_NAME}_"${USERNAME}"_*; do
+        [ -f "${_file}" ] || continue
+        _name="${_file##*${APP_NAME}_${USERNAME}_}"
+        _start=$(cat "${_file}" 2>/dev/null) || continue
+        _now=$(date +%s 2>/dev/null) || continue
+        _elapsed=$((_now - _start))
+        _min=$((_elapsed / 60))
+        _sec=$((_elapsed % 60))
+        TIMER_PICK_COUNT=$((TIMER_PICK_COUNT + 1))
+        if [ -n "${TIMER_PICK_LIST}" ]; then
+            TIMER_PICK_LIST="${TIMER_PICK_LIST}
+${_name}"
+        else
+            TIMER_PICK_LIST="${_name}"
+        fi
+        out_menu_choice "${TIMER_PICK_COUNT}" "${_name}" "running for ${_min} min ${_sec} sec"
+    done
+    unset _base _file _name _start _now _elapsed _min _sec
+    if [ "${TIMER_PICK_COUNT}" -eq 0 ]; then
+        out_plain "No running timers found."
+        return 1
+    fi
+    out_menu_choice "0" "Exit"
+    return 0
+}
+
+# =============================================================================
+# app_default_map_running_pick() - Map a running-timer pick to TIMER_NAME
+# =============================================================================
+#
+# GENERAL PURPOSE:
+# Number 1..TIMER_PICK_COUNT or a listed name → TIMER_NAME. 0 / empty / exit /
+# quit cancel (return 2). Unknown pick return 1. No read (PP-A-22).
+#
+# Last updated: 2026-09-07
+# =============================================================================
+app_default_map_running_pick() {
+    _want="${1-}"
+    : "${TIMER_PICK_LIST:=}"
+    : "${TIMER_PICK_COUNT:=0}"
+    TIMER_NAME=""
+    case "${_want}" in
+        ""|0|q|Q|exit|quit|Exit|QUIT)
+            unset _want
+            return 2
+            ;;
+    esac
+    case "${_want}" in
+        *[!0-9]*)
+            ;;
+        *)
+            if [ "${_want}" -ge 1 ] && [ "${_want}" -le "${TIMER_PICK_COUNT}" ]; then
+                TIMER_NAME=$(printf '%s\n' "${TIMER_PICK_LIST}" | awk -v n="${_want}" 'NR==n {print; exit}')
+                unset _want
+                [ -n "${TIMER_NAME}" ] && return 0
+                return 1
+            fi
+            ;;
+    esac
+    TIMER_NAME=$(printf '%s\n' "${TIMER_PICK_LIST}" | awk -v w="${_want}" '$0==w {print; exit}')
+    unset _want
+    [ -n "${TIMER_NAME}" ] && return 0
+    return 1
+}
+
+# =============================================================================
 # app_default() - Default interaction: TTY numbered menu / off-TTY help
 # =============================================================================
 #
 # GENERAL PURPOSE:
 # Command menu / main / TTY empty argv. On a real terminal: ignore --json on
-# menu/main, show the numbered list, prompt for timer name on start/stop/
-# status/kill/reset (Enter = default), run one pick. Off-TTY: help (JSON
-# help when --json). Never hang. Choice and name are read in this shell
-# (not $() of read / prompt_ask).
+# menu/main, show the numbered list, prompt for a name on start (Enter =
+# default), pick a running timer on stop/status/kill/reset, run one pick.
+# Off-TTY: help (JSON help when --json). Never hang. Choice, name, and
+# running-timer pick are read in this shell (not $() of read / prompt_ask).
 #
 # ALIGNMENT (live requirements only):
 # - requirement-shell-cli-default-interaction.md
@@ -3199,13 +3526,45 @@ app_default() {
                 return 0
                 ;;
         esac
-        # Extra name field while JSON/QUIET stay 0 (TTY menu ignores --json).
+        # Extra fields while JSON/QUIET stay 0 (TTY menu ignores --json).
         # MUST NOT TIMER_NAME=$(prompt_ask …) — PP-A-22 / PROMPT_ASK_VALUE.
         case "${_pick}" in
-            1|start|2|stop|3|status|5|kill|6|reset)
+            1|start)
                 prompt_ask "Timer name" "default"
                 TIMER_NAME="${PROMPT_ASK_VALUE}"
                 : "${TIMER_NAME:=default}"
+                ;;
+            2|stop|3|status|5|kill|6|reset)
+                while true; do
+                    if ! app_default_print_running; then
+                        JSON="${_menu_json}"
+                        QUIET="${_menu_quiet}"
+                        export JSON QUIET
+                        return 0
+                    fi
+                    out_msg_n "Choice: "
+                    _tpick=""
+                    # WARNING — do-not-capture-read (PP-A-22)
+                    if ! read -r _tpick; then
+                        JSON="${_menu_json}"
+                        QUIET="${_menu_quiet}"
+                        export JSON QUIET
+                        return 0
+                    fi
+                    app_default_map_running_pick "${_tpick}"
+                    _map=$?
+                    if [ "${_map}" -eq 2 ]; then
+                        JSON="${_menu_json}"
+                        QUIET="${_menu_quiet}"
+                        export JSON QUIET
+                        return 0
+                    fi
+                    if [ "${_map}" -eq 0 ]; then
+                        break
+                    fi
+                    out_warn "Not a running timer. Type 1-${TIMER_PICK_COUNT}, 0 to leave, or a listed name. Next: ${APP_NAME} menu"
+                done
+                unset _tpick _map
                 ;;
         esac
         JSON="${_menu_json}"
@@ -3304,6 +3663,8 @@ app_main() {
     : "${DEBUG:=0}"
     : "${FORCE:=0}"
     : "${FORCE_REINSTALL:=0}"
+    : "${RC_TEST_ROOT:=}"
+    : "${RC_TEST_CASE:=}"
 
     # Effective scratch/cache root for this run (requirement-shell-cli-storage).
     # Priority: /dev/shm → Termux $PREFIX/tmp → /tmp → STORAGE_DIR (cache).
@@ -3334,7 +3695,21 @@ app_main() {
             --debug)    DEBUG=1 ;;
             --force)    FORCE=1; FORCE_REINSTALL=1 ;;
             --persist)  TIMER_PERSIST=1 ;;
-            version|about|help|menu|main|version-check|self-update|self-uninstall|install)
+            --root)
+                if [ -z "${2-}" ]; then
+                    out_die "Missing folder after --root. Next: ${APP_NAME} rc-test --root DIR --case create|modify|noop"
+                fi
+                RC_TEST_ROOT="$2"
+                shift
+                ;;
+            --case)
+                if [ -z "${2-}" ]; then
+                    out_die "Missing case after --case. Next: ${APP_NAME} rc-test --root DIR --case create|modify|noop"
+                fi
+                RC_TEST_CASE="$2"
+                shift
+                ;;
+            version|about|help|menu|main|version-check|self-update|self-uninstall|install|rc-test)
                 COMMAND="$1"
                 _saw_command=1
                 ;;
@@ -3387,6 +3762,9 @@ app_main() {
             ;;
         install)
             inst_perform_install
+            ;;
+        rc-test)
+            path_rc_test
             ;;
         menu|main)
             app_default

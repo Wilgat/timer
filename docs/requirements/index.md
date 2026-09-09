@@ -5,7 +5,7 @@
 **Class law:** `requirement-class-software-dev` / **`RQ-CLASS-SOFTWARE-DEV`**.  
 **Domain SSOT:** `requirement-domain-timer` / **`RQ-DOMAIN-TIMER`**.  
 **Bootstrap origin:** selfmanaged Type 0 (A→B specialize; re-specialized 2026-08-11 from selfmanaged **1.2.1**).  
-**Updated:** 2026-09-07 (TTY menu name prompt; Enter = `default`)
+**Updated:** 2026-09-09 (PATH/rc: `RQ-SHELL-PATH-AND-SHELL-SUPPORT`; Termux skip `$PREFIX/bin`)
 
 | Requirement-ID | Key | Title | Area | Status | Path | Updated |
 |----------------|-----|-------|------|--------|------|---------|
@@ -14,14 +14,15 @@
 | `RQ-SHELL-CLI-INTERFACE` | requirement-shell-cli-interface | Shell CLI interface (commands, flags, dispatch, modes) | shell | Active | `requirement-shell-cli-interface.md` | 2026-09-07 |
 | `RQ-SHELL-CLI-STORAGE` | requirement-shell-cli-storage | Scratch/cache storage resolve (per-user isolation, main wire, about fields) | shell | Active | `requirement-shell-cli-storage.md` | 2026-09-07 |
 | `RQ-SHELL-CLI-ZERO-ARGUMENTS` | requirement-shell-cli-zero-arguments | Empty argv: TTY menu / off-TTY Type O ensure; `--json` JSON help | shell | Active | `requirement-shell-cli-zero-arguments.md` | 2026-09-07 |
-| `RQ-SHELL-CLI-DEFAULT-INTERACTION` | requirement-shell-cli-default-interaction | TTY numbered start list (`menu`/`main`; TTY empty argv; name prompt) | shell | Active | `requirement-shell-cli-default-interaction.md` | 2026-09-07 |
+| `RQ-SHELL-CLI-DEFAULT-INTERACTION` | requirement-shell-cli-default-interaction | TTY numbered start list (`menu`/`main`; start name; running-timer pick) | shell | Active | `requirement-shell-cli-default-interaction.md` | 2026-09-07 |
 | `RQ-SHELL-TEMP-FILE-SYSTEM` | requirement-shell-temp-file-system | Temp leaf policy (mktemp, TMPDIR inheritance, install staging hygiene) | shell | Active | `requirement-shell-temp-file-system.md` | 2026-08-11 |
 | `RQ-DOMAIN-TIMER` | requirement-domain-timer | Named-timer domain product law (subcommands, storage, help/about domain rows) | domain | Active | `requirement-domain-timer.md` | 2026-09-07 |
 | `RQ-SHELL-IDEMPOTENCY` | requirement-shell-idempotency | Shell idempotency / re-run safety for ensure-style ops | shell | Active | `requirement-shell-idempotency.md` | 2026-07-24 |
 | `RQ-SHELL-INTERACTIVE-VS-NONINTERACTIVE` | requirement-shell-interactive-vs-noninteractive | Interactive vs non-interactive / `curl|sh` behavior | shell | Active | `requirement-shell-interactive-vs-noninteractive.md` | 2026-09-07 |
 | `RQ-SHELL-MODULAR-FUNCTION-DESIGN` | requirement-shell-modular-function-design | Single-file modular function design (prefixes, zones) | shell | Active | `requirement-shell-modular-function-design.md` | 2026-07-24 |
 | `RQ-SHELL-OUTPUT-REQUIREMENTS` | requirement-shell-output-requirements | Central `out_*` output SSOT (stdout/stderr, modes; `@key` raw nested/numeric JSON) | shell | Active | `requirement-shell-output-requirements.md` | 2026-09-07 |
-| `RQ-SHELL-SELF-MANAGEMENT` | requirement-shell-self-management | Self-management lifecycle (version-check, update, uninstall, about) | shell | Active | `requirement-shell-self-management.md` | 2026-09-06 |
+| `RQ-SHELL-SELF-MANAGEMENT` | requirement-shell-self-management | Self-management lifecycle (version-check, update, uninstall, about) | shell | Active | `requirement-shell-self-management.md` | 2026-09-09 |
+| `RQ-SHELL-PATH-AND-SHELL-SUPPORT` | requirement-shell-path-and-shell-support | Shell path integration (bashrc PATH ensure; Termux skip system bin; `rc-test`) | shell | Active | `requirement-shell-path-and-shell-support.md` | 2026-09-09 |
 | `RQ-SHELL-SCRIPT-CODING` | requirement-shell-script-coding | POSIX `/bin/sh` coding-style specialize-in home (Termux this-login helpers) | shell | Active | `requirement-shell-script-coding.md` | 2026-09-07 |
 
 **Rules for agents:**
@@ -40,5 +41,5 @@ When adding a requirement: append a row (with `RQ-*`), create the file under `do
 
 ## Law-mold alignment (product)
 
-Each Active non-class shell requirement **specializes** a portable law mold-ID (cited as **`LM-*`** on DTV, not as a template path). Domain SSOT **`RQ-DOMAIN-TIMER`** specializes **`LM-NAMED-TIMER-DOMAIN`** (base **`LM-SHELL-INTERNAL-VOLATILE-TIMER`**); proof design aid **`PM-DOMAIN-TEST-PLAN`** → product family **`TP-TIMER`**. Mandatory domain peers: CLI (**`LM-CLI-INTERFACE`**), shell storage (**`LM-SHELL-CLI-STORAGE`**), temp (**`LM-TEMP-FILE-SYSTEM`**), output (**`LM-OUTPUT-REQUIREMENTS`**). Full matrix: `reviews/requirement-test-matrix.md`.
+Each Active non-class shell requirement **specializes** a portable law mold-ID (cited as **`LM-*`** on DTV, not as a template path). Domain SSOT **`RQ-DOMAIN-TIMER`** specializes **`LM-NAMED-TIMER-DOMAIN`** (base **`LM-SHELL-INTERNAL-VOLATILE-TIMER`**); proof design aid **`PM-DOMAIN-TEST-PLAN`** → product family **`TP-TIMER`**. Mandatory domain peers: CLI (**`LM-CLI-INTERFACE`**), shell storage (**`LM-SHELL-CLI-STORAGE`**), temp (**`LM-TEMP-FILE-SYSTEM`**), output (**`LM-OUTPUT-REQUIREMENTS`**). PATH/rc: **`RQ-SHELL-PATH-AND-SHELL-SUPPORT`** / **`LM-PATH-AND-SHELL-SUPPORT`**. Full matrix: `reviews/requirement-test-matrix.md`.
 

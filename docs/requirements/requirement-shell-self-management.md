@@ -1,6 +1,6 @@
 **file**: docs/requirements/requirement-shell-self-management.md  
 **Requirement-ID**: `RQ-SHELL-SELF-MANAGEMENT`  
-**Status**: Active (Version 1.0.2 – CIAO v2.10.2 Principles 5/9/10/11/20)  
+**Status**: Active (Version 1.1.0 – PATH bodies owned by RQ-SHELL-PATH-AND-SHELL-SUPPORT)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
 ## 1. Purpose
@@ -85,7 +85,7 @@ Related Type 0 commands (`version`, `install`, `help`) are owned by `requirement
 |-------------|---------|
 | Locate binary | Resolve path from install type / Config (`GLOBAL_BIN` / `USER_BIN` / privilege), not scattered absolute path literals in business logic |
 | Remove binary | Delete only the managed CLI file(s) this tool owns |
-| PATH cleanup | Edit shell config PATH entries **only if** the managed bin directory is empty after removal (or equivalent safe policy) |
+| PATH cleanup | Edit shell config PATH entries **only if** the managed **user drawer** is empty after removal **and** it is not a system bin — bodies: `requirement-shell-path-and-shell-support.md` |
 | Confirmation | Interactive confirm unless `--force` / non-interactive policy applies |
 | Non-interactive / JSON without force | **Fail closed** with explicit confirm-required outcome (JSON: `out_json_error` / `confirm_required`) — **MUST NOT** emit success JSON that pretends the user cancelled (see interactive-vs-noninteractive requirement) |
 | No over-delete | **MUST NOT** wipe unrelated user data or arbitrary home trees |
@@ -115,7 +115,7 @@ Root may write global install path; non-root uses user path. Do not assume root 
 | **No silent downgrade** | Without explicit force policy, refuse remote older than local |
 | **No skip integrity** | Digest/checksum path required for downloaded update artifacts — automatic companion is default; strict pin secondary. Full automatic transparency law: `requirement-shell-automatic-checksum.md` |
 | **No weak atomicity** | Avoid partial replaces that leave a broken binary |
-| **No reckless PATH edit** | Only clean PATH when managed bin dir is empty / policy-safe |
+| **No reckless PATH edit** | Only clean PATH when managed **user drawer** is empty; **never** strip `$PREFIX/bin` / OS bins — `requirement-shell-path-and-shell-support.md` |
 | **No raw I/O** | Use output SSOT; quiet/json channel rules |
 | **No secrets in tree** | Never embed tokens or credentials in update URLs in docs/code; Config/env only |
 | **Idempotent where sensible** | Already-latest update and already-removed uninstall must not corrupt state |
@@ -138,9 +138,9 @@ Root may write global install path; non-root uses user path. Do not assume root 
 | **Companion digest** | Default `${SCRIPT_URL}.sha256` via `inst_perform_install_download_without_checksum` — law + transparency: `requirement-shell-automatic-checksum.md` |
 | **Force reinstall** | `FORCE_REINSTALL`; CLI `--force` required by CLI interface requirement |
 | **Uninstall steps** | `inst_self_uninstall_determine_bin` → `inst_self_uninstall_confirm_and_remove` → `inst_self_uninstall_cleanup_path` |
-| **PATH ensure** | `path_add_shell` / bash / zsh / fish helpers on user install |
+| **PATH ensure** | `path_add_shell` after user-local install **only for a user drawer** — bodies + Termux skip: `requirement-shell-path-and-shell-support.md` |
 | **Privilege** | Type 0 only for self-management surface; no dedicated system user |
-| **Version SSOT** | `VERSION` in script config block (product SSOT; currently `VERSION="2.13.1"`) |
+| **Version SSOT** | `VERSION` in script config block (product SSOT; currently `VERSION="2.14.0"`) |
 
 #### Normative acceptance behaviors (this project)
 
@@ -150,7 +150,7 @@ Root may write global install path; non-root uses user path. Do not assume root 
    - If local equals remote and force off → success no-op (“already latest”).  
    - If remote is **older** than local and force off → **refuse** (no silent downgrade).  
    - If remote is newer (or force policy allows reinstall) → set reinstall and call `inst_perform_install` with integrity + atomic replace.  
-3. **`self-uninstall`:** Resolve binary; confirm when interactive and force off; without force under quiet/json/non-TTY → fail closed (`confirm_required`), never fake cancel success; with force → remove without confirm; clean PATH only if `~/.local/bin` empty (non-root); never delete unrelated trees.  
+3. **`self-uninstall`:** Resolve binary; confirm when interactive and force off; without force under quiet/json/non-TTY → fail closed (`confirm_required`), never fake cancel success; with force → remove without confirm; clean PATH only if managed **user drawer** is empty (non-root) **and** not a system bin (`requirement-shell-path-and-shell-support.md`); never delete unrelated trees.  
 4. **`about`:** Human diagnostics + JSON about object; no secrets; **no `CHECKSUM` name/value**.  
 5. **Shared install path:** Self-update **must not** introduce a parallel curl-to-final-path overwrite outside `inst_perform_install*`.
 
@@ -226,6 +226,7 @@ Work claiming self-management support for timer is **not done** if any of the fo
 
 | Artifact | Role |
 |----------|------|
+| `docs/requirements/requirement-shell-path-and-shell-support.md` | PATH/rc bodies, Termux skip, `rc-test` |
 | `docs/requirements/requirement-shell-cli-interface.md` | Command surface, flags, dispatcher |
 | `docs/requirements/requirement-shell-idempotency.md` | Re-run safety for ensure ops |
 | `docs/requirements/requirement-shell-interactive-vs-noninteractive.md` | Uninstall confirm / non-interactive fail-closed |
@@ -241,7 +242,7 @@ Work claiming self-management support for timer is **not done** if any of the fo
 
 When the program runs on Termux, Git Bash, Windows cmd, or the same class, only **this login** may use it. Admin privilege and a dedicated system-user switch stay **unused**.
 
-**This requirement:** install / update / uninstall / about. On Termux, dest is `$PREFIX/bin` or `~/.local/bin`; about reports `termux`; recommended one-liner is `curl | sh` with no `sudo`.
+**This requirement:** install / update / uninstall / about. On Termux, dest is `$PREFIX/bin` or `~/.local/bin`; about reports `termux`; recommended one-liner is `curl | sh` with no `sudo`. PATH rc for `$PREFIX/bin` is **skipped** (`requirement-shell-path-and-shell-support.md`).
 
 | MUST | MUST NOT |
 |------|----------|
@@ -269,9 +270,11 @@ When the program runs on Termux, Git Bash, Windows cmd, or the same class, only 
 | **TP-CLI-11** uninstall refuse (CLI suite) | `tests/test_cli.sh` | have |
 | **TP-TX-01..05** Termux target (detect, no sudo, PREFIX/bin, no pkg) | `tests/test_cli.sh` | have |
 | **TP-TX-08** Termux `$PREFIX/tmp` volatile records | `tests/test_cli.sh` | have |
+| **TP-TX-09** Termux `$PREFIX/bin` dest does not write PATH into rc | `tests/test_cli.sh` — owned by **RQ-SHELL-PATH-AND-SHELL-SUPPORT** | have |
+| **TP-LC-20..22** bashrc PATH create / modify / no-op | `tests/test_install_lifecycle.sh` — owned by **RQ-SHELL-PATH-AND-SHELL-SUPPORT** | have |
 | **TP-CURL-02,07** pipe install / pipe version | `tests/test_online_curl_install.sh` | have |
 
 
-**Last Updated**: 2026-07-14
+**Last Updated**: 2026-09-09
 **Owner**: timer project maintainers  
 **Alignment**: Registry `docs/requirements/index.md`; peer live requirements in §6; CIAO Principles 1, 2, 3, 4, 5, 9, 10, 11, 20 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).

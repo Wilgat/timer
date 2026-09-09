@@ -1,7 +1,7 @@
 # =============================================================================
 # tests/test_cli.sh — Type 0 CLI surface (PM-SHELL-CLI-TEST-PLAN / TP-CLI-*)
 # =============================================================================
-# Portable families: TP-CLI, TP-CSUM-01/05, TP-U-01, TP-TX-01..05, TP-TX-08, TP-CLI-16/17/29/30.
+# Portable families: TP-CLI, TP-CSUM-01/05, TP-U-01, TP-TX-01..05, TP-TX-08, TP-TX-09, TP-CLI-16/17/29/30.
 # Primary REQs: RQ-SHELL-CLI-INTERFACE, RQ-SHELL-CLI-DEFAULT-INTERACTION, RQ-SHELL-OUTPUT-REQUIREMENTS, RQ-SHELL-AUTOMATIC-CHECKSUM, RQ-SHELL-CLI-ZERO-ARGUMENTS, RQ-SHELL-SCRIPT-CODING.
 # Labels MUST include TP-IDs (policy-harness-id-notation / PM-SHELL-CLI-TEST-PLAN).
 # =============================================================================
@@ -52,6 +52,8 @@ run_test_cli() {
     assert_contains "TP-CLI-03 help lists version-check" "$_out" "version-check"
     assert_contains "TP-CLI-03 help lists self-update" "$_out" "self-update"
     assert_contains "TP-CLI-03 help lists self-uninstall" "$_out" "self-uninstall"
+    assert_contains "TP-CLI-03 help lists rc-test (test-purpose)" "$_out" "rc-test"
+    assert_contains "TP-CLI-03 help lists testers apart" "$_out" "Test helpers"
     assert_contains "TP-CLI-03 help lists about" "$_out" "about"
     assert_contains "TP-CLI-03 help lists start (domain)" "$_out" "start"
     assert_contains "TP-CLI-03 help lists stop (domain)" "$_out" "stop"
@@ -307,7 +309,7 @@ run_test_cli() {
         assert_not_contains "TP-CLI-07 TTY --json no command not numbered list" "$_jout" "9. Exit"
         unset _jout _bold _italic _gray_italic _ident
 
-        # --- TP-CLI-30: TTY menu extra name field (Enter = default; list skips) ---
+        # --- TP-CLI-30: start name prompt; stop/status/kill/reset numbered running list ---
         mkdir -p "${CI_HOME}/vol"
         _vol="${CI_HOME}/vol"
         _out=$(HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" VOLATILE_DIR="${_vol}" \
@@ -315,6 +317,12 @@ run_test_cli() {
         assert_contains "TP-CLI-30 TTY menu list still lists" "$_out" "4. list:"
         assert_not_contains "TP-CLI-30 TTY menu list does not prompt for name" "$_out" "Timer name"
         assert_contains "TP-CLI-30 TTY menu list runs without name" "$_out" "No running timers found."
+
+        _out=$(HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" VOLATILE_DIR="${_vol}" \
+            PTY_IN="2" ci_pty_capture "${SCRIPT}")
+        assert_contains "TP-CLI-30 TTY menu stop with none is empty list" "$_out" "No running timers found."
+        assert_not_contains "TP-CLI-30 TTY menu stop with none does not prompt for name" "$_out" "Timer name"
+        assert_not_contains "TP-CLI-30 TTY menu stop with none has no cancel row" "$_out" "0. Exit"
 
         _out=$(HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" VOLATILE_DIR="${_vol}" \
             PTY_IN="1\\n" ci_pty_capture "${SCRIPT}")
@@ -328,16 +336,24 @@ run_test_cli() {
         assert_not_contains "TP-CLI-30 TTY menu start typed name not default" "$_out" "Timer 'default' started"
 
         _out=$(HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" VOLATILE_DIR="${_vol}" \
-            PTY_IN="2\\nnosuch" ci_pty_capture "${SCRIPT}")
-        assert_contains "TP-CLI-30 TTY menu stop prompts for name" "$_out" "Timer name"
-        assert_contains "TP-CLI-30 TTY menu stop uses typed name" "$_out" "No timer 'nosuch' running"
+            PTY_IN="2\\n1" ci_pty_capture "${SCRIPT}")
+        assert_contains "TP-CLI-30 TTY menu stop numbered running row" "$_out" "1. default:"
+        assert_contains "TP-CLI-30 TTY menu stop cancel is 0" "$_out" "0. Exit"
+        assert_not_contains "TP-CLI-30 TTY menu stop does not prompt for name" "$_out" "Timer name"
+        assert_contains "TP-CLI-30 TTY menu stop pick 1 stops listed timer" "$_out" "Timer 'default' stopped"
+        assert_not_contains "TP-CLI-30 TTY menu stop pick 1 does not stop other" "$_out" "Timer 'work' stopped"
+
+        _out=$(HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" VOLATILE_DIR="${_vol}" \
+            PTY_IN="3\\nwork" ci_pty_capture "${SCRIPT}")
+        assert_contains "TP-CLI-30 TTY menu status listed name" "$_out" "1. work:"
+        assert_contains "TP-CLI-30 TTY menu status uses listed name" "$_out" "Timer 'work':"
         unset _vol
     else
         t_skip "TP-CLI-07 TTY empty argv (no python3 for PTY)"
         t_skip "TP-CLI-17 TTY header (no python3 for PTY)"
         t_skip "TP-CLI-29 TTY --debug no command (no python3 for PTY)"
         t_skip "TP-CLI-07 TTY --json no command (no python3 for PTY)"
-        t_skip "TP-CLI-30 TTY menu name prompt (no python3 for PTY)"
+        t_skip "TP-CLI-30 TTY menu start name / running-timer pick (no python3 for PTY)"
     fi
     ci_cleanup_env
 
@@ -408,6 +424,25 @@ run_test_cli() {
     _all="${_out}${_err}"
     assert_not_contains "TP-TX-03 empty-argv recommend has no sudo curl" "$_all" "sudo curl"
     assert_contains "TP-TX-03 empty-argv still shows curl | sh" "$_all" "curl -fsSL"
+
+    # --- TP-TX-09: Termux $PREFIX/bin dest must not write PATH into rc ---
+    _txrc=$(mktemp -d "${TMPDIR:-/tmp}/tm-txrc.XXXXXX")
+    _out=$(
+        HOME="${CI_HOME}" PREFIX="${_tx_prefix}" TERMUX_VERSION="0.118.0" \
+        USER_BIN="${_tx_prefix}/bin" \
+        sh "${SCRIPT}" rc-test --root "${_txrc}" --case create 2>/dev/null
+    )
+    _ec=$?
+    assert_eq "TP-TX-09 rc-test create with PREFIX/bin dest exit 0" 0 "$_ec"
+    if [ -f "${_txrc}/.bashrc" ]; then
+        assert_not_contains "TP-TX-09 PREFIX/bin not in fixture bashrc" \
+            "$(cat "${_txrc}/.bashrc")" "export PATH=\"${_tx_prefix}/bin:\$PATH\""
+    else
+        t_pass "TP-TX-09 PREFIX/bin dest skipped rc create (no fixture bashrc)"
+    fi
+    assert_contains "TP-TX-09 skip names system bin" "$_out" "system bin"
+    rm -rf "${_txrc}"
+
     ci_cleanup_env
     rm -rf "${_stub}"
 }

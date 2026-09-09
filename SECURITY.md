@@ -4,7 +4,9 @@
 
 | Version | Supported |
 |---------|-----------|
-| **2.13.1** (current) | Yes — full support |
+| **2.14.0** (current) | Yes — full support |
+| **2.13.2** | Upgrade recommended (Termux PATH/rc skip + `rc-test` in 2.14.0) |
+| **2.13.1** | Upgrade recommended (running-timer pick on stop/status/kill/reset in 2.13.2) |
 | **2.13.0** | Upgrade recommended (menu name prompt in 2.13.1) |
 | **2.12.x** | Upgrade recommended (TTY menu + Termux `$PREFIX/tmp` in 2.13.0 / 2.12.1) |
 | **2.11.x** | Security fixes only; upgrade to current when possible |

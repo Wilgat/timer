@@ -3,7 +3,7 @@
 # =============================================================================
 # Families: TP-LC-*, TP-CSUM-02..04 (channel). Local HTTP only — no public network.
 # Labels MUST include TP-IDs (policy-harness-id-notation).
-# Primary REQs: RQ-SHELL-SELF-MANAGEMENT, RQ-SHELL-CLI-ZERO-ARGUMENTS, RQ-SHELL-IDEMPOTENCY, RQ-SHELL-AUTOMATIC-CHECKSUM.
+# Primary REQs: RQ-SHELL-SELF-MANAGEMENT, RQ-SHELL-CLI-ZERO-ARGUMENTS, RQ-SHELL-IDEMPOTENCY, RQ-SHELL-AUTOMATIC-CHECKSUM, RQ-SHELL-PATH-AND-SHELL-SUPPORT.
 # =============================================================================
 
 # shellcheck source=helpers.sh
@@ -54,19 +54,12 @@ run_test_install_lifecycle() {
     assert_contains "TP-LC-12 install --json path" "$_out" "${_app_bin}"
     assert_file_exists "TP-LC-12 installed binary exists" "${_app_bin}"
 
-    # PATH line may be written on first user install (bashrc/zshrc)
-    _path_hit=0
-    for _rc in "${CI_HOME}/.bashrc" "${CI_HOME}/.zshrc"; do
-        if [ -f "$_rc" ] && grep -q "${CI_USER_BIN}" "$_rc" 2>/dev/null; then
-            _path_hit=1
-            break
-        fi
-    done
-    if [ "$_path_hit" -eq 1 ]; then
-        t_pass "TP-LC-12 install added USER_BIN to a shell rc (PATH prep)"
+    # PATH line is written on first user-drawer install (bashrc created if missing)
+    _exp_path=$(printf 'export PATH="%s:$PATH"' "${CI_USER_BIN}")
+    if [ -f "${CI_HOME}/.bashrc" ] && grep -qF "${_exp_path}" "${CI_HOME}/.bashrc" 2>/dev/null; then
+        t_pass "TP-LC-12 install added exact USER_BIN PATH to .bashrc"
     else
-        # Some environments skip when already on PATH; not a hard fail for Type 0
-        t_pass "TP-LC-12 install PATH rc optional (no rc write observed)"
+        t_fail "TP-LC-12 install missing exact PATH export in .bashrc"
     fi
 
     # --- TP-LC-10: idempotent re-install (no --force) ---
@@ -296,6 +289,65 @@ run_test_install_lifecycle() {
     assert_eq "TP-LC-08 self-update --force downgrade exit 0" 0 "$_ec"
     _loc=$(grep '^VERSION="' "${_app_bin}" | cut -d'"' -f2)
     assert_eq "TP-LC-08 local version after forced downgrade" "0.9.0" "$_loc"
+
+    # --- TP-LC-20 / 21 / 22: bashrc PATH ensure via rc-test --root ---
+    # Keep CI_HOME (and the login home, if different) untouched.
+    _fix=$(mktemp -d "${TMPDIR:-/tmp}/tm-rc.XXXXXX")
+    _ubn="${_fix}/ubn"
+    mkdir -p "${_ubn}"
+    _path_line=$(printf 'export PATH="%s:$PATH"' "${_ubn}")
+    _ci_before=""
+    [ -f "${CI_HOME}/.bashrc" ] && _ci_before=$(sha256sum "${CI_HOME}/.bashrc" 2>/dev/null || true)
+    _login_home=$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f6)
+    _login_before=""
+    if [ -n "${_login_home}" ] && [ "${_login_home}" != "${CI_HOME}" ] && [ -f "${_login_home}/.bashrc" ]; then
+        _login_before=$(sha256sum "${_login_home}/.bashrc" 2>/dev/null || true)
+    fi
+
+    _out=$(
+        HOME="${CI_HOME}" USER_BIN="${_ubn}" \
+        sh "${SCRIPT}" rc-test --root "${_fix}" --case create 2>"${_errf}"
+    )
+    _ec=$?
+    assert_eq "TP-LC-20 rc-test create exit 0" 0 "$_ec"
+    assert_file_exists "TP-LC-20 created BASHRC under --root" "${_fix}/.bashrc"
+    assert_contains "TP-LC-20 exact PATH export" "$(cat "${_fix}/.bashrc" 2>/dev/null || true)" "${_path_line}"
+    assert_contains "TP-LC-20 VERSION installer comment" "$(cat "${_fix}/.bashrc" 2>/dev/null || true)" "${APP_VERSION}"
+    assert_contains "TP-LC-20 create header" "$(cat "${_fix}/.bashrc" 2>/dev/null || true)" "Interactive rc created by"
+
+    _out=$(
+        HOME="${CI_HOME}" USER_BIN="${_ubn}" \
+        sh "${SCRIPT}" rc-test --root "${_fix}" --case modify 2>"${_errf}"
+    )
+    _ec=$?
+    assert_eq "TP-LC-21 rc-test modify exit 0" 0 "$_ec"
+    _body=$(cat "${_fix}/.bashrc" 2>/dev/null || true)
+    assert_contains "TP-LC-21 dongle body kept" "$_body" "dongle-keep"
+    assert_contains "TP-LC-21 PATH appended once" "$_body" "${_path_line}"
+    _count=$(grep -cF "${_path_line}" "${_fix}/.bashrc" 2>/dev/null || echo 0)
+    assert_eq "TP-LC-21 exact PATH line once" "1" "$_count"
+
+    _out=$(
+        HOME="${CI_HOME}" USER_BIN="${_ubn}" \
+        sh "${SCRIPT}" --json rc-test --root "${_fix}" --case noop 2>"${_errf}"
+    )
+    _ec=$?
+    assert_eq "TP-LC-22 rc-test noop exit 0" 0 "$_ec"
+    assert_contains "TP-LC-22 json success" "$_out" '"type":"success"'
+    assert_not_contains "TP-LC-22 no Created message on noop" "$_out" "Created"
+    assert_not_contains "TP-LC-22 no Added message on noop" "$_out" "Added"
+
+    if [ -n "${_ci_before}" ]; then
+        _ci_after=$(sha256sum "${CI_HOME}/.bashrc" 2>/dev/null || true)
+        assert_eq "TP-LC-20 CI_HOME .bashrc untouched by rc-test" "${_ci_before}" "${_ci_after}"
+    fi
+    if [ -n "${_login_before}" ]; then
+        _login_after=$(sha256sum "${_login_home}/.bashrc" 2>/dev/null || true)
+        assert_eq "TP-LC-20 login home .bashrc untouched by rc-test" "${_login_before}" "${_login_after}"
+    else
+        t_pass "TP-LC-20 login home .bashrc snapshot skipped (absent or same as CI_HOME)"
+    fi
+    rm -rf "${_fix}"
 
     # cleanup
     HOME="${CI_HOME}" USER_BIN="${CI_USER_BIN}" SCRIPT_URL="${CI_SCRIPT_URL}" \

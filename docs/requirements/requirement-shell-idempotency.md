@@ -1,6 +1,6 @@
 **file**: docs/requirements/requirement-shell-idempotency.md  
 **Requirement-ID**: `RQ-SHELL-IDEMPOTENCY`  
-**Status**: Active (Version 1.0.2 – CIAO v2.10.2 Principles 11/12/20)  
+**Status**: Active (Version 1.1.0 – exact PATH no-op; system-bin skip)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
 ## 1. Purpose
@@ -96,8 +96,8 @@ Force **MUST NOT** be used as a silent way to skip integrity verification.
 | **Install ensure SSOT** | `inst_perform_install` (+ download/atomic helpers) |
 | **Force reinstall var** | `FORCE_REINSTALL` (default `0`); CLI `--force` must set this per `requirement-shell-cli-interface.md` |
 | **Remote channel** | `SCRIPT_URL` (required for version-check / self-update network steps) |
-| **User PATH integration** | `path_add_*` / `path_add_shell` — append only if marker/line absent |
-| **Uninstall PATH cleanup** | `inst_self_uninstall_cleanup_path` — only if `~/.local/bin` empty |
+| **User PATH integration** | `path_add_*` / `path_add_shell` — exact `export PATH="<USER_BIN>:$PATH"`; skip system bin — `requirement-shell-path-and-shell-support.md` |
+| **Uninstall PATH cleanup** | `inst_self_uninstall_cleanup_path` — only if managed **user drawer** empty **and** not a system bin |
 
 #### Command-level idempotency matrix (normative)
 
@@ -110,15 +110,15 @@ Force **MUST NOT** be used as a silent way to skip integrity verification.
 | `self-uninstall` | Binary absent | **Success no-op** “not installed / nothing to uninstall” | Force may skip interactive confirm only; still no over-delete |
 | `version-check` | N/A (read/compare) | Safe to re-run; network fetch each time is allowed; must not mutate install state | — |
 | `version`, `about`, `help` | N/A (read-only) | Safe to re-run; no install mutation | — |
-| PATH add (`path_add_bashrc` / zsh / fish) | PATH line already present | No second identical append | — |
-| PATH cleanup on uninstall | `~/.local/bin` empty **or** PATH lines already removed | No thrash; if bin dir still has files, **keep** PATH (do not strip shared dir) | — |
+| PATH add (`path_add_bashrc` / zsh / fish) | Exact `export PATH="<USER_BIN>:$PATH"` present **and** this product’s `VERSION` comments current | No rewrite (file bytes unchanged); no second append | Create `BASHRC` when missing; modify existing body only by appending PATH; skip `$PREFIX/bin` / OS bins |
+| PATH cleanup on uninstall | User drawer empty **or** PATH lines already removed | No thrash; if bin dir still has files, **keep** PATH; **never** strip a system bin | — |
 
 #### Concrete detect → act expectations (this project)
 
 1. **Install:** If `inst_is_installed` and `FORCE_REINSTALL=0` → return 0 without download/move.  
 2. **Self-update:** Fetch remote `VERSION` from `SCRIPT_URL`; if equal to local and force off → return 0 without reinstall; if remote unreadable → fail loud (not a silent “already ok”).  
 3. **Self-uninstall:** If no managed binary path resolved → return 0 (not installed).  
-4. **PATH ensure:** Grep/marker check before append; already present is success for the ensure intent.  
+4. **PATH ensure:** Exact `export PATH=` line check before append; already present is success for the ensure intent; system-bin dest is skip (success no-op). Bodies: `requirement-shell-path-and-shell-support.md`.  
 5. **Atomic install temps:** Failed download paths **MUST** remove temp files; re-run starts clean.  
 6. **Partial install:** Re-run of install after partial failure **MUST** attempt to converge (re-prepare target, re-download, atomic replace) or fail loud — not leave a second half-broken binary without error.
 
@@ -158,7 +158,8 @@ Force **MUST NOT** be used as a silent way to skip integrity verification.
 1. Remove or weaken “already installed / already latest / nothing to uninstall” success paths so that re-runs fail when healthy.  
 2. Make `install` always re-download when the binary is already present without force/reinstall policy.  
 3. Append duplicate PATH export blocks on every re-run.  
-4. Strip `~/.local/bin` from PATH when other tools still use that directory.  
+3b. Claim bashrc PATH ensure without create-if-missing / modify-dongle / VERSION+exact-PATH no-op (**TP-LC-20** / **TP-LC-21** / **TP-LC-22**).  
+4. Strip `~/.local/bin` from PATH when other tools still use that directory, or strip `$PREFIX/bin` / OS bins from rc.  
 5. Treat force as a way to skip checksum/digest verification.  
 6. Fail uninstall solely because the tool is already absent (must be success no-op).  
 7. Paper over missing remote version as “already latest.”  
@@ -175,8 +176,8 @@ A state-changing shell change for timer is **not done** if any of the following 
 1. Second `install` with healthy install and force off exits success without reinstall.  
 2. Second `self-update` when local equals remote and force off exits success without reinstall.  
 3. Second `self-uninstall` when not installed exits success.  
-4. PATH ensure does not duplicate lines when re-run.  
-5. PATH cleanup does not remove shared `~/.local/bin` entries while other files remain.  
+4. PATH ensure does not duplicate the exact `export PATH=` line when re-run.  
+5. PATH cleanup does not remove shared user-drawer entries while other files remain, and never strips a system bin.  
 6. Force/reinstall paths remain explicit and do not skip integrity checks.  
 7. Messages for already-done paths use output SSOT and respect quiet/json.  
 8. Implementation changes cite this requirement key `requirement-shell-idempotency`.
@@ -189,6 +190,7 @@ A state-changing shell change for timer is **not done** if any of the following 
 |----------|------|
 | `docs/requirements/requirement-shell-cli-interface.md` | Command surface, flags, force wiring |
 | `docs/requirements/requirement-shell-cli-zero-arguments.md` | Empty argv ensure for not-installed / local / global |
+| `docs/requirements/requirement-shell-path-and-shell-support.md` | PATH/rc bodies, exact-line no-op, Termux skip |
 | `docs/requirements/requirement-shell-self-management.md` | Lifecycle commands; integrity + downgrade policy |
 | `docs/requirements/requirement-shell-output-requirements.md` | Messages on no-op / already-done paths |
 | `docs/requirements/index.md` | Registry SSOT |
@@ -200,7 +202,7 @@ A state-changing shell change for timer is **not done** if any of the following 
 
 When the program runs on Termux, Git Bash, Windows cmd, or the same class, only **this login** may use it. Admin privilege and a dedicated system-user switch stay **unused**.
 
-**This requirement:** re-run safety. Termux re-install stays this-login dest; do not escalate to `sudo` on a second run.
+**This requirement:** re-run safety. Termux re-install stays this-login dest; do not escalate to `sudo` on a second run. PATH ensure for `$PREFIX/bin` is skip (already on PATH) — `requirement-shell-path-and-shell-support.md`.
 
 ## Design-time verification
 
@@ -214,9 +216,10 @@ When the program runs on Termux, Git Bash, Windows cmd, or the same class, only 
 | **TP-LC-01** ensure re-run / already-installed paths | `tests/test_install_lifecycle.sh` | have |
 | **TP-LC-05** self-update already-latest | `tests/test_install_lifecycle.sh` | have |
 | **TP-LC-10** idempotent re-install | `tests/test_install_lifecycle.sh` | have |
+| **TP-LC-20..22** bashrc PATH create / modify / exact-line no-op | `tests/test_install_lifecycle.sh` — owned by **RQ-SHELL-PATH-AND-SHELL-SUPPORT** | have |
 | **TP-CURL-03** second pipe already-installed | `tests/test_online_curl_install.sh` | have |
 
 
-**Last Updated**: 2026-07-14
+**Last Updated**: 2026-09-09
 **Owner**: timer project maintainers  
 **Alignment**: Registry `docs/requirements/index.md`; peer live requirements in §6; CIAO Principles 1, 2, 3, 4, 11, 12, 20 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).

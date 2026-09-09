@@ -2,11 +2,11 @@
 
 | Field | Value |
 |-------|--------|
-| **Product** | timer · `VERSION=2.13.1` |
-| **Updated** | 2026-09-07 |
+| **Product** | timer · `VERSION=2.14.0` |
+| **Updated** | 2026-09-09 |
 | **Map** | `reviews/test-plan.md` |
 | **Suite** | `./tests/run.sh` |
-| **Baseline** | PASS=256 FAIL=0 SKIP=1 |
+| **Baseline** | PASS=284 FAIL=0 SKIP=1 |
 | **Portable RTM mold** | `PM-REQUIREMENT-TEST-TRACEABILITY` |
 
 Primary citation: **Requirement-ID (`RQ-*`)**, **law mold-ID (`LM-*`)** for specialize provenance, and **TP-***. Paths secondary.  
@@ -19,7 +19,7 @@ Git-surface: versioned REQs list TP + `tests/*` + `reviews/*` only (no `docs/tem
 | Requirement-ID | Key | Specialized from (LM) | Proof mold (PM) | TP families | Suite files | Core status |
 |----------------|-----|----------------------|-----------------|-------------|-------------|-------------|
 | **RQ-CLASS-SOFTWARE-DEV** | requirement-class-software-dev | **LM-REQUIREMENT-CLASS-SOFTWARE-DEV** | — | TP-CLASS-01; suite green | static + `tests/run.sh` | **have** |
-| **RQ-SHELL-CLI-INTERFACE** | requirement-shell-cli-interface | **LM-CLI-INTERFACE** | **PM-SHELL-CLI-TEST-PLAN** | TP-CLI-*; TP-TIMER-01; **TP-TX-01..05**; **TP-TX-08**; **TP-CLI-16/17/29/30** | `test_cli.sh`, `test_timer_domain.sh` | **have** |
+| **RQ-SHELL-CLI-INTERFACE** | requirement-shell-cli-interface | **LM-CLI-INTERFACE** | **PM-SHELL-CLI-TEST-PLAN** | TP-CLI-*; TP-TIMER-01; **TP-TX-01..05**; **TP-TX-08**; **TP-TX-09**; **TP-CLI-16/17/29/30** | `test_cli.sh`, `test_timer_domain.sh` | **have** |
 | **RQ-SHELL-CLI-DEFAULT-INTERACTION** | requirement-shell-cli-default-interaction | **LM-CLI-DEFAULT-INTERACTION** | **PM-SHELL-CLI-TEST-PLAN** | **TP-CLI-07**; **TP-CLI-16**; **TP-CLI-17**; **TP-CLI-29**; **TP-CLI-30** | `test_cli.sh` | **have** |
 | **RQ-SHELL-SCRIPT-CODING** | requirement-shell-script-coding | **LM-SHELL-SCRIPT-CODING** | **PM-SHELL-TERMUX-ISH-TEST-PLAN** (detect) | TP-CLI-01; **TP-TX-01..05**; **TP-TX-08** | `test_cli.sh` | **have** |
 | **RQ-SHELL-CLI-STORAGE** | requirement-shell-cli-storage | **LM-SHELL-CLI-STORAGE** | **PM-SHELL-CLI-TEST-PLAN** | **TP-CLI-05**; **TP-TX-08** | `test_cli.sh` | **have** |
@@ -27,8 +27,9 @@ Git-surface: versioned REQs list TP + `tests/*` + `reviews/*` only (no `docs/tem
 | **RQ-SHELL-TEMP-FILE-SYSTEM** | requirement-shell-temp-file-system | **LM-TEMP-FILE-SYSTEM** | PM-INSTALL · PM-CHECKSUM · PM-SHELL-CLI | TP-LC-06/12; TP-CSUM-02..04; TP-CLI-05 | lifecycle, CLI | **have** |
 | **RQ-SHELL-OUTPUT-REQUIREMENTS** | requirement-shell-output-requirements | **LM-OUTPUT-REQUIREMENTS** | **PM-SHELL-CLI-TEST-PLAN** | TP-CLI-02/04/06/07/12; TP-TIMER-04 | CLI, domain | **have** |
 | **RQ-SHELL-AUTOMATIC-CHECKSUM** | requirement-shell-automatic-checksum | **LM-AUTOMATIC-CHECKSUM** | **PM-CHECKSUM-TEST-PLAN** | TP-CSUM-01..05; TP-LC-06 | CLI, lifecycle | **have** |
-| **RQ-SHELL-SELF-MANAGEMENT** | requirement-shell-self-management | **LM-SELF-MANAGEMENT** | **PM-INSTALL-LIFECYCLE-TEST-PLAN** | TP-LC-04..08,11,12; TP-CLI-11; TP-CURL-02/07 | lifecycle, CLI, curl | **have** |
-| **RQ-SHELL-IDEMPOTENCY** | requirement-shell-idempotency | **LM-IDEMPOTENCY** | PM-INSTALL · PM-CURL | TP-LC-01/05/10; TP-CURL-03 | lifecycle, curl | **have** |
+| **RQ-SHELL-SELF-MANAGEMENT** | requirement-shell-self-management | **LM-SELF-MANAGEMENT** | **PM-INSTALL-LIFECYCLE-TEST-PLAN** | TP-LC-04..08,11,12; TP-CLI-11; TP-CURL-02/07; **TP-TX-09** | lifecycle, CLI, curl | **have** |
+| **RQ-SHELL-PATH-AND-SHELL-SUPPORT** | requirement-shell-path-and-shell-support | **LM-PATH-AND-SHELL-SUPPORT** | **PM-INSTALL-LIFECYCLE-TEST-PLAN** | **TP-LC-20..22**; **TP-LC-12**; **TP-LC-07**; **TP-TX-09**; **TP-CLI-03** | lifecycle, CLI | **have** |
+| **RQ-SHELL-IDEMPOTENCY** | requirement-shell-idempotency | **LM-IDEMPOTENCY** | PM-INSTALL · PM-CURL | TP-LC-01/05/10; **TP-LC-20..22**; TP-CURL-03 | lifecycle, curl | **have** |
 | **RQ-SHELL-INTERACTIVE-VS-NONINTERACTIVE** | requirement-shell-interactive-vs-noninteractive | **LM-INTERACTIVE-VS-NONINTERACTIVE** | PM-SHELL-CLI · PM-CURL | TP-CLI-07/11/16/30; TP-LC-07; TP-CURL-02/03 | CLI, lifecycle, curl | **have** |
 | **RQ-SHELL-MODULAR-FUNCTION-DESIGN** | requirement-shell-modular-function-design | **LM-MODULAR-FUNCTION-DESIGN** | **PM-SHELL-CLI-TEST-PLAN** | TP-CLI-01; review | CLI + review | **have** |
 | **RQ-DOMAIN-TIMER** | requirement-domain-timer | **LM-NAMED-TIMER-DOMAIN** (+ base **LM-SHELL-INTERNAL-VOLATILE-TIMER**) | **PM-DOMAIN-TEST-PLAN** | **TP-TIMER-01..07**; **TP-STORAGE-01/02**; **TP-TX-08** | `test_timer_domain.sh`, `test_cli.sh` | **have** |

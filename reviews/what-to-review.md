@@ -2,10 +2,10 @@
 
 **Living checklist** (review plan). Product: **timer** Type 0 CLI + named-timer domain.  
 **Class:** software-development + **domain product** — Active class + domain SSOT required and present.  
-**Ship unit:** `./timer` · **VERSION=2.13.1**  
+**Ship unit:** `./timer` · **VERSION=2.14.0**  
 **Always load first:** `reviews/lessons.md`
 
-**Last plan update:** 2026-09-07 (TTY menu name prompt; **TP-CLI-30**)
+**Last plan update:** 2026-09-09 (PATH/rc `rc-test`; **TP-LC-20..22** **TP-TX-09**)
 
 ---
 
@@ -43,7 +43,8 @@
 | Interactive modes | **RQ-SHELL-INTERACTIVE-VS-NONINTERACTIVE** | TTY vs pipe / quiet / json |
 | Automatic checksum | **RQ-SHELL-AUTOMATIC-CHECKSUM** | Companion primary; CHECKSUM not help/about |
 | Coding-style | **RQ-SHELL-SCRIPT-CODING** | Specialize-in home; Termux helpers this-login |
-| Termux target | CLI + self-management | Detect; no sudo; `$PREFIX/bin`; about `termux` |
+| Termux target | CLI + self-management | Detect; no sudo; `$PREFIX/bin`; about `termux`; no `$PREFIX/bin` PATH in rc |
+| PATH / rc | **RQ-SHELL-PATH-AND-SHELL-SUPPORT** | User-drawer PATH ensure; system-bin skip; `rc-test --root` |
 
 ---
 
@@ -71,6 +72,7 @@
 | Termux volatile tmp | `/dev/shm`+`/tmp` only; write `/timer_*` on RO root | L-TX-02 · TP-TX-08 |
 | TTY empty argv / `--debug` | Help dump or install-ensure; `--json` installs | L-MENU-01 · TP-CLI-07/29 |
 | TTY menu start/stop/status/kill/reset | Immediate `default` with no name prompt | L-MENU-02 · TP-CLI-30 |
+| TTY menu stop/status/kill/reset | Free-typed name instead of numbered running list | L-MENU-03 · TP-CLI-30 |
 
 ---
 

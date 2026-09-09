@@ -1,6 +1,6 @@
 **file**: docs/requirements/requirement-shell-cli-interface.md  
 **Requirement-ID**: `RQ-SHELL-CLI-INTERFACE`  
-**Status**: Active (Version 1.1.0 – domain command table + domain SSOT peer)  
+**Status**: Active (Version 1.2.0 – dual-mention Type 0 `rc-test --root`)  
 **Philosophy**: CIAO / CIAO-Lite (Caution • Intentional • Anti-fragile • Over-engineered / Over-protect)
 
 ## 1. Purpose
@@ -10,7 +10,7 @@ This requirement is the **project Single Source of Truth** for the **POSIX shell
 It defines a **Type 0–centric self-managed shell CLI** (install / update / uninstall of the tool itself) **plus routing for named-timer domain commands**. Domain **behavior** (storage, name rules, elapsed semantics, domain error codes) is owned by `requirement-domain-timer.md`. It does **not** invent Type 1 host-bootstrap or Type 2 system-user app-ops commands unless a future requirement adds them.
 
 **Scope:** User-facing command names, flags, dispatch, privilege labels, and mode contracts.  
-**Out of scope (own requirements when specialized):** Online-install checksum mechanics detail, self-management safety beyond the command surface, shell coding style, full output-function catalog (cited, not re-owned); **domain semantics** (owned by **`RQ-DOMAIN-TIMER`**); **shell scratch resolve** (owned by **`RQ-SHELL-CLI-STORAGE`** / **`LM-SHELL-CLI-STORAGE`**).
+**Out of scope (own requirements when specialized):** Online-install checksum mechanics detail, self-management safety beyond the command surface, shell coding style, full output-function catalog (cited, not re-owned); **domain semantics** (owned by **`RQ-DOMAIN-TIMER`**); **shell scratch resolve** (owned by **`RQ-SHELL-CLI-STORAGE`**); **PATH/rc bodies** (owned by **`RQ-SHELL-PATH-AND-SHELL-SUPPORT`**).
 
 ### 1.1 Human-facing
 
@@ -95,7 +95,8 @@ Destructive Type 0 actions (e.g. uninstall) **MUST** confirm when interactive un
 `help` **MUST** list:
 
 - Usage line  
-- Every supported command with one-line purpose  
+- Every supported **operational** command with one-line purpose  
+- **Test-purpose** verbs under a heading **apart** from operational verbs (`rc-test`)  
 - Privilege category (at least Type 0 vs elevated vs system-user when those exist)  
 - Global flags  
 
@@ -109,7 +110,7 @@ In JSON mode, help **MUST NOT** dump long human text; return a short structured 
 | **Primary executable** | Repo root `./timer` (POSIX `/bin/sh`, single-file for `curl \| sh`) |
 | **Dispatcher** | `app_main` (always invoked at end of script: `app_main "$@"` — no `${0##*/}` / APP_NAME basename gate; required for `curl \| sh`) |
 | **Output SSOT** | `out_text` + wrappers (`out_info`, `out_success`, `out_warn`, `out_error`, `out_die`, `out_plain`, `out_json`, …) |
-| **Version SSOT** | `VERSION` in script config block (product SSOT; currently `VERSION="2.13.1"`) |
+| **Version SSOT** | `VERSION` in script config block (product SSOT; currently `VERSION="2.14.0"`) |
 | **Install paths** | Global: `GLOBAL_BIN` default `/usr/local/bin` (Linux/macOS root). User: `USER_BIN` default `${HOME}/.local/bin`. **Termux:** `USER_BIN=$PREFIX/bin` when that directory exists; `IS_ROOT` forced 0 |
 | **Termux detect** | `util_is_termux` / `util_apply_termux_target` — `PREFIX` contains `com.termux`, `TERMUX_VERSION`, or Termux usr tree |
 | **Remote channel env (help surface)** | `REPO_USER` / `REPO_NAME` (defaults `Wilgat` / `timer`); `SCRIPT_URL` composed default `https://raw.githubusercontent.com/${REPO_USER}/${REPO_NAME}/main/${APP_NAME}` (literal product default: `https://raw.githubusercontent.com/Wilgat/timer/main/timer`; override via env). **`help` / `about` MUST list these operator channel vars as designed — MUST NOT list `CHECKSUM`** (install-path runtime pin only; see `requirement-shell-automatic-checksum.md`) |
@@ -128,8 +129,9 @@ In JSON mode, help **MUST NOT** dump long human text; return a short structured 
 | `about` | Type 0 | `app_about` | Diagnostics: install presence, global/local paths, user, shell, TTY; domain command hints; JSON when `--json`; **no `CHECKSUM` field** |
 | `version-check` | Type 0 | `ver_check` | Compare local vs remote `VERSION` from `SCRIPT_URL`; fail clearly if URL unset/unreachable |
 | `self-update` | Type 0 | `inst_self_update` | Fetch remote version; reinstall when policy allows; reuse install primitives |
-| `self-uninstall` | Type 0 | `inst_self_uninstall` | Remove managed binary; PATH cleanup only if `~/.local/bin` empty (user installs) |
-| `help` | Type 0 | `app_help` | Full usage in human mode (Type 0 + **Timer commands**); short JSON note in JSON mode; Environment lists channel vars only — **not** `CHECKSUM` |
+| `self-uninstall` | Type 0 | `inst_self_uninstall` | Remove managed binary; PATH cleanup only if managed user drawer empty and not a system bin (`requirement-shell-path-and-shell-support.md`) |
+| `help` | Type 0 | `app_help` | Full usage in human mode (Type 0 + **Timer commands**); testers listed **apart** from operational verbs; short JSON note in JSON mode; Environment lists channel vars only — **not** `CHECKSUM` |
+| `rc-test` | Type 0 **test-purpose** | `path_rc_test` | Prove PATH rc create/modify/no-op against `--root` a tmp/cache folder. Dual mention: `requirement-shell-path-and-shell-support.md`. Sample: `timer rc-test --root DIR --case create`. **MUST NOT** write this login’s real `~/.bashrc`. Help lists this **apart** from Self-Management. |
 | `start` | Type 0 (domain) | `timer_start` | Start named timer; optional name; honors `--persist` — **behavior:** `requirement-domain-timer.md` |
 | `stop` | Type 0 (domain) | `timer_stop` | Stop timer; show elapsed — **behavior:** `requirement-domain-timer.md` |
 | `status` | Type 0 (domain) | `timer_status` | Elapsed without stopping — **behavior:** `requirement-domain-timer.md` |
@@ -146,6 +148,8 @@ In JSON mode, help **MUST NOT** dump long human text; return a short structured 
 | `--debug` | Set `DEBUG=1` in `app_main` |
 | `--force` | Parsed by `app_main` → `FORCE=1` and `FORCE_REINSTALL=1`; used by install reinstall, self-update (incl. deliberate downgrade), and uninstall confirm skip |
 | `--persist` | Parsed by `app_main` → `TIMER_PERSIST=1`; domain storage mode only (see domain REQ) |
+| `--root DIR` | Parsed by `app_main` → `RC_TEST_ROOT`; fixture folder for `rc-test` |
+| `--case NAME` | Parsed by `app_main` → `RC_TEST_CASE`; `create` / `modify` / `noop` for `rc-test` |
 
 #### Dispatcher acceptance criteria (this project)
 
@@ -223,6 +227,7 @@ This requirement is satisfied for the timer shell CLI when all of the following 
 | Artifact | Role |
 |----------|------|
 | `docs/requirements/requirement-domain-timer.md` | **Domain behavior SSOT** (named timers) |
+| `docs/requirements/requirement-shell-path-and-shell-support.md` | PATH/rc bodies; dual mention of `rc-test` |
 | `docs/requirements/requirement-shell-self-management.md` | Lifecycle command semantics |
 | `docs/requirements/requirement-shell-output-requirements.md` | Output SSOT and channels |
 | `docs/requirements/requirement-shell-interactive-vs-noninteractive.md` | TTY / automation mode behavior |
@@ -279,8 +284,10 @@ This product does **not** wrap Termux `pkg` (no named package list).
 | **TP-CLI-16** do-not-capture-read | `tests/test_cli.sh` | have |
 | **TP-CLI-17** menu header nametag | `tests/test_cli.sh` | have |
 | **TP-CLI-29** overlay empty argv | `tests/test_cli.sh` | have |
+| **TP-CLI-03** help lists `rc-test` apart | `tests/test_cli.sh` | have |
+| **TP-TX-09** Termux `$PREFIX/bin` dest does not write PATH into rc | `tests/test_cli.sh` — owned by **RQ-SHELL-PATH-AND-SHELL-SUPPORT** | have |
 
 
-**Last Updated**: 2026-08-11  
+**Last Updated**: 2026-09-09  
 **Owner**: timer project maintainers  
 **Alignment**: Registry `docs/requirements/index.md`; **`LM-CLI-INTERFACE`**; peer storage **RQ-SHELL-CLI-STORAGE** / **TP-CLI-05**; CIAO Principles 1, 2, 3, 4, 6, 9, 10, 16, 20 (v2.10.2) (https://github.com/cloudgen/ciao); CIAO-Lite (https://github.com/cloudgen/ciao-lite).

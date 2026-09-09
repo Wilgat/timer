@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [2.14.0] - 2026-09-09
+
+### Added
+
+- Type 0 tester **`rc-test --root DIR --case create|modify|noop`** proves PATH rc writes on a temp folder without touching this login’s real `~/.bashrc`.
+- Active law **`RQ-SHELL-PATH-AND-SHELL-SUPPORT`** (`requirement-shell-path-and-shell-support.md`): bashrc PATH ensure, exact `export PATH=` idempotency, Termux/OS-bin skip, sibling unify.
+- Suite **TP-LC-20..22** (create / modify dongle / VERSION+exact-PATH no-op) and **TP-TX-09** (Termux `$PREFIX/bin` dest does not write PATH into rc).
+
+### Fixed
+
+- Termux install no longer prepends `$PREFIX/bin` (`…/usr/bin`) to `.bashrc`. That folder is already on PATH from login; writing it reordered PATH ahead of `~/.local/bin` and `~/.grok/bin`.
+- PATH ensure matches the **exact** `export PATH="<USER_BIN>:$PATH"` line (not a directory substring). Uninstall reverse removes **this** product’s installer comments only and never strips an OS bin.
+
+### Changed
+
+- Ship-unit `VERSION` and README Version badge → **2.14.0**.
+- Registry inventory: **15** Active REQs.
+
+## [2.13.2] - 2026-09-07
+
+### Changed
+
+- TTY main menu **stop** / **status** / **kill** / **reset** pick from a numbered list of running timers (`0` leaves). **start** still prompts for a name (Enter = `default`). **list** still does not prompt.
+- Ship-unit `VERSION` and README Version badge → **2.13.2**.
+- Law: default-interaction **1.2.0**; suite **TP-CLI-30** covers the running-timer pick.
+
 ## [2.13.1] - 2026-09-07
 
 ### Changed
